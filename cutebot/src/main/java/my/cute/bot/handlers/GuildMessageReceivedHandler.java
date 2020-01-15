@@ -1,16 +1,11 @@
 package my.cute.bot.handlers;
 
-import java.util.Arrays;
-import java.util.List;
 import java.util.regex.Pattern;
-
-import org.apache.commons.lang3.StringUtils;
 
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
 public class GuildMessageReceivedHandler {
@@ -34,6 +29,14 @@ public class GuildMessageReceivedHandler {
 		if(BOT_NAME.matcher(content).matches()) {
 			event.getChannel().sendMessage(this.database.generateLine().toUpperCase()).queue();
 		}
+	}
+	
+	public boolean checkMaintenance() {
+		boolean needsMaintenance = this.database.needsMaintenance();
+		if(needsMaintenance) {
+			this.database.maintenance();
+		}
+		return needsMaintenance;
 	}
 	
 	public void maintenance() {

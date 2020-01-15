@@ -1,17 +1,21 @@
 package my.cute.bot.database;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,6 +34,8 @@ import my.cute.markov2.impl.MarkovDatabaseBuilder;
 public class GuildDatabaseImpl implements GuildDatabase {
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
+	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
+	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(24);
 	
 	private final String id;
 	private final String parentPath;
@@ -39,6 +45,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private final MarkovDatabase database;
 	private final LineGenerator lineGenerator;
 	
+	@SuppressWarnings("unused")
 	private GuildDatabaseImpl() {
 		this.lineGenerator = null;
 		this.id = null;
@@ -63,6 +70,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				.fixedCleanupThreshold(100)
 				.build();
 		this.lineGenerator = new SpookyLineGenerator(this.database);
+		
+		try {
+			this.workingSet.toFile().createNewFile();
+		} catch (IOException e) {
+			logger.error(this + ": exception in constructor when doing default workingset.txt creation");
+		}
 	}
 
 	@Override
@@ -123,6 +136,11 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.database.deleteBackup(backupName);
 	}
 	
+	/*
+	 * TODO 
+	 * this is called in other thread
+	 * make sure theres no concurrency issue
+	 */
 	@Override
 	public void maintenance() {
 		/*
@@ -132,9 +150,10 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.backupRecords.forEach(record ->
 		{
 			if(record.shouldSaveBackup(currentTimeMillis)) {
-				record.setPrevTime(currentTimeMillis);
+				
 				try {
 					this.saveBackup(record.getName());
+					record.setPrevTime(currentTimeMillis);
 				} catch (IOException e) {
 					logger.error(this + ": exception in maintenance() when trying to save backup '" 
 							+ record.getName() + "': " + e.getMessage());
@@ -168,11 +187,14 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					});
 			} 
 			Files.move(tempWorkingSet, this.workingSet, StandardCopyOption.REPLACE_EXISTING);
-			Files.delete(tempWorkingSet);
 		} catch (IOException ex) {
 			logger.error(this + ": exception in maintenance() when updating workingset: "
 					+ ex.getMessage());
+			ex.printStackTrace();
 		}
+		//TODO problem with updating this when potentially encountering exceptions?
+		//maybe shouldnt update last maint time in that case?
+		this.updateLastMaintenanceTime();
 	}
 	
 	/*
@@ -188,6 +210,37 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private boolean isExpired(String databaseLine) {
 		return Duration.between(LocalDateTime.parse(databaseLine.substring(0, 8), 
 				DateTimeFormatter.BASIC_ISO_DATE), LocalDateTime.now()).toMillis() >= this.workingSetMaxAge;
+	}
+	
+	/*
+	 * should this throw IOException instead of logging and swallowing?
+	 */
+	public boolean needsMaintenance() {
+		try (BufferedReader reader = Files.newBufferedReader(Paths.get(this.parentPath + File.separator + this.id + File.separator 
+				+ LAST_MAINTENANCE_FILE_NAME), StandardCharsets.UTF_8)) {
+			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
+					ZonedDateTime.now(ZoneId.of("America/Vancouver"))).toMillis() >= TIME_BETWEEN_MAINTENANCE;
+		} catch(NoSuchFileException e) {
+			//probably first run. create file
+			this.updateLastMaintenanceTime();
+			return false;
+		} catch (IOException e) {
+			logger.error(this + ": exception when checking if it's time for maintenance: " + e.getMessage());
+			e.printStackTrace();
+			return false;
+		}
+		
+	}
+	
+	private void updateLastMaintenanceTime() {
+		Path lastMaintenanceFile = Paths.get(this.parentPath + File.separator + this.id + File.separator 
+				+ LAST_MAINTENANCE_FILE_NAME);
+		try {
+			Files.write(lastMaintenanceFile, ZonedDateTime.now(ZoneId.of("America/Vancouver")).format(DateTimeFormatter.ISO_DATE_TIME)
+					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+		} catch (IOException e) {
+			logger.error(this + ": exception when updating last maintenance time: " + e.getMessage());
+		}
 	}
 
 	@Override

@@ -35,4 +35,6 @@ public interface GuildDatabase {
 	public void deleteBackup(String backupName) throws IOException;
 	
 	public void maintenance();
+	
+	public boolean needsMaintenance();
 }
