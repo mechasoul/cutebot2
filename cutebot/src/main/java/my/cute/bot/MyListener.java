@@ -10,15 +10,17 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
-class MyListener extends ListenerAdapter {
+public class MyListener extends ListenerAdapter {
 
+	private final JDA jda;
 	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	
 	MyListener(JDA bot) {
+		this.jda = bot;
 		this.guildMessageHandlers = new ConcurrentHashMap<>(bot.getGuilds().size() * 4 / 3, 0.75f);
 		bot.getGuilds().forEach(guild -> this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, bot)));
-		this.privateMessageHandler = new PrivateMessageReceivedHandler(bot);
+		this.privateMessageHandler = new PrivateMessageReceivedHandler(this);
 	}
 	
 	@Override
@@ -37,5 +39,10 @@ class MyListener extends ListenerAdapter {
 	
 	void maintenance() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.maintenance());
+	}
+	
+	public void shutdown() {
+		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
+		this.jda.shutdown();
 	}
 }

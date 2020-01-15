@@ -40,5 +40,7 @@ public class GuildMessageReceivedHandler {
 		this.database.maintenance();
 	}
 	
-	
+	public void prepareForShutdown() {
+		this.database.save();
+	}
 }

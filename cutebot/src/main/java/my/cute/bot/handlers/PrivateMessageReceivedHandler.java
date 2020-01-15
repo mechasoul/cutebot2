@@ -1,13 +1,14 @@
 package my.cute.bot.handlers;
 
+import my.cute.bot.MyListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 
 public class PrivateMessageReceivedHandler {
 
-	private final JDA bot;
+	private final MyListener bot;
 	
-	public PrivateMessageReceivedHandler(JDA bot) {
+	public PrivateMessageReceivedHandler(MyListener bot) {
 		this.bot = bot;
 	}
 

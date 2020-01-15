@@ -37,8 +37,19 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private final long workingSetMaxAge;
 	private final List<BackupRecord> backupRecords;
 	private final MarkovDatabase database;
+	private final LineGenerator lineGenerator;
 	
-	public GuildDatabaseImpl(GuildDatabaseBuilder builder) {
+	private GuildDatabaseImpl() {
+		this.lineGenerator = null;
+		this.id = null;
+		this.parentPath = null;
+		this.workingSet = null;
+		this.workingSetMaxAge = 0;
+		this.backupRecords = null;
+		this.database = null;
+	};
+	
+	GuildDatabaseImpl(GuildDatabaseBuilder builder) {
 		this.id = builder.getId();
 		this.parentPath = builder.getParentPath();
 		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
@@ -51,6 +62,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				.shardCacheSize(0)
 				.fixedCleanupThreshold(100)
 				.build();
+		this.lineGenerator = new SpookyLineGenerator(this.database);
 	}
 
 	@Override
@@ -67,12 +79,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	@Override
 	public String generateLine() {
-		return this.database.generateLine();
+		return this.lineGenerator.generateLine();
 	}
 
 	@Override
 	public String generateLine(String startWord) {
-		return this.database.generateLine(startWord);
+		return this.lineGenerator.generateLine(startWord);
 	}
 
 	@Override
@@ -80,8 +92,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		try {
 			return this.database.removeLine(tokenize(line));
 		} catch (FollowingWordRemovalException e) {
-			logger.warn(this.toString() + ": exception thrown during line removal. line: " + line
-				+ ", ex: " + e.getMessage());
+			logger.error(this.toString() + ": exception thrown during line removal. line: '" + line
+				+ "', ex: " + e.getMessage());
 			return false;
 		}
 	}
@@ -124,7 +136,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				try {
 					this.saveBackup(record.getName());
 				} catch (IOException e) {
-					logger.error(this + ": exception in maintenance when trying to save backup '" 
+					logger.error(this + ": exception in maintenance() when trying to save backup '" 
 							+ record.getName() + "': " + e.getMessage());
 				}
 			}
@@ -142,13 +154,14 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					.forEach(line -> 
 					{
 						if(isExpired(line)) {
+							//first 8 characters of every line in workingset is a date stamp added in, so ignore that
 							this.removeLine(line.substring(8));
 						} else {
 							try {
 								writer.append(line);
 								writer.newLine();
 							} catch (IOException e) {
-								logger.error(this + ": exception when writing line '" + line + "' to tempWorkingSet: "
+								logger.error(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
 										+ e.getMessage());
 							}
 						}
