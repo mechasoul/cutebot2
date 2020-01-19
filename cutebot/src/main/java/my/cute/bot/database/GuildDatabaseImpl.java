@@ -117,8 +117,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		}
 	}
 
-	
-
 	@Override
 	public synchronized String generateLine() {
 		return this.lineGenerator.generateLine();

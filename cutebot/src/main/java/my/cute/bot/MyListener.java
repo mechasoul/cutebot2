@@ -30,7 +30,7 @@ public class MyListener extends ListenerAdapter {
 		
 		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
-		{
+		{ 
 			checkMaintenance();
 		}, 1, 12, TimeUnit.HOURS);
 	}
