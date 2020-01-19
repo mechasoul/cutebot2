@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
 
@@ -60,6 +61,9 @@ public class MyListener extends ListenerAdapter {
 	public void shutdown() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
 		this.taskScheduler.shutdownNow();
+		OkHttpClient client = this.jda.getHttpClient();
+		client.connectionPool().evictAll();
+		client.dispatcher().executorService().shutdown();
 		this.jda.shutdown();
 	}
 }

@@ -36,7 +36,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
-	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(24);
+	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(12);
 	
 	private static int maintCount=0;
 	private static long time1=0;
@@ -268,9 +268,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
 					ZonedDateTime.now(TIMEZONE)).toMillis() >= TIME_BETWEEN_MAINTENANCE;
 		} catch (NoSuchFileException e) {
-			//probably first run. create file
-			this.updateLastMaintenanceTime();
-			return false;
+			//probably first run. run maintenance
+			return true;
 		} catch (IOException e) {
 			logger.error(this + ": exception when checking if it's time for maintenance: " + e.getMessage());
 			e.printStackTrace();
