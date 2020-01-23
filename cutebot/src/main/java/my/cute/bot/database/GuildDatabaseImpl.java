@@ -13,10 +13,10 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -37,9 +37,16 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(24);
 	
+	static int countSuccess=0;
+	static int countFail=0;
+	
 	private final String id;
 	private final String parentPath;
 	private final Path workingSet;
+	private BufferedWriter workingSetWriter;
+	/*
+	 * maximum time for a line to be kept in the working set, in days
+	 */
 	private final long workingSetMaxAge;
 	private final List<BackupRecord> backupRecords;
 	private final MarkovDatabase database;
@@ -60,31 +67,47 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.id = builder.getId();
 		this.parentPath = builder.getParentPath();
 		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
-		this.workingSetMaxAge = TimeUnit.DAYS.toMillis(2);
+		this.workingSetMaxAge = 2;
 		this.backupRecords = new ArrayList<BackupRecord>(4);
 		this.backupRecords.add(new BackupRecord("daily", TimeUnit.DAYS, 1));
 		this.backupRecords.add(new BackupRecord("weekly", TimeUnit.DAYS, 7));
 		this.backupRecords.add(new BackupRecord("monthly", TimeUnit.DAYS, 31));
-		this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
-				.shardCacheSize(0)
-				.fixedCleanupThreshold(100)
-				.build();
+		if(builder.isPrioritizeSpeed()) {
+			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
+					.shardCacheSize(800)
+					.build();
+		} else {
+			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
+					.shardCacheSize(0)
+					.fixedCleanupThreshold(100)
+					.build();
+		}
+		
 		this.lineGenerator = new SpookyLineGenerator(this.database);
 		
 		try {
 			this.workingSet.toFile().createNewFile();
+			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 		} catch (IOException e) {
-			logger.error(this + ": exception in constructor when doing default workingset.txt creation");
+			logger.error(this + ": exception in constructor when during workingset setup, no workingset saved for this session! "
+					+ "exception: " + e.getMessage());
 		}
 	}
 
 	@Override
-	public void processLine(String line) {
-		this.database.processLine(tokenize(line));
-		try {
-			Files.write(this.workingSet, (getDateStamp() + line).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
-		} catch (IOException e) {
-			logger.error(this + ": exception when trying to write line to workingset.txt: " + e.getMessage());
+	public boolean processLine(String line) {
+		if(this.database.processLine(tokenize(line))) {
+			try {
+				this.workingSetWriter.append(getDateStamp() + line);
+				this.workingSetWriter.newLine();
+			} catch (IOException e) {
+				logger.error(this + ": exception when trying to write line '" + line + "' to workingset: " + e.getMessage());
+				e.printStackTrace();
+			}
+			return true;
+		} else {
+			return false;
 		}
 	}
 
@@ -143,28 +166,13 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 */
 	@Override
 	public void maintenance() {
-		/*
-		 * check for automatic backup creation
-		 */
-		long currentTimeMillis = System.currentTimeMillis();
-		this.backupRecords.forEach(record ->
-		{
-			if(record.shouldSaveBackup(currentTimeMillis)) {
-				
-				try {
-					this.saveBackup(record.getName());
-					record.setPrevTime(currentTimeMillis);
-				} catch (IOException e) {
-					logger.error(this + ": exception in maintenance() when trying to save backup '" 
-							+ record.getName() + "': " + e.getMessage());
-				}
-			}
-		});
+		this.save();
 		
 		/*
 		 * update workingset.txt
 		 */
 		try {
+			this.workingSetWriter.close();
 			Path tempWorkingSet = Files.createTempFile(this.workingSet.getParent(), "workingset", null);
 			try (BufferedWriter writer = Files.newBufferedWriter(tempWorkingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE, 
 					StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -187,11 +195,33 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					});
 			} 
 			Files.move(tempWorkingSet, this.workingSet, StandardCopyOption.REPLACE_EXISTING);
+			this.save();
+			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+			System.out.println("success: " + countSuccess + ", fail: " + countFail);
 		} catch (IOException ex) {
 			logger.error(this + ": exception in maintenance() when updating workingset: "
 					+ ex.getMessage());
 			ex.printStackTrace();
 		}
+		
+		/*
+		 * check for automatic backup creation
+		 */
+		long currentTimeMillis = System.currentTimeMillis();
+		this.backupRecords.forEach(record ->
+		{
+			if(record.shouldSaveBackup(currentTimeMillis)) {
+				
+				try {
+					this.saveBackup(record.getName());
+					record.setPrevTime(currentTimeMillis);
+				} catch (IOException e) {
+					logger.error(this + ": exception in maintenance() when trying to save backup '" 
+							+ record.getName() + "': " + e.getMessage());
+				}
+			}
+		});
 		//TODO problem with updating this when potentially encountering exceptions?
 		//maybe shouldnt update last maint time in that case?
 		this.updateLastMaintenanceTime();
@@ -208,19 +238,20 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 * by workingSetMaxAge), otherwise false
 	 */
 	private boolean isExpired(String databaseLine) {
-		return Duration.between(LocalDateTime.parse(databaseLine.substring(0, 8), 
-				DateTimeFormatter.BASIC_ISO_DATE), LocalDateTime.now()).toMillis() >= this.workingSetMaxAge;
+		return ChronoUnit.DAYS.between(LocalDate.parse(databaseLine.substring(0, 8), 
+				DateTimeFormatter.BASIC_ISO_DATE), LocalDate.now()) >= this.workingSetMaxAge;
 	}
 	
 	/*
 	 * should this throw IOException instead of logging and swallowing?
 	 */
+	@Override
 	public boolean needsMaintenance() {
 		try (BufferedReader reader = Files.newBufferedReader(Paths.get(this.parentPath + File.separator + this.id + File.separator 
 				+ LAST_MAINTENANCE_FILE_NAME), StandardCharsets.UTF_8)) {
 			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
-					ZonedDateTime.now(ZoneId.of("America/Vancouver"))).toMillis() >= TIME_BETWEEN_MAINTENANCE;
-		} catch(NoSuchFileException e) {
+					ZonedDateTime.now(TIMEZONE)).toMillis() >= TIME_BETWEEN_MAINTENANCE;
+		} catch (NoSuchFileException e) {
 			//probably first run. create file
 			this.updateLastMaintenanceTime();
 			return false;
@@ -236,10 +267,25 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		Path lastMaintenanceFile = Paths.get(this.parentPath + File.separator + this.id + File.separator 
 				+ LAST_MAINTENANCE_FILE_NAME);
 		try {
-			Files.write(lastMaintenanceFile, ZonedDateTime.now(ZoneId.of("America/Vancouver")).format(DateTimeFormatter.ISO_DATE_TIME)
+			Files.write(lastMaintenanceFile, ZonedDateTime.now(TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
 					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
 			logger.error(this + ": exception when updating last maintenance time: " + e.getMessage());
+		}
+	}
+	
+	@Override
+	public void exportToText() {
+		this.database.exportToTextFile();
+	}
+	
+	@Override
+	public void shutdown() {
+		this.save();
+		try {
+			this.workingSetWriter.close();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -280,6 +326,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 	
 	private static String getDateStamp() {
-		return LocalDateTime.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+		return LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
 	}
 }

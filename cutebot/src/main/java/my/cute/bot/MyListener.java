@@ -22,10 +22,10 @@ public class MyListener extends ListenerAdapter {
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
 	
-	MyListener(JDA bot) {
-		this.jda = bot;
-		this.guildMessageHandlers = new ConcurrentHashMap<>(bot.getGuilds().size() * 4 / 3, 0.75f);
-		bot.getGuilds().forEach(guild -> this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, bot)));
+	MyListener(JDA jda) {
+		this.jda = jda;
+		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
+		jda.getGuilds().forEach(guild -> this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda)));
 		this.privateMessageHandler = new PrivateMessageReceivedHandler(this);
 		
 		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();

@@ -10,9 +10,9 @@ import java.time.ZoneId;
  */
 public interface GuildDatabase {
 	
-	public static final ZoneId timezone = ZoneId.of("America/Vancouver");
+	public static final ZoneId TIMEZONE = ZoneId.of("America/Vancouver");
 
-	public void processLine(String line);
+	public boolean processLine(String line);
 	
 	public String generateLine();
 	
@@ -28,6 +28,8 @@ public interface GuildDatabase {
 	
 	public void load();
 	
+	public void shutdown();
+	
 	public Path saveBackup(String backupName) throws IOException;
 	
 	public void loadBackup(String backupName) throws FileNotFoundException, IOException;
@@ -37,4 +39,6 @@ public interface GuildDatabase {
 	public void maintenance();
 	
 	public boolean needsMaintenance();
+	
+	public void exportToText();
 }
