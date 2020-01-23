@@ -3,6 +3,9 @@ package my.cute.bot.handlers;
 import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import net.dv8tion.jda.api.JDA;
@@ -11,14 +14,18 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
 public class GuildMessageReceivedHandler {
 	
+	private static final Logger logger = LoggerFactory.getLogger(GuildMessageReceivedHandler.class);
+	private static final Pattern BOT_NAME = Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE);
+	
+	
 	@SuppressWarnings("unused")
 	private final JDA jda;
+	private final long id;
 	private final GuildDatabase database;
-	
-	private static final Pattern BOT_NAME = Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE);
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda) {
 		this.jda = jda;
+		this.id = guild.getIdLong();
 		this.database = new GuildDatabaseBuilder(guild)
 				.build();
 		this.database.load();
@@ -37,7 +44,14 @@ public class GuildMessageReceivedHandler {
 	public boolean checkMaintenance() {
 		boolean needsMaintenance = this.database.needsMaintenance();
 		if(needsMaintenance) {
-			ForkJoinPool.commonPool().execute(() -> this.database.maintenance());
+			ForkJoinPool.commonPool().execute(() -> 
+			{
+				try {
+					this.database.maintenance();
+				} catch (Throwable th) {
+					logger.error("maintenance on guild " + this.id + " terminated due to throwable: " + th.getMessage(), th);
+				}
+			});
 		}
 		return needsMaintenance;
 	}

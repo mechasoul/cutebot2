@@ -37,9 +37,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(12);
-	
-	private static int maintCount=0;
-	private static long time1=0;
+	private static final String NEW_LINE_TOKEN = "<_NL>";
 	
 	private final String id;
 	private final String parentPath;
@@ -94,6 +92,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 		} catch (IOException e) {
+			//TODO rethrow this. shouldnt continue when workingset is broken
 			logger.error(this + ": exception in constructor when during workingset setup, no workingset saved for this session! "
 					+ "exception: " + e.getMessage());
 		}
@@ -103,8 +102,29 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized boolean processLine(String line) throws IllegalStateException {
 		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
 		
+		line = sanitize(line);
 		if(this.database.processLine(tokenize(line))) {
 			try {
+				/*
+				 * TODO
+				 * replace() prevents bug where a newline ends up in the workingset and splits lines
+				 * which makes maintenance think a newline happens so it tries to parse date from 
+				 * nothing and dies
+				 * this is functional i think but also wipes all newlines from cutebot db
+				 * (but they were already getting wiped from tokenize() splitting on whitespace
+				 * and then rebuilding lines w/ words always being appended with " " and never "\n"
+				 * 
+				 * could preserve newlines by eg before tokenizing line, replace newlines with some 
+				 * special token character (eg <_newline> or something). then eg "a b\nc d" becomes
+				 * [a, b<_newline>c, d] rather than [a, b, c, d], preserving the difference between
+				 * messages "a b\nc d" and "a b c d", which current implementation doesnt
+				 * 
+				 * so yeah probably do that i guess? would have to replace it again after calling
+				 * generateLine() and getting a message (ie, replace <_newline> with \n). also would
+				 * need to sanitize messages of <_newline> token. this is like two? extra replace() 
+				 * calls which is time intensive i guess? but cpu time not really a concern in this 
+				 * program so i think its totally fine. almost all messages are short anyway
+				 */
 				this.workingSetWriter.append(getDateStamp() + line);
 				this.workingSetWriter.newLine();
 			} catch (IOException e) {
@@ -119,17 +139,20 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	@Override
 	public synchronized String generateLine() {
-		return this.lineGenerator.generateLine();
+		return this.lineGenerator.generateLine().replace(NEW_LINE_TOKEN, "\n");
 	}
 
 	@Override
 	public synchronized String generateLine(String startWord) {
-		return this.lineGenerator.generateLine(startWord);
+		return this.lineGenerator.generateLine(startWord).replace(NEW_LINE_TOKEN, "\n");
 	}
 
 	@Override
 	public boolean removeLine(String line) {
 		if(this.isShutdown) throw new IllegalStateException("can't remove line from shutdown database");
+		
+		//any lines passed to removeLine should come from database and already be sanitized
+		//so no need to call sanitize() on line before processing it
 		try {
 			return this.database.removeLine(tokenize(line));
 		} catch (FollowingWordRemovalException e) {
@@ -184,29 +207,22 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			try (BufferedWriter writer = Files.newBufferedWriter(tempWorkingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE, 
 					StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 				 Stream<String> lines = Files.lines(this.workingSet, StandardCharsets.UTF_8)) {
-				time1 = System.currentTimeMillis();
 				lines.filter(line -> !line.isEmpty())
-					.forEach(line -> 
-					{
-						if(isExpired(line)) {
-							//first 8 characters of every line in workingset is a date stamp added in, so ignore that
-							this.removeLine(line.substring(8));
-						} else {
-							try {
-								writer.append(line);
-								writer.newLine();
-							} catch (IOException e) {
-								logger.error(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
-										+ e.getMessage());
-							}
+				.forEach(line -> 
+				{
+					if(isExpired(line)) {
+						//first 8 characters of every line in workingset is a date stamp added in, so ignore that
+						this.removeLine(line.substring(8));
+					} else {
+						try {
+							writer.append(line);
+							writer.newLine();
+						} catch (IOException e) {
+							logger.error(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
+									+ e.getMessage());
 						}
-						maintCount++;
-						if(maintCount % 1000 == 0) {
-							long time2 = System.currentTimeMillis();
-							System.out.println("maint " + maintCount + " - " + (time2 - time1));
-							time1 = time2;
-						}
-					});
+					}
+				});
 			} 
 			logger.info(this + "-maint: workingset processed. replacing old workingset");
 			Files.move(tempWorkingSet, this.workingSet, StandardCopyOption.REPLACE_EXISTING);
@@ -334,6 +350,10 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		builder.append("GuildDatabaseImpl-");
 		builder.append(id);
 		return builder.toString();
+	}
+	
+	private static String sanitize(String line) {
+		return line.trim().replace(NEW_LINE_TOKEN, "newline").replace("\n", NEW_LINE_TOKEN);
 	}
 
 	private static List<String> tokenize(String line) {
