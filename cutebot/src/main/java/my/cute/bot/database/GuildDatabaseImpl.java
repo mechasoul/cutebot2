@@ -37,9 +37,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(24);
 	
-	static int countSuccess=0;
-	static int countFail=0;
-	
 	private final String id;
 	private final String parentPath;
 	private final Path workingSet;
@@ -69,9 +66,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
 		this.workingSetMaxAge = 2;
 		this.backupRecords = new ArrayList<BackupRecord>(4);
-		this.backupRecords.add(new BackupRecord("daily", TimeUnit.DAYS, 1));
-		this.backupRecords.add(new BackupRecord("weekly", TimeUnit.DAYS, 7));
-		this.backupRecords.add(new BackupRecord("monthly", TimeUnit.DAYS, 31));
+		this.backupRecords.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1, Paths.get(this.parentPath + File.separator + this.id)));
+		this.backupRecords.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7, Paths.get(this.parentPath + File.separator + this.id)));
+		this.backupRecords.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31, Paths.get(this.parentPath + File.separator + this.id)));
 		if(builder.isPrioritizeSpeed()) {
 			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
 					.shardCacheSize(800)
@@ -198,7 +195,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			this.save();
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
-			System.out.println("success: " + countSuccess + ", fail: " + countFail);
 		} catch (IOException ex) {
 			logger.error(this + ": exception in maintenance() when updating workingset: "
 					+ ex.getMessage());
@@ -208,14 +204,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		/*
 		 * check for automatic backup creation
 		 */
-		long currentTimeMillis = System.currentTimeMillis();
 		this.backupRecords.forEach(record ->
 		{
-			if(record.shouldSaveBackup(currentTimeMillis)) {
-				
+			if(record.needsMaintenance()) {
 				try {
 					this.saveBackup(record.getName());
-					record.setPrevTime(currentTimeMillis);
+					record.maintenance();
 				} catch (IOException e) {
 					logger.error(this + ": exception in maintenance() when trying to save backup '" 
 							+ record.getName() + "': " + e.getMessage());

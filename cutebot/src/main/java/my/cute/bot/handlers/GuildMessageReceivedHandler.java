@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 
 public class GuildMessageReceivedHandler {
 	
+	@SuppressWarnings("unused")
 	private final JDA jda;
 	private final GuildDatabase database;
 	
@@ -45,6 +46,6 @@ public class GuildMessageReceivedHandler {
 	}
 	
 	public void prepareForShutdown() {
-		this.database.save();
+		this.database.shutdown();
 	}
 }

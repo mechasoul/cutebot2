@@ -17,7 +17,7 @@ public class GuildDatabaseBuilder {
 	}
 	
 	public GuildDatabaseBuilder(String id) {
-		this.id = id;
+		this.id = id.intern();
 	}
 	
 	public GuildDatabaseBuilder prioritizeSpeed(boolean enabled) {

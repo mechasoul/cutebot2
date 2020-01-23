@@ -8,7 +8,7 @@ import java.time.ZoneId;
 /*
  * chatbot database
  */
-public interface GuildDatabase {
+public interface GuildDatabase extends Maintainable {
 	
 	public static final ZoneId TIMEZONE = ZoneId.of("America/Vancouver");
 
@@ -35,10 +35,6 @@ public interface GuildDatabase {
 	public void loadBackup(String backupName) throws FileNotFoundException, IOException;
 	
 	public void deleteBackup(String backupName) throws IOException;
-	
-	public void maintenance();
-	
-	public boolean needsMaintenance();
 	
 	public void exportToText();
 }
