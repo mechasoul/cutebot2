@@ -127,6 +127,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				 */
 				this.workingSetWriter.append(getDateStamp() + line);
 				this.workingSetWriter.newLine();
+				this.workingSetWriter.flush();
 			} catch (IOException e) {
 				logger.error(this + ": exception when trying to write line '" + line + "' to workingset: " + e.getMessage());
 				e.printStackTrace();
