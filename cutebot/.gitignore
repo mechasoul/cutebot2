@@ -1,9 +1,7 @@
 /target/
-/testinput.txt
-/testout.txt
+/test*
 /logs/
 /cutebot2db/
-/testoutput.txt
 /bot.bat
 /bot.jar
 /gc.log
