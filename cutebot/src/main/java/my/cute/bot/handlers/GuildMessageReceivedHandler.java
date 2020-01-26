@@ -1,5 +1,6 @@
 package my.cute.bot.handlers;
 
+import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 
 import my.cute.bot.database.GuildDatabase;
@@ -36,7 +37,7 @@ public class GuildMessageReceivedHandler {
 	public boolean checkMaintenance() {
 		boolean needsMaintenance = this.database.needsMaintenance();
 		if(needsMaintenance) {
-			this.database.maintenance();
+			ForkJoinPool.commonPool().execute(() -> this.database.maintenance());
 		}
 		return needsMaintenance;
 	}

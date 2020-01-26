@@ -34,6 +34,5 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="/markov2/markov2.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

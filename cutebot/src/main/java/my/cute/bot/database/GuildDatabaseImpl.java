@@ -17,7 +17,6 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -26,6 +25,8 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
 
 import my.cute.markov2.MarkovDatabase;
 import my.cute.markov2.exceptions.FollowingWordRemovalException;
@@ -37,6 +38,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(24);
 	
+	private static int maintCount=0;
+	private static long time1=0;
+	
 	private final String id;
 	private final String parentPath;
 	private final Path workingSet;
@@ -45,9 +49,11 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 * maximum time for a line to be kept in the working set, in days
 	 */
 	private final long workingSetMaxAge;
-	private final List<BackupRecord> backupRecords;
+	private final ImmutableList<BackupRecord> backupRecords;
 	private final MarkovDatabase database;
 	private final LineGenerator lineGenerator;
+	
+	private boolean isShutdown = false;
 	
 	@SuppressWarnings("unused")
 	private GuildDatabaseImpl() {
@@ -65,10 +71,11 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.parentPath = builder.getParentPath();
 		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
 		this.workingSetMaxAge = 2;
-		this.backupRecords = new ArrayList<BackupRecord>(4);
-		this.backupRecords.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1, Paths.get(this.parentPath + File.separator + this.id)));
-		this.backupRecords.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7, Paths.get(this.parentPath + File.separator + this.id)));
-		this.backupRecords.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31, Paths.get(this.parentPath + File.separator + this.id)));
+		this.backupRecords = ImmutableList.<BackupRecord>builderWithExpectedSize(3)
+				.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1, Paths.get(this.parentPath + File.separator + this.id)))
+				.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7, Paths.get(this.parentPath + File.separator + this.id)))
+				.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31, Paths.get(this.parentPath + File.separator + this.id)))
+				.build();
 		if(builder.isPrioritizeSpeed()) {
 			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
 					.shardCacheSize(800)
@@ -93,7 +100,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 
 	@Override
-	public boolean processLine(String line) {
+	public synchronized boolean processLine(String line) throws IllegalStateException {
+		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
+		
 		if(this.database.processLine(tokenize(line))) {
 			try {
 				this.workingSetWriter.append(getDateStamp() + line);
@@ -111,17 +120,18 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	
 
 	@Override
-	public String generateLine() {
+	public synchronized String generateLine() {
 		return this.lineGenerator.generateLine();
 	}
 
 	@Override
-	public String generateLine(String startWord) {
+	public synchronized String generateLine(String startWord) {
 		return this.lineGenerator.generateLine(startWord);
 	}
 
 	@Override
 	public boolean removeLine(String line) {
+		if(this.isShutdown) throw new IllegalStateException("can't remove line from shutdown database");
 		try {
 			return this.database.removeLine(tokenize(line));
 		} catch (FollowingWordRemovalException e) {
@@ -162,9 +172,11 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 * make sure theres no concurrency issue
 	 */
 	@Override
-	public void maintenance() {
+	public synchronized void maintenance() {
+		if(this.isShutdown) throw new IllegalStateException("can't start maintenance on a shutdown database");
+		logger.info(this + ": starting maintenance");
 		this.save();
-		
+		logger.info(this + "-maint: db saved. beginning workingset maintenance");
 		/*
 		 * update workingset.txt
 		 */
@@ -174,6 +186,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			try (BufferedWriter writer = Files.newBufferedWriter(tempWorkingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE, 
 					StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 				 Stream<String> lines = Files.lines(this.workingSet, StandardCharsets.UTF_8)) {
+				time1 = System.currentTimeMillis();
 				lines.filter(line -> !line.isEmpty())
 					.forEach(line -> 
 					{
@@ -189,8 +202,15 @@ public class GuildDatabaseImpl implements GuildDatabase {
 										+ e.getMessage());
 							}
 						}
+						maintCount++;
+						if(maintCount % 1000 == 0) {
+							long time2 = System.currentTimeMillis();
+							System.out.println("maint " + maintCount + " - " + (time2 - time1));
+							time1 = time2;
+						}
 					});
 			} 
+			logger.info(this + "-maint: workingset processed. replacing old workingset");
 			Files.move(tempWorkingSet, this.workingSet, StandardCopyOption.REPLACE_EXISTING);
 			this.save();
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
@@ -204,10 +224,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		/*
 		 * check for automatic backup creation
 		 */
+		logger.info(this + "-maint: finished workingset maintenance. beginning backup maintenance");
 		this.backupRecords.forEach(record ->
 		{
 			if(record.needsMaintenance()) {
 				try {
+					logger.info(this + "-maint: backup record '" + record.getName() + "' out of date. saving new backup");
 					this.saveBackup(record.getName());
 					record.maintenance();
 				} catch (IOException e) {
@@ -216,9 +238,11 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				}
 			}
 		});
+		logger.info(this + "-maint: finished backup maintenance. updating last maintenance time");
 		//TODO problem with updating this when potentially encountering exceptions?
 		//maybe shouldnt update last maint time in that case?
 		this.updateLastMaintenanceTime();
+		logger.info(this + ": finished maintenance");
 	}
 	
 	/*
@@ -274,13 +298,14 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 	
 	@Override
-	public void shutdown() {
+	public synchronized void shutdown() {
 		this.save();
 		try {
 			this.workingSetWriter.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		this.isShutdown = true;
 	}
 
 	@Override
@@ -309,9 +334,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("GuildDatabaseImpl [id=");
+		builder.append("GuildDatabaseImpl-");
 		builder.append(id);
-		builder.append("]");
 		return builder.toString();
 	}
 

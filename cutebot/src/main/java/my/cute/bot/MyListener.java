@@ -15,7 +15,7 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 public class MyListener extends ListenerAdapter {
 
-	private final static boolean DISABLE_GUILDS = true;
+	private final static boolean DISABLE_GUILDS = false;
 	
 	private final JDA jda;
 	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
@@ -35,7 +35,6 @@ public class MyListener extends ListenerAdapter {
 		}, 1, 12, TimeUnit.HOURS);
 	}
 	
-	@SuppressWarnings("unused")
 	@Override
 	public void onGuildMessageReceived(GuildMessageReceivedEvent event) {
 		if(event.getAuthor().isBot() || DISABLE_GUILDS) return;
