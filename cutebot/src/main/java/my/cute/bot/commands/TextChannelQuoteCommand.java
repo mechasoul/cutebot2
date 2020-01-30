@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.entities.Message;
 
 public class TextChannelQuoteCommand extends TextChannelCommand {
 	
@@ -33,7 +33,7 @@ public class TextChannelQuoteCommand extends TextChannelCommand {
 	}
 
 	@Override
-	public void execute(MessageReceivedEvent event) {
+	public void execute(Message message) {
 		String dailyQuote = null;
 		try (BufferedReader reader = Files.newBufferedReader(QUOTE_INFO_FILE, StandardCharsets.UTF_8)) {
 			if(!isExpired(reader.readLine())) {
@@ -48,7 +48,7 @@ public class TextChannelQuoteCommand extends TextChannelCommand {
 			//need to update quote info file and get new quote
 			dailyQuote = this.updateQuoteInfoFile();
 		}
-		event.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (!quote)")
+		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (!quote)")
 				.setEmbed(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}
 

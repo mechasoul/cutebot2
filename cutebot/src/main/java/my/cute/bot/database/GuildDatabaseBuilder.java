@@ -1,23 +1,22 @@
 package my.cute.bot.database;
 
-import java.io.File;
-
 import net.dv8tion.jda.api.entities.Guild;
 
 public class GuildDatabaseBuilder {
 	
-	private static final String DATABASE_PARENT_DIRECTORY = "." + File.separator + "cutebot2db";
-	
 	private final String id;
+	private final String parentPath;
 	
 	private boolean prioritizeSpeed = false;
 
-	public GuildDatabaseBuilder(Guild guild) {
+	public GuildDatabaseBuilder(Guild guild, String parentPath) {
 		this.id = guild.getId().intern();
+		this.parentPath = parentPath;
 	}
 	
-	public GuildDatabaseBuilder(String id) {
+	public GuildDatabaseBuilder(String id, String parentPath) {
 		this.id = id.intern();
+		this.parentPath = parentPath;
 	}
 	
 	public GuildDatabaseBuilder prioritizeSpeed(boolean enabled) {
@@ -38,6 +37,6 @@ public class GuildDatabaseBuilder {
 	}
 	
 	public String getParentPath() {
-		return DATABASE_PARENT_DIRECTORY;
+		return this.parentPath;
 	}
 }

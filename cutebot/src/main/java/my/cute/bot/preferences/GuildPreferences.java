@@ -1,5 +1,13 @@
 package my.cute.bot.preferences;
 
-public class GuildPreferences {
+public interface GuildPreferences {
 
+	public void load();
+	
+	/*
+	 * nonempty nonwhitespace
+	 */
+	public String getPrefix();
+	
+	public void setPrefix(String prefix);
 }
