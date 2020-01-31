@@ -5,6 +5,7 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
@@ -40,6 +41,8 @@ public class TextChannelQuoteCommand extends TextChannelCommand {
 				//no update needed. return current day's quote
 				dailyQuote = this.getDailyQuote(Integer.parseInt(reader.readLine()));
 			}
+		} catch (NoSuchFileException e) {
+			//likely first run, do nothing. will continue and create quote info file and get new quote
 		} catch (IOException e) {
 			logger.error("exception thrown in TextChannelQuoteCommand.execute(): " + e.getMessage(), e);
 			dailyQuote = "the quotes broke so im taking the day off";
@@ -99,7 +102,7 @@ public class TextChannelQuoteCommand extends TextChannelCommand {
 				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			writer.append(LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE));
 			writer.newLine();
-			//get total number of quotes and randomly assign one as daily quote
+			//get all quotes and randomly assign one as daily quote
 			List<String> quotes = Files.readAllLines(QUOTES_FILE, StandardCharsets.UTF_8);
 			int quoteNumber = new Random().nextInt(quotes.size());
 			writer.append(""+quoteNumber);
