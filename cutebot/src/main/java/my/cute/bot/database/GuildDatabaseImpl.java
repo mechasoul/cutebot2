@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 
+import my.cute.bot.util.MiscUtils;
 import my.cute.markov2.MarkovDatabase;
 import my.cute.markov2.exceptions.FollowingWordRemovalException;
 import my.cute.markov2.impl.MarkovDatabaseBuilder;
@@ -37,20 +38,20 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
 	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(12);
-	private static final String NEW_LINE_TOKEN = "<_NL>";
 	
 	private final String id;
 	private final String parentPath;
 	private final Path workingSet;
 	private BufferedWriter workingSetWriter;
-	/*
-	 * maximum time for a line to be kept in the working set, in days
-	 */
-	private final long workingSetMaxAge;
+	
 	private final ImmutableList<BackupRecord> backupRecords;
 	private final MarkovDatabase database;
 	private final LineGenerator lineGenerator;
 	
+	/*
+	 * maximum time for a line to be kept in the working set, in days
+	 */
+	private int workingSetMaxAge;
 	private boolean isShutdown = false;
 	
 	@SuppressWarnings("unused")
@@ -68,7 +69,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.id = builder.getId();
 		this.parentPath = builder.getParentPath();
 		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
-		this.workingSetMaxAge = 2;
+		this.workingSetMaxAge = builder.getDatabaseAge();
 		this.backupRecords = ImmutableList.<BackupRecord>builderWithExpectedSize(3)
 				.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1, Paths.get(this.parentPath + File.separator + this.id)))
 				.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7, Paths.get(this.parentPath + File.separator + this.id)))
@@ -102,29 +103,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized boolean processLine(String line) throws IllegalStateException {
 		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
 		
-		line = sanitize(line);
+		line = MiscUtils.replaceNewLinesWithTokens(line);
 		if(this.database.processLine(tokenize(line))) {
 			try {
-				/*
-				 * TODO
-				 * replace() prevents bug where a newline ends up in the workingset and splits lines
-				 * which makes maintenance think a newline happens so it tries to parse date from 
-				 * nothing and dies
-				 * this is functional i think but also wipes all newlines from cutebot db
-				 * (but they were already getting wiped from tokenize() splitting on whitespace
-				 * and then rebuilding lines w/ words always being appended with " " and never "\n"
-				 * 
-				 * could preserve newlines by eg before tokenizing line, replace newlines with some 
-				 * special token character (eg <_newline> or something). then eg "a b\nc d" becomes
-				 * [a, b<_newline>c, d] rather than [a, b, c, d], preserving the difference between
-				 * messages "a b\nc d" and "a b c d", which current implementation doesnt
-				 * 
-				 * so yeah probably do that i guess? would have to replace it again after calling
-				 * generateLine() and getting a message (ie, replace <_newline> with \n). also would
-				 * need to sanitize messages of <_newline> token. this is like two? extra replace() 
-				 * calls which is time intensive i guess? but cpu time not really a concern in this 
-				 * program so i think its totally fine. almost all messages are short anyway
-				 */
 				this.workingSetWriter.append(getDateStamp() + line);
 				this.workingSetWriter.newLine();
 				this.workingSetWriter.flush();
@@ -140,20 +121,20 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	@Override
 	public synchronized String generateLine() {
-		return this.lineGenerator.generateLine().replace(NEW_LINE_TOKEN, "\n");
+		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine());
 	}
 
 	@Override
 	public synchronized String generateLine(String startWord) {
-		return this.lineGenerator.generateLine(startWord).replace(NEW_LINE_TOKEN, "\n");
+		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(startWord));
 	}
 
 	@Override
 	public boolean removeLine(String line) {
 		if(this.isShutdown) throw new IllegalStateException("can't remove line from shutdown database");
 		
-		//any lines passed to removeLine should come from database and already be sanitized
-		//so no need to call sanitize() on line before processing it
+		//any lines passed to removeLine should come from database (eg workingset) and already be sanitized
+		//so no need to call MiscUtils.replaceNewLinesWithTokens() on line before processing it
 		try {
 			return this.database.removeLine(tokenize(line));
 		} catch (FollowingWordRemovalException e) {
@@ -283,7 +264,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		try (BufferedReader reader = Files.newBufferedReader(Paths.get(this.parentPath + File.separator + this.id + File.separator 
 				+ LAST_MAINTENANCE_FILE_NAME), StandardCharsets.UTF_8)) {
 			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
-					ZonedDateTime.now(TIMEZONE)).toMillis() >= TIME_BETWEEN_MAINTENANCE;
+					ZonedDateTime.now(MiscUtils.TIMEZONE)).toMillis() >= TIME_BETWEEN_MAINTENANCE;
 		} catch (NoSuchFileException e) {
 			//probably first run. run maintenance
 			return true;
@@ -299,7 +280,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		Path lastMaintenanceFile = Paths.get(this.parentPath + File.separator + this.id + File.separator 
 				+ LAST_MAINTENANCE_FILE_NAME);
 		try {
-			Files.write(lastMaintenanceFile, ZonedDateTime.now(TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
+			Files.write(lastMaintenanceFile, ZonedDateTime.now(MiscUtils.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
 					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
 			logger.error(this + ": exception when updating last maintenance time: " + e.getMessage());
@@ -351,10 +332,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		builder.append("GuildDatabaseImpl-");
 		builder.append(id);
 		return builder.toString();
-	}
-	
-	private static String sanitize(String line) {
-		return line.trim().replace(NEW_LINE_TOKEN, "newline").replace("\n", NEW_LINE_TOKEN);
 	}
 
 	private static List<String> tokenize(String line) {

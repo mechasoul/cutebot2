@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.util.MiscUtils;
+
 public class BackupRecord implements Maintainable {
 	
 	private static final Logger logger = LoggerFactory.getLogger(BackupRecord.class);
@@ -36,7 +38,7 @@ public class BackupRecord implements Maintainable {
 	public boolean needsMaintenance() {
 		try (BufferedReader reader = Files.newBufferedReader(this.lastMaintenanceFile, StandardCharsets.UTF_8)) {
 			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
-					ZonedDateTime.now(GuildDatabase.TIMEZONE)).toMillis() >= this.duration;
+					ZonedDateTime.now(MiscUtils.TIMEZONE)).toMillis() >= this.duration;
 		} catch (NoSuchFileException ex) {
 			//probably first run. should create backup
 			return true;
@@ -49,7 +51,7 @@ public class BackupRecord implements Maintainable {
 	@Override
 	public void maintenance() {
 		try {
-			Files.write(this.lastMaintenanceFile, ZonedDateTime.now(GuildDatabase.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
+			Files.write(this.lastMaintenanceFile, ZonedDateTime.now(MiscUtils.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
 					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
 			e.printStackTrace();

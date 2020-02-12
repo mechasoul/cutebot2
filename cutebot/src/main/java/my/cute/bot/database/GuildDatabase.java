@@ -3,14 +3,11 @@ package my.cute.bot.database;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.ZoneId;
 
 /*
  * chatbot database
  */
 public interface GuildDatabase extends Maintainable {
-	
-	public static final ZoneId TIMEZONE = ZoneId.of("America/Vancouver");
 
 	public boolean processLine(String line);
 	
