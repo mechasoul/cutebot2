@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface GuildPreferences {
 
-	public void load();
+	public void save();
 	
 	/*
 	 * nonempty nonwhitespace

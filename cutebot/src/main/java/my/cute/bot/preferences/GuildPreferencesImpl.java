@@ -1,13 +1,24 @@
 package my.cute.bot.preferences;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import my.cute.bot.util.PathUtils;
+
 class GuildPreferencesImpl implements GuildPreferences {
 
+	private static final Logger logger = LoggerFactory.getLogger(GuildPreferencesImpl.class);
 	private static final Gson GSON = new GsonBuilder().create();
 	
 	private final String id;
@@ -33,14 +44,19 @@ class GuildPreferencesImpl implements GuildPreferences {
 	public GuildPreferencesImpl(String id) {
 		this.id = id;
 		this.commandPrefix = "!";
-		this.databaseAge = 2;
+		this.databaseAge = 4;
 		this.discussionChannels = null;
 	}
 	
 	@Override
-	public void load() {
-		// TODO Auto-generated method stub
-		
+	public void save() {
+		try (BufferedWriter writer = Files.newBufferedWriter(PathUtils.getPreferencesFile(this.id), StandardCharsets.UTF_8, 
+				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+			writer.append(GSON.toJson(this));
+		} catch (IOException e) {
+			e.printStackTrace();
+			logger.error("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed! ex: " + e.getMessage(), e);
+		}
 	}
 	
 	@Override
@@ -79,6 +95,21 @@ class GuildPreferencesImpl implements GuildPreferences {
 		} else {
 			this.discussionChannels = ImmutableList.copyOf(discussionChannels);
 		}
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("GuildPreferencesImpl [id=");
+		builder.append(id);
+		builder.append(", commandPrefix=");
+		builder.append(commandPrefix);
+		builder.append(", databaseAge=");
+		builder.append(databaseAge);
+		builder.append(", discussionChannels=");
+		builder.append(discussionChannels);
+		builder.append("]");
+		return builder.toString();
 	}
 	
 }

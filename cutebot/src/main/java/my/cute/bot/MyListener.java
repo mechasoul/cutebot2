@@ -6,10 +6,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.GuildPreferencesFactory;
+import my.cute.bot.tasks.GuildDiscussionChannelTask;
+import my.cute.bot.tasks.GuildMessageScrapeTask;
+import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
@@ -18,6 +24,8 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
+	
+	private static final Logger logger = LoggerFactory.getLogger(MyListener.class);
 	
 	private final JDA jda;
 	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
@@ -29,7 +37,7 @@ public class MyListener extends ListenerAdapter {
 		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
 		ConcurrentHashMap<String, GuildPreferences> prefsMap = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
 		jda.getGuilds().forEach(guild -> {
-			GuildPreferences prefs = GuildPreferencesFactory.newDefaultGuildPreferences(guild.getId());
+			GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
 			prefsMap.put(guild.getId(), prefs);
 			this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs));
 		});
@@ -50,6 +58,8 @@ public class MyListener extends ListenerAdapter {
 	 * will be reflected in db
 	 * 
 	 * can psosibly do the same thing with message edits?
+	 * 
+	 * should we remove messagelisteners/etc when removed from guild?
 	 */
 	
 	@Override
@@ -69,28 +79,38 @@ public class MyListener extends ListenerAdapter {
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that
 	@Override
 	public void onGuildJoin(GuildJoinEvent event) {
-		GuildPreferences prefs = GuildPreferencesFactory.newDefaultGuildPreferences(event.getGuild().getId());
-		this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), new GuildMessageReceivedHandler(event.getGuild(), jda, prefs));
-		this.privateMessageHandler.addGuildPreferences(event.getGuild().getId(), prefs);
-		/*
-		 * TODO
-		 * get guild messages from all visible channels, from now to age limit
-		 * use messages to determine discussion channels
-		 * process all messages from discussion channels
-		 * determine default channel from discussion channels
-		 * save messages to directory under db parent, each channel w/ own file
-		 * 		insert lines at start of channel messages file with start and end dates of scraped msg period
-		 * 		mark each msg with a timestamp at start like we do w/ workingset 
-		 */
-//		this.taskScheduler.execute(() ->
-//		{
-//			Guild guild = event.getGuild();
-//			guild.getTextChannelCache().forEach(channel ->
-//			{
-//				
-//				channel.getIterableHistory().cache(false).forEachAsync(action)
-//			});
-//		});
+		GuildPreferences prefs = GuildPreferencesFactory.newDefaultGuildPreferences(event.getGuild().getId());;
+		boolean newGuild = false;
+		//preliminary check to avoid unnecessary GuildMessageReceivedHandler creation since it's slightly expensive
+		if(!this.guildMessageHandlers.containsKey(event.getGuild().getId())) {
+			//verify that guild hasn't been added in the meantime by other thread
+			newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
+					new GuildMessageReceivedHandler(event.getGuild(), jda, prefs)) == null;
+			this.privateMessageHandler.addGuildPreferencesIfAbsent(event.getGuild().getId(), prefs);
+		}
+		//TODO test
+		if(newGuild) {
+			new Thread(() ->
+			{
+				try {
+					new GuildMessageScrapeTask(event.getGuild(), PathUtils.getDatabaseScrapeDirectory(event.getGuild().getId()), 
+									prefs.getDatabaseAge()).call()
+						.thenRunAsync(new GuildDiscussionChannelTask(event.getGuild().getId(), prefs))
+						.whenComplete((result, throwable) ->
+						{
+							if(throwable == null) {
+								logger.info(this + ": successfully set up new guild '" + event.getGuild() + "'");
+							} else {
+								logger.warn(this + ": encountered exception when trying to set up new guild '" + event.getGuild()
+									+ "'; setup process aborted! ex: " + throwable.getMessage(), throwable);
+							}
+						});
+				} catch (Exception e) {
+					logger.warn(this + ": encountered exception when trying to set up new guild '" + event.getGuild()
+					+ "'; setup process aborted! ex: " + e.getMessage(), e);
+				}
+			}).start();
+		}
 	}
 	
 	void maintenance() {
@@ -113,5 +133,12 @@ public class MyListener extends ListenerAdapter {
 		client.connectionPool().evictAll();
 		client.dispatcher().executorService().shutdown();
 		this.jda.shutdown();
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("MyListener");
+		return builder.toString();
 	}
 }

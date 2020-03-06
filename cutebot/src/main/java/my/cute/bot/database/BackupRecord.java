@@ -1,7 +1,6 @@
 package my.cute.bot.database;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -17,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.PathUtils;
 
 public class BackupRecord implements Maintainable {
 	
@@ -27,11 +27,11 @@ public class BackupRecord implements Maintainable {
 	private final String name;
 	private final Path lastMaintenanceFile;
 	
-	BackupRecord(String id, String name, TimeUnit unit, int duration, Path parentPath) {
+	BackupRecord(String id, String name, TimeUnit unit, int duration) {
 		this.parentId = id;
 		this.name = name;
 		this.duration = unit.toMillis(duration);
-		this.lastMaintenanceFile = parentPath.resolve("~backups" + File.separator + this.name + "-last.txt");
+		this.lastMaintenanceFile = PathUtils.getBackupLastMaintenanceFile(this.parentId, this.name);
 	}
 	
 	@Override

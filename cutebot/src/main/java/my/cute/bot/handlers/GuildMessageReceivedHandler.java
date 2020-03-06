@@ -8,12 +8,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.GuildMessageScrapeTask;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.tasks.GuildMessageScrapeTask;
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -29,7 +29,7 @@ public class GuildMessageReceivedHandler {
 	
 	private final JDA jda;
 	private final long id;
-	private final GuildDatabase database;
+	private GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final CommandSet commands;
 	
@@ -37,7 +37,6 @@ public class GuildMessageReceivedHandler {
 		this.jda = jda;
 		this.id = guild.getIdLong();
 		this.prefs = prefs;
-		this.prefs.load();
 		this.database = new GuildDatabaseBuilder(guild)
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
@@ -62,22 +61,19 @@ public class GuildMessageReceivedHandler {
 			}
 		}
 		
-		if(content.equals("abab") && event.getAuthor().getId().equals("115618938510901249")) {
-			new GuildMessageScrapeTask(event.getGuild(), PathUtils.getDatabaseScrapeDirectory(event.getGuild().getId()),
-					2).run();
-			return;
-		}
-		
-		this.database.processLine(content);
-		
-		if(BOT_NAME.matcher(content).matches()) {
-			event.getChannel().sendMessage(this.database.generateLine()).queue();
+		if(this.prefs.isDiscussionChannel(event.getChannel().getId())) {
+			this.database.processLine(content);
+			
+			if(BOT_NAME.matcher(content).matches()) {
+				event.getChannel().sendMessage(this.database.generateLine()).queue();
+			}
 		}
 	}
 	
 	public boolean checkMaintenance() {
 		boolean needsMaintenance = this.database.needsMaintenance();
 		if(needsMaintenance) {
+			//TODO dont use commonpool for maintenance. maint is slow & so should be in its own pool 
 			ForkJoinPool.commonPool().execute(() -> 
 			{
 				try {
