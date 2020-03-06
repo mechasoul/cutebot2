@@ -1,4 +1,4 @@
-package my.cute.bot;
+package my.cute.bot.tasks;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -14,19 +14,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.PathUtils;
 
 public final class GuildDiscussionChannelTask implements Runnable {
 
-	//shouldn't store references to jda entities but this task should be short-lived so it's ok
+	private static final Logger logger = LoggerFactory.getLogger(GuildDiscussionChannelTask.class);
+	
 	private final String guildId;
 	private final GuildPreferences prefs;
-	
-	public GuildDiscussionChannelTask(String id) {
-		this.guildId = id;
-		this.prefs = null;
-	}
 	
 	public GuildDiscussionChannelTask(String id, GuildPreferences prefs) {
 		this.guildId = id;
@@ -56,15 +55,15 @@ public final class GuildDiscussionChannelTask implements Runnable {
 					durations.put(channelId, duration);
 					totalDuration.addAndGet(duration);
 				} catch (IOException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
+					logger.error(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
 				}
 				lineCounts.put(channelId, lineCount);
 			});
 			
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+			logger.error(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
 		}
 		
 		long totalMessageCount = lineCounts.values().stream().mapToLong(i -> i.longValue()).sum();
@@ -80,8 +79,16 @@ public final class GuildDiscussionChannelTask implements Runnable {
 			}
 		});
 		
-		System.out.println(discussionChannels);
 		this.prefs.setDiscussionChannels(discussionChannels);
+		this.prefs.save();
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("GuildDiscussionChannelTask-");
+		builder.append(guildId);
+		return builder.toString();
 	}
 
 }

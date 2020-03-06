@@ -2,14 +2,12 @@ package my.cute.bot.database;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
@@ -29,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableList;
 
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.PathUtils;
 import my.cute.markov2.MarkovDatabase;
 import my.cute.markov2.exceptions.FollowingWordRemovalException;
 import my.cute.markov2.impl.MarkovDatabaseBuilder;
@@ -36,11 +35,9 @@ import my.cute.markov2.impl.MarkovDatabaseBuilder;
 public class GuildDatabaseImpl implements GuildDatabase {
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
-	private static final String LAST_MAINTENANCE_FILE_NAME = "lastmaintenance.txt";
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(12);
 	
 	private final String id;
-	private final String parentPath;
 	private final Path workingSet;
 	private BufferedWriter workingSetWriter;
 	
@@ -58,7 +55,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private GuildDatabaseImpl() {
 		this.lineGenerator = null;
 		this.id = null;
-		this.parentPath = null;
 		this.workingSet = null;
 		this.workingSetMaxAge = 0;
 		this.backupRecords = null;
@@ -67,20 +63,19 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	
 	GuildDatabaseImpl(GuildDatabaseBuilder builder) {
 		this.id = builder.getId();
-		this.parentPath = builder.getParentPath();
-		this.workingSet = Paths.get(this.parentPath + File.separator + this.id + File.separator + "workingset.txt");
+		this.workingSet = PathUtils.getWorkingSetFile(this.id);
 		this.workingSetMaxAge = builder.getDatabaseAge();
 		this.backupRecords = ImmutableList.<BackupRecord>builderWithExpectedSize(3)
-				.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1, Paths.get(this.parentPath + File.separator + this.id)))
-				.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7, Paths.get(this.parentPath + File.separator + this.id)))
-				.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31, Paths.get(this.parentPath + File.separator + this.id)))
+				.add(new BackupRecord(this.id, "daily", TimeUnit.DAYS, 1))
+				.add(new BackupRecord(this.id, "weekly", TimeUnit.DAYS, 7))
+				.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31))
 				.build();
 		if(builder.isPrioritizeSpeed()) {
-			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
+			this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
 					.shardCacheSize(800)
 					.build();
 		} else {
-			this.database = new MarkovDatabaseBuilder(this.id, this.parentPath)
+			this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
 					.shardCacheSize(0)
 					.fixedCleanupThreshold(100)
 					.build();
@@ -130,7 +125,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 
 	@Override
-	public boolean removeLine(String line) {
+	public synchronized boolean removeLine(String line) {
 		if(this.isShutdown) throw new IllegalStateException("can't remove line from shutdown database");
 		
 		//any lines passed to removeLine should come from database (eg workingset) and already be sanitized
@@ -145,22 +140,22 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 
 	@Override
-	public void save() {
+	public synchronized void save() {
 		this.database.save();
 	}
 
 	@Override
-	public void load() {
+	public synchronized void load() {
 		this.database.load();
 	}
 
 	@Override
-	public Path saveBackup(String backupName) throws IOException {
+	public synchronized Path saveBackup(String backupName) throws IOException {
 		return this.database.saveBackup(backupName);
 	}
 
 	@Override
-	public void loadBackup(String backupName) throws FileNotFoundException, IOException {
+	public synchronized void loadBackup(String backupName) throws FileNotFoundException, IOException {
 		this.database.loadBackup(backupName);
 	}
 
@@ -169,11 +164,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.database.deleteBackup(backupName);
 	}
 	
-	/*
-	 * TODO 
-	 * this is called in other thread
-	 * make sure theres no concurrency issue
-	 */
 	@Override
 	public synchronized void maintenance() {
 		if(this.isShutdown) throw new IllegalStateException("can't start maintenance on a shutdown database");
@@ -261,8 +251,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 */
 	@Override
 	public boolean needsMaintenance() {
-		try (BufferedReader reader = Files.newBufferedReader(Paths.get(this.parentPath + File.separator + this.id + File.separator 
-				+ LAST_MAINTENANCE_FILE_NAME), StandardCharsets.UTF_8)) {
+		try (BufferedReader reader = Files.newBufferedReader(PathUtils.getDatabaseLastMaintenanceFile(this.id), StandardCharsets.UTF_8)) {
 			return Duration.between(ZonedDateTime.parse(reader.readLine(), DateTimeFormatter.ISO_DATE_TIME), 
 					ZonedDateTime.now(MiscUtils.TIMEZONE)).toMillis() >= TIME_BETWEEN_MAINTENANCE;
 		} catch (NoSuchFileException e) {
@@ -277,18 +266,17 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 	
 	private void updateLastMaintenanceTime() {
-		Path lastMaintenanceFile = Paths.get(this.parentPath + File.separator + this.id + File.separator 
-				+ LAST_MAINTENANCE_FILE_NAME);
 		try {
-			Files.write(lastMaintenanceFile, ZonedDateTime.now(MiscUtils.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
-					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+			Files.write(PathUtils.getDatabaseLastMaintenanceFile(this.id), ZonedDateTime.now(MiscUtils.TIMEZONE)
+					.format(DateTimeFormatter.ISO_DATE_TIME).getBytes(StandardCharsets.UTF_8), 
+					StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
 			logger.error(this + ": exception when updating last maintenance time: " + e.getMessage());
 		}
 	}
 	
 	@Override
-	public void exportToText() {
+	public synchronized void exportToText() {
 		this.database.exportToTextFile();
 	}
 	
