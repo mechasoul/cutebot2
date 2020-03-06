@@ -1,7 +1,7 @@
 package my.cute.bot.handlers;
 
+import java.util.Random;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -13,19 +13,17 @@ import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
-import my.cute.bot.tasks.GuildMessageScrapeTask;
-import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class GuildMessageReceivedHandler {
 	
 	private static final Logger logger = LoggerFactory.getLogger(GuildMessageReceivedHandler.class);
 	private static final Pattern BOT_NAME = Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE);
-	
-	private static int count=0;
-	private static long time=0;
+	private static final Random RAND = new Random();
 	
 	private final JDA jda;
 	private final long id;
@@ -65,7 +63,17 @@ public class GuildMessageReceivedHandler {
 			this.database.processLine(content);
 			
 			if(BOT_NAME.matcher(content).matches()) {
-				event.getChannel().sendMessage(this.database.generateLine()).queue();
+				if(isQuestion(content)) {
+					event.getChannel().sendMessage(this.database.generateLine()).queue();
+				} else {
+					if(RAND.nextInt(8) == 0) {
+						CacheView<Emote> emoteCache = this.jda.getEmoteCache();
+						emoteCache.acceptStream(stream -> event.getMessage()
+								.addReaction(stream.skip(RAND.nextInt((int) emoteCache.size())).findFirst().orElseThrow()).queue());
+					} else {
+						event.getMessage().addReaction(this.jda.getEmoteById("684796381671850111"));
+					}
+				}
 			}
 		}
 	}
@@ -94,17 +102,20 @@ public class GuildMessageReceivedHandler {
 		this.database.shutdown();
 	}
 	
-	static String getFormattedTime(long millis) {
-		long minutes = TimeUnit.MILLISECONDS.toMinutes(millis);
-		millis -= TimeUnit.MINUTES.toMillis(minutes);
-		long seconds = TimeUnit.MILLISECONDS.toSeconds(millis);
-		millis -= TimeUnit.SECONDS.toMillis(seconds);
-		StringBuilder sb = new StringBuilder();
-		sb.append(minutes);
-		sb.append(":");
-		sb.append(seconds);
-		sb.append(".");
-		sb.append(millis);
-		return sb.toString();
+	public GuildDatabase getDatabase() {
+		return this.database;
+	}
+	
+	public GuildPreferences getPreferences() {
+		return this.prefs;
+	}
+	
+	//TODO this sucks
+	private static boolean isQuestion(String s) {
+		if(s.contains("what") || s.contains("who") || s.contains("why") || s.contains("wat") || s.contains("how") || s.contains("when") || s.contains("will") || s.contains("are you") || s.contains("are u") || s.contains("can you") || s.contains("do you") || s.contains("can u") || s.contains("do u") || s.contains("where") || s.contains("?")) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 }

@@ -9,10 +9,12 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.GuildPreferencesFactory;
+import my.cute.bot.tasks.GuildDatabaseRebuildTask;
 import my.cute.bot.tasks.GuildDiscussionChannelTask;
 import my.cute.bot.tasks.GuildMessageScrapeTask;
 import my.cute.bot.util.PathUtils;
@@ -35,13 +37,11 @@ public class MyListener extends ListenerAdapter {
 	MyListener(JDA jda) {
 		this.jda = jda;
 		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
-		ConcurrentHashMap<String, GuildPreferences> prefsMap = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
 		jda.getGuilds().forEach(guild -> {
 			GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
-			prefsMap.put(guild.getId(), prefs);
 			this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs));
 		});
-		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, prefsMap);
+		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda);
 		
 		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
@@ -86,16 +86,17 @@ public class MyListener extends ListenerAdapter {
 			//verify that guild hasn't been added in the meantime by other thread
 			newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
 					new GuildMessageReceivedHandler(event.getGuild(), jda, prefs)) == null;
-			this.privateMessageHandler.addGuildPreferencesIfAbsent(event.getGuild().getId(), prefs);
 		}
 		//TODO test
 		if(newGuild) {
 			new Thread(() ->
 			{
 				try {
-					new GuildMessageScrapeTask(event.getGuild(), PathUtils.getDatabaseScrapeDirectory(event.getGuild().getId()), 
+					String id = event.getGuild().getId().intern();
+					new GuildMessageScrapeTask(event.getGuild(), PathUtils.getDatabaseScrapeDirectory(id), 
 									prefs.getDatabaseAge()).call()
-						.thenRunAsync(new GuildDiscussionChannelTask(event.getGuild().getId(), prefs))
+						.thenRun(new GuildDiscussionChannelTask(id, prefs))
+						.thenRun(new GuildDatabaseRebuildTask(id, this.getDatabase(id), this.getPreferences(id)))
 						.whenComplete((result, throwable) ->
 						{
 							if(throwable == null) {
@@ -133,6 +134,24 @@ public class MyListener extends ListenerAdapter {
 		client.connectionPool().evictAll();
 		client.dispatcher().executorService().shutdown();
 		this.jda.shutdown();
+	}
+	
+	public GuildDatabase getDatabase(String id) {
+		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
+		if(handler != null) {
+			return handler.getDatabase();
+		} else {
+			return null;
+		}
+	}
+	
+	public GuildPreferences getPreferences(String id) {
+		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
+		if(handler != null) {
+			return handler.getPreferences();
+		} else {
+			return null;
+		}
 	}
 
 	@Override

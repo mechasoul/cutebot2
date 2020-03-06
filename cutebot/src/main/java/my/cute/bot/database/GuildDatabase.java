@@ -33,5 +33,7 @@ public interface GuildDatabase extends Maintainable {
 	
 	public void deleteBackup(String backupName) throws IOException;
 	
+	public void clear() throws IOException;
+	
 	public void exportToText();
 }

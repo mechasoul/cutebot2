@@ -55,7 +55,6 @@ public final class GuildDiscussionChannelTask implements Runnable {
 					durations.put(channelId, duration);
 					totalDuration.addAndGet(duration);
 				} catch (IOException e) {
-					e.printStackTrace();
 					logger.error(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
 				}
 				lineCounts.put(channelId, lineCount);

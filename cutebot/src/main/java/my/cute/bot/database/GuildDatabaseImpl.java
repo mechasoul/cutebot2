@@ -33,6 +33,12 @@ import my.cute.markov2.exceptions.FollowingWordRemovalException;
 import my.cute.markov2.impl.MarkovDatabaseBuilder;
 
 public class GuildDatabaseImpl implements GuildDatabase {
+	
+	/*
+	 * TODO
+	 * add some like loadMostRecentBackup() to GuildDatabase, implement it
+	 * saveBackup() and loadBackup() need to save/load workingset.txt file
+	 */
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
 	private static final long TIME_BETWEEN_MAINTENANCE = TimeUnit.HOURS.toMillis(12);
@@ -165,13 +171,21 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 	
 	@Override
+	public void clear() throws IOException {
+		this.database.clear();
+		Path workingSet = PathUtils.getWorkingSetFile(this.id);
+		Files.deleteIfExists(workingSet);
+		Files.createFile(workingSet);
+	}
+	
+	@Override
 	public synchronized void maintenance() {
 		if(this.isShutdown) throw new IllegalStateException("can't start maintenance on a shutdown database");
 		logger.info(this + ": starting maintenance");
 		this.save();
 		logger.info(this + "-maint: db saved. beginning workingset maintenance");
 		/*
-		 * update workingset.txt
+		 * update workingset.txt and update db based on new workingset
 		 */
 		try {
 			this.workingSetWriter.close();
@@ -286,6 +300,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		try {
 			this.workingSetWriter.close();
 		} catch (IOException e) {
+			//TODO
 			e.printStackTrace();
 		}
 		this.isShutdown = true;
