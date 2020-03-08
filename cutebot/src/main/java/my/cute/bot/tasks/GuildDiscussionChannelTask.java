@@ -2,6 +2,7 @@ package my.cute.bot.tasks;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -35,6 +36,8 @@ public final class GuildDiscussionChannelTask implements Runnable {
 	@Override
 	public void run() {
 		
+		logger.info(this + ": starting discussion channel task");
+		
 		//TODO params
 		ConcurrentHashMap<String, Long> lineCounts = new ConcurrentHashMap<>();
 		ConcurrentHashMap<String, Long> durations = new ConcurrentHashMap<>();
@@ -55,14 +58,15 @@ public final class GuildDiscussionChannelTask implements Runnable {
 					durations.put(channelId, duration);
 					totalDuration.addAndGet(duration);
 				} catch (IOException e) {
-					logger.error(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
+					logger.warn(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
+					throw new UncheckedIOException(e);
 				}
 				lineCounts.put(channelId, lineCount);
 			});
 			
 		} catch (IOException e) {
-			e.printStackTrace();
-			logger.error(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
+			logger.warn(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
+			throw new UncheckedIOException(e);
 		}
 		
 		long totalMessageCount = lineCounts.values().stream().mapToLong(i -> i.longValue()).sum();
@@ -80,6 +84,8 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		
 		this.prefs.setDiscussionChannels(discussionChannels);
 		this.prefs.save();
+		
+		logger.info(this + ": finished. determined channels: " + discussionChannels);
 	}
 
 	@Override
