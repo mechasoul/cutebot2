@@ -2,8 +2,6 @@ package my.cute.bot.preferences;
 
 import java.util.List;
 
-import com.google.common.collect.ImmutableList;
-
 public interface GuildPreferences {
 
 	public void save();
@@ -20,8 +18,6 @@ public interface GuildPreferences {
 	public void setDatabaseAge(int age);
 	
 	public boolean isDiscussionChannel(String channelId);
-	
-	public ImmutableList<String> getDiscussionChannels();
 	
 	public void setDiscussionChannels(List<String> discussionChannels);
 }

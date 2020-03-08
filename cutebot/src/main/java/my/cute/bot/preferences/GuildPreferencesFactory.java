@@ -9,15 +9,23 @@ import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import my.cute.bot.util.ImmutableListDeserializer;
 import my.cute.bot.util.PathUtils;
 
 public class GuildPreferencesFactory {
 	
 	private static final Logger logger = LoggerFactory.getLogger(GuildPreferencesFactory.class);
-	private static final Gson GSON = new GsonBuilder().create();
+	private static final Gson GSON;
+	
+	static {
+		GSON = new GsonBuilder()
+				.registerTypeAdapter(ImmutableList.class, new ImmutableListDeserializer())
+				.create();
+	}
 
 	public static GuildPreferences newDefaultGuildPreferences(String id) {
 		return new GuildPreferencesImpl(id);
@@ -29,8 +37,7 @@ public class GuildPreferencesFactory {
 			try (BufferedReader reader = Files.newBufferedReader(preferencesFile, StandardCharsets.UTF_8)) {
 				return GSON.fromJson(reader.readLine(), GuildPreferencesImpl.class);
 			} catch (IOException e) {
-				e.printStackTrace();
-				logger.error("GuildPreferencesFactory: IOException thrown when trying to load preferences for id '" + id
+				logger.warn("GuildPreferencesFactory: IOException thrown when trying to load preferences for id '" + id
 						+ "', loading default preferences instead. ex: " + e.getMessage(), e);
 				return new GuildPreferencesImpl(id);
 			}

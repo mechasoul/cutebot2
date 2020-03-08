@@ -44,7 +44,7 @@ class GuildPreferencesImpl implements GuildPreferences {
 	public GuildPreferencesImpl(String id) {
 		this.id = id;
 		this.commandPrefix = "!";
-		this.databaseAge = 4;
+		this.databaseAge = 365;
 		this.discussionChannels = null;
 	}
 	
@@ -86,11 +86,6 @@ class GuildPreferencesImpl implements GuildPreferences {
 		} else {
 			return this.discussionChannels.contains(channelId);
 		}
-	}
-	
-	@Override
-	public ImmutableList<String> getDiscussionChannels() {
-		return this.discussionChannels;
 	}
 
 	@Override
