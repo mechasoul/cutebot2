@@ -8,21 +8,24 @@ import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.CutebotTask;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
-import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class GuildMessageReceivedHandler {
 	
 	private static final Logger logger = LoggerFactory.getLogger(GuildMessageReceivedHandler.class);
-	private static final Pattern BOT_NAME = Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE);
+	@SuppressWarnings("unused")
+	private static final Pattern BOT_NAME = (CutebotTask.ACTIVE_TOKEN == CutebotTask.CUTEBOT_PRIME_TOKEN) ?
+			Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE) : 
+			Pattern.compile(".*(?:cutebot).*", Pattern.CASE_INSENSITIVE);
 	private static final Random RAND = new Random();
 	
 	private final JDA jda;
@@ -66,14 +69,22 @@ public class GuildMessageReceivedHandler {
 				if(isQuestion(content)) {
 					event.getChannel().sendMessage(this.database.generateLine()).queue();
 				} else {
-					if(RAND.nextInt(8) == 0) {
-						CacheView<Emote> emoteCache = this.jda.getEmoteCache();
-						emoteCache.acceptStream(stream -> event.getMessage()
-								.addReaction(stream.skip(RAND.nextInt((int) emoteCache.size())).findFirst().orElseThrow()).queue());
+					if(RAND.nextInt(10) == 0) {
+						event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
 					} else {
-						event.getMessage().addReaction(this.jda.getEmoteById("684796381671850111"));
+						//mothyes
+						event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
 					}
 				}
+			} else if (content.contains("mothyes")) {
+				event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
+			}
+		} else if(BOT_NAME.matcher(content).matches() || content.contains("mothyes")) {
+			if(RAND.nextInt(10) == 0) {
+				event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
+			} else {
+				//mothyes
+				event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
 			}
 		}
 	}
