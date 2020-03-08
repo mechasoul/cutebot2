@@ -71,6 +71,13 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 	@Override
 	public CompletableFuture<Void> call() throws Exception {
 		
+		/*
+		 * TODO
+		 * tidy this
+		 * some duplicated code in if/else condition on whether theres preexisting scrape file
+		 */
+		logger.info(this + ": starting message scrape task");
+		
 		final List<CompletableFuture<?>> pendingTasks = new ArrayList<>(10);
 		this.scrapeDirectory.toFile().mkdirs();
 		
@@ -89,15 +96,17 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 			//no messages, go next channel
 			if(latestMessage == null) return;
 			
+			Message oldestMessage = null;
+			List<Message> oldestMessages = channel.getHistoryFromBeginning(1).complete().getRetrievedHistory();
+			if(oldestMessages.isEmpty()) return;
+			oldestMessage = oldestMessages.get(0);
+			
 			try {
 				Path scrapeFile = this.scrapeDirectory.resolve(channel.getId() + ".txt");
 				if(Files.exists(scrapeFile)) {
 
 					Path oldScrapeFile = Files.createTempFile(this.scrapeDirectory, channel.getId(), null);
 					Files.move(scrapeFile, oldScrapeFile, StandardCopyOption.REPLACE_EXISTING);
-					
-					writeStartAndEndTimestamps(scrapeFile, latestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE),
-							oldestAcceptableDateTimeZoned);
 
 					/*
 					 * possible timeline
@@ -130,6 +139,19 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 							DateTimeFormatter.ISO_ZONED_DATE_TIME).toOffsetDateTime();
 					final OffsetDateTime previousOldestAcceptableTime = ZonedDateTime.parse(reader.readLine(), 
 							DateTimeFormatter.ISO_ZONED_DATE_TIME).toOffsetDateTime();
+					
+					/*
+					 * recorded endTime will either be (current time - maxMessageAge) or the time of the oldest message
+					 * whichever one comes after: if it's (currentTime - maxMessageAge), then the channel has been
+					 * alive longer than the scraped message period and we scrape until the end of the period, and if
+					 * it's the time of the oldest message, then we scrape the entire channel and record its effective
+					 * creation time to more accurately get the lifetime of the channel
+					 */
+					ZonedDateTime endTime = oldestAcceptableDateTime.isAfter(oldestMessage.getTimeCreated()) ? 
+							oldestAcceptableDateTimeZoned : oldestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE);
+					
+					writeStartAndEndTimestamps(writer, latestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE),
+							endTime);
 					
 					if(previousLatestMessageTime.isBefore(oldestAcceptableDateTime)) {
 						//scraped file is totally outdated. scrape only from servers
@@ -188,10 +210,15 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 					@SuppressWarnings("resource")
 					BufferedWriter writer = Files.newBufferedWriter(scrapeFile, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 							StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
-					writeStartAndEndTimestamps(scrapeFile, latestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE),
-							oldestAcceptableDateTimeZoned);
-					
 					final OffsetDateTime oldestAcceptableDateTime = oldestAcceptableDateTimeZoned.toOffsetDateTime();
+					
+					ZonedDateTime endTime = oldestAcceptableDateTime.isAfter(oldestMessage.getTimeCreated()) ? 
+							oldestAcceptableDateTimeZoned : oldestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE);
+					
+					writeStartAndEndTimestamps(writer, latestMessage.getTimeCreated().atZoneSameInstant(MiscUtils.TIMEZONE),
+							endTime);
+					
+					
 
 					pendingTasks.add(scrapeMessagesUntil(channel, writer, oldestAcceptableDateTime)
 							.whenComplete((result, throwable) ->
@@ -220,7 +247,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 	}
 	
 	/*
-	 * scr
+	 * scrape discord servers
 	 * both startPoint and endPoint are exclusive
 	 * if startPoint is null, will start from latest message
 	 * 
@@ -251,14 +278,11 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 				});
 	}
 	
-	private void writeStartAndEndTimestamps(Path scrapeFile, ZonedDateTime latestMessageTime, ZonedDateTime oldestAcceptableTime) throws IOException {
+	private void writeStartAndEndTimestamps(BufferedWriter writer, ZonedDateTime latestMessageTime, ZonedDateTime oldestAcceptableTime) throws IOException {
 		if(latestMessageTime.isBefore(oldestAcceptableTime)) latestMessageTime = oldestAcceptableTime;
-		try (BufferedWriter writer = Files.newBufferedWriter(scrapeFile, StandardCharsets.UTF_8, 
-				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-			writer.append(latestMessageTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME));
-			writer.newLine();
-			writer.append(oldestAcceptableTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME));
-		}
+		writer.append(latestMessageTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME));
+		writer.newLine();
+		writer.append(oldestAcceptableTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME));
 	}
 
 	@Override
