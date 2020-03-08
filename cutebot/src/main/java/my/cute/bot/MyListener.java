@@ -14,12 +14,10 @@ import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.GuildPreferencesFactory;
-import my.cute.bot.tasks.GuildDatabaseRebuildTask;
-import my.cute.bot.tasks.GuildDiscussionChannelTask;
-import my.cute.bot.tasks.GuildMessageScrapeTask;
-import my.cute.bot.util.PathUtils;
+import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
+import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -43,7 +41,7 @@ public class MyListener extends ListenerAdapter {
 		});
 		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda);
 		
-		this.taskScheduler = Executors.newSingleThreadScheduledExecutor();
+		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
 		{ 
 			checkMaintenance();
@@ -87,31 +85,19 @@ public class MyListener extends ListenerAdapter {
 			newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
 					new GuildMessageReceivedHandler(event.getGuild(), jda, prefs)) == null;
 		}
-		//TODO test
+		
 		if(newGuild) {
-			new Thread(() ->
-			{
-				try {
-					String id = event.getGuild().getId().intern();
-					new GuildMessageScrapeTask(event.getGuild(), PathUtils.getDatabaseScrapeDirectory(id), 
-									prefs.getDatabaseAge()).call()
-						.thenRun(new GuildDiscussionChannelTask(id, prefs))
-						.thenRun(new GuildDatabaseRebuildTask(id, this.getDatabase(id), this.getPreferences(id)))
-						.whenComplete((result, throwable) ->
-						{
-							if(throwable == null) {
-								logger.info(this + ": successfully set up new guild '" + event.getGuild() + "'");
-							} else {
-								logger.warn(this + ": encountered exception when trying to set up new guild '" + event.getGuild()
-									+ "'; setup process aborted! ex: " + throwable.getMessage(), throwable);
-							}
-						});
-				} catch (Exception e) {
-					logger.warn(this + ": encountered exception when trying to set up new guild '" + event.getGuild()
-					+ "'; setup process aborted! ex: " + e.getMessage(), e);
-				}
-			}).start();
+			String id = event.getGuild().getId().intern();
+			this.taskScheduler.execute(new GuildDatabaseSetupTask(this.jda, id, this.getPreferences(id), this.getDatabase(id)));
 		}
+	}
+	
+	@Override
+	public void onGuildLeave(GuildLeaveEvent event) {
+		logger.info(this + ": left guild " + event.getGuild());
+		String id = event.getGuild().getId().intern();
+		this.guildMessageHandlers.get(id).prepareForShutdown();
+		this.guildMessageHandlers.remove(id);
 	}
 	
 	void maintenance() {

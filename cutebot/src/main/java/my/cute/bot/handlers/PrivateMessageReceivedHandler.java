@@ -1,23 +1,26 @@
 package my.cute.bot.handlers;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
-import my.cute.bot.tasks.GuildDatabaseRebuildTask;
-import my.cute.bot.tasks.GuildDiscussionChannelTask;
-import my.cute.bot.tasks.GuildMessageScrapeTask;
-import my.cute.bot.util.PathUtils;
+import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 
 public class PrivateMessageReceivedHandler {
 
+	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PrivateMessageReceivedHandler.class);
 	
 	private final MyListener bot;
 	private final JDA jda;
+	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda) {
 		this.bot = bot;
@@ -27,31 +30,23 @@ public class PrivateMessageReceivedHandler {
 	public void handle(PrivateMessageReceivedEvent event) {
 		if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().equals("!exit")) {
 			event.getChannel().sendMessage("ok").queue(msg -> this.bot.shutdown(), ex -> this.bot.shutdown());
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!status")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length == 1) {
+				this.jda.getPresence().setActivity(null);
+				event.getChannel().sendMessage("resetting").queue();
+			} else {
+				event.getChannel().sendMessage("set status to '" + words[1] + "'").queue();
+				this.jda.getPresence().setActivity(Activity.playing(words[1]));
+			}
 		} else if (event.getAuthor().getId().equals("115618938510901249")) {
 			String id = event.getMessage().getContentRaw();
 			GuildPreferences guildPrefs = this.bot.getPreferences(id);
 			if(guildPrefs != null) {
-				new Thread(() -> 
-				{
-					try {
-						new GuildMessageScrapeTask(this.jda.getGuildById(id), PathUtils.getDatabaseScrapeDirectory(id), 
-								guildPrefs.getDatabaseAge()).call()
-						.thenRun(new GuildDiscussionChannelTask(id, guildPrefs))
-						.thenRun(new GuildDatabaseRebuildTask(id, this.bot.getDatabase(id), guildPrefs))
-						.whenComplete((result, throwable) ->
-						{
-							if(throwable == null) {
-								logger.info(this + ": successfully rebuilt database for guild '" + id + "'");
-							} else {
-								logger.warn(this + ": encountered exception when trying to rebuild guild database '" + id
-									+ "'; setup process aborted! ex: " + throwable.getMessage(), throwable);
-							}
-						});
-					} catch (Exception e) {
-						logger.warn(this + ": encountered exception when trying to rebuild guild database '" + id
-						+ "'; setup process aborted! ex: " + e.getMessage(), e);
-					}
-				}).start();
+				this.executor.execute(new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)));
+				event.getChannel().sendMessage("rebuilding database for guild " + this.jda.getGuildById(id)).queue();
+			} else {
+				event.getChannel().sendMessage("no such guild id found").queue();
 			}
 		} else {
 			event.getChannel().sendMessage("??").queue();
