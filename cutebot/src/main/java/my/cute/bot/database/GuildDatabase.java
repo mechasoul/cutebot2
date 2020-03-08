@@ -35,5 +35,9 @@ public interface GuildDatabase extends Maintainable {
 	
 	public void clear() throws IOException;
 	
+	public void prioritizeSpeed();
+	
+	public void prioritizeMemory();
+	
 	public void exportToText();
 }

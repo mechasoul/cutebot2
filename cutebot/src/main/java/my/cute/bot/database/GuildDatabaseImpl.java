@@ -15,12 +15,9 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +35,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 * TODO
 	 * add some like loadMostRecentBackup() to GuildDatabase, implement it
 	 * saveBackup() and loadBackup() need to save/load workingset.txt file
+	 * add proper multithreading support. currently over-synchronizing
 	 */
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseImpl.class);
@@ -48,7 +46,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private BufferedWriter workingSetWriter;
 	
 	private final ImmutableList<BackupRecord> backupRecords;
-	private final MarkovDatabase database;
+	private MarkovDatabase database;
 	private final LineGenerator lineGenerator;
 	
 	/*
@@ -56,6 +54,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	 */
 	private int workingSetMaxAge;
 	private boolean isShutdown = false;
+	private boolean prioritizeSpeed;
 	
 	@SuppressWarnings("unused")
 	private GuildDatabaseImpl() {
@@ -65,6 +64,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.workingSetMaxAge = 0;
 		this.backupRecords = null;
 		this.database = null;
+		this.prioritizeSpeed = false;
 	};
 	
 	GuildDatabaseImpl(GuildDatabaseBuilder builder) {
@@ -77,10 +77,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				.add(new BackupRecord(this.id, "monthly", TimeUnit.DAYS, 31))
 				.build();
 		if(builder.isPrioritizeSpeed()) {
+			this.prioritizeSpeed = true;
 			this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
 					.shardCacheSize(800)
 					.build();
 		} else {
+			this.prioritizeSpeed = false;
 			this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
 					.shardCacheSize(0)
 					.fixedCleanupThreshold(100)
@@ -96,7 +98,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		} catch (IOException e) {
 			//TODO rethrow this. shouldnt continue when workingset is broken
 			logger.error(this + ": exception in constructor when during workingset setup, no workingset saved for this session! "
-					+ "exception: " + e.getMessage());
+					+ "ex: " + e.getMessage());
 		}
 	}
 
@@ -105,14 +107,13 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
 		
 		line = MiscUtils.replaceNewLinesWithTokens(line);
-		if(this.database.processLine(tokenize(line))) {
+		if(this.database.processLine(MiscUtils.tokenize(line))) {
 			try {
-				this.workingSetWriter.append(getDateStamp() + line);
+				this.workingSetWriter.append(MiscUtils.getDateStamp() + line);
 				this.workingSetWriter.newLine();
 				this.workingSetWriter.flush();
 			} catch (IOException e) {
-				logger.error(this + ": exception when trying to write line '" + line + "' to workingset: " + e.getMessage());
-				e.printStackTrace();
+				logger.warn(this + ": exception when trying to write line '" + line + "' to workingset: " + e.getMessage(), e);
 			}
 			return true;
 		} else {
@@ -137,10 +138,10 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		//any lines passed to removeLine should come from database (eg workingset) and already be sanitized
 		//so no need to call MiscUtils.replaceNewLinesWithTokens() on line before processing it
 		try {
-			return this.database.removeLine(tokenize(line));
+			return this.database.removeLine(MiscUtils.tokenize(line));
 		} catch (FollowingWordRemovalException e) {
-			logger.error(this.toString() + ": exception thrown during line removal. line: '" + line
-				+ "', ex: " + e.getMessage());
+			logger.warn(this.toString() + ": exception thrown during line removal. line: '" + line
+				+ "', ex: " + e.getMessage(), e);
 			return false;
 		}
 	}
@@ -154,6 +155,17 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized void load() {
 		this.database.load();
 	}
+	
+	@Override
+	public synchronized void shutdown() {
+		this.save();
+		try {
+			this.workingSetWriter.close();
+		} catch (IOException e) {
+			logger.warn(this + ": encountered IOException when trying to close workingSetWriter! ex: " + e, e);
+		}
+		this.isShutdown = true;
+	}
 
 	@Override
 	public synchronized Path saveBackup(String backupName) throws IOException {
@@ -166,16 +178,50 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 
 	@Override
-	public void deleteBackup(String backupName) throws IOException {
+	public synchronized void deleteBackup(String backupName) throws IOException {
 		this.database.deleteBackup(backupName);
 	}
 	
 	@Override
-	public void clear() throws IOException {
+	public synchronized void clear() throws IOException {
 		this.database.clear();
-		Path workingSet = PathUtils.getWorkingSetFile(this.id);
+		this.workingSetWriter.close();
 		Files.deleteIfExists(workingSet);
-		Files.createFile(workingSet);
+		this.workingSet.toFile().createNewFile();
+		this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+				StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+	}
+	
+	@Override
+	public synchronized void prioritizeSpeed() {
+		if(this.prioritizeSpeed) return;
+		
+		this.database.save();
+		this.database = null;
+		
+		this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
+				.shardCacheSize(256)
+				.build();
+		this.load();
+	}
+
+	@Override
+	public synchronized void prioritizeMemory() {
+		if(!this.prioritizeSpeed) return;
+		
+		this.database.save();
+		this.database = null;
+		
+		this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
+				.shardCacheSize(0)
+				.fixedCleanupThreshold(100)
+				.build();
+		this.load();
+	}
+	
+	@Override
+	public synchronized void exportToText() {
+		this.database.exportToTextFile();
 	}
 	
 	@Override
@@ -204,8 +250,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 							writer.append(line);
 							writer.newLine();
 						} catch (IOException e) {
-							logger.error(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
-									+ e.getMessage());
+							logger.warn(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
+									+ e.getMessage(), e);
 						}
 					}
 				});
@@ -216,9 +262,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 		} catch (IOException ex) {
-			logger.error(this + ": exception in maintenance() when updating workingset: "
-					+ ex.getMessage());
-			ex.printStackTrace();
+			logger.warn(this + ": exception in maintenance() when updating workingset: "
+					+ ex.getMessage(), ex);
 		}
 		
 		/*
@@ -233,8 +278,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					this.saveBackup(record.getName());
 					record.maintenance();
 				} catch (IOException e) {
-					logger.error(this + ": exception in maintenance() when trying to save backup '" 
-							+ record.getName() + "': " + e.getMessage());
+					logger.warn(this + ": exception in maintenance() when trying to save backup '" 
+							+ record.getName() + "': " + e.getMessage(), e);
 				}
 			}
 		});
@@ -272,8 +317,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			//probably first run. run maintenance
 			return true;
 		} catch (IOException e) {
-			logger.error(this + ": exception when checking if it's time for maintenance: " + e.getMessage());
-			e.printStackTrace();
+			logger.warn(this + ": exception when checking if it's time for maintenance: " + e.getMessage(), e);
 			return false;
 		}
 		
@@ -285,25 +329,8 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					.format(DateTimeFormatter.ISO_DATE_TIME).getBytes(StandardCharsets.UTF_8), 
 					StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 		} catch (IOException e) {
-			logger.error(this + ": exception when updating last maintenance time: " + e.getMessage());
+			logger.warn(this + ": exception when updating last maintenance time: " + e.getMessage(), e);
 		}
-	}
-	
-	@Override
-	public synchronized void exportToText() {
-		this.database.exportToTextFile();
-	}
-	
-	@Override
-	public synchronized void shutdown() {
-		this.save();
-		try {
-			this.workingSetWriter.close();
-		} catch (IOException e) {
-			//TODO
-			e.printStackTrace();
-		}
-		this.isShutdown = true;
 	}
 
 	@Override
@@ -335,13 +362,5 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		builder.append("GuildDatabaseImpl-");
 		builder.append(id);
 		return builder.toString();
-	}
-
-	private static List<String> tokenize(String line) {
-		return Arrays.asList(StringUtils.split(line, null));
-	}
-	
-	private static String getDateStamp() {
-		return LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
 	}
 }
