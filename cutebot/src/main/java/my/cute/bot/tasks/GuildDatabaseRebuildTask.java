@@ -67,8 +67,8 @@ public final class GuildDatabaseRebuildTask implements Runnable {
 								reader.readLine();
 								String line = reader.readLine();
 								while(line != null) {
-									//first 8 characters of each line are a datestamp. ignore
-									this.db.processLine(line.substring(8));
+									//first 8 characters of each line are a datestamp for that message
+									this.db.processLineWithDate(line.substring(8), line.substring(0, 8));
 									line = reader.readLine();
 								}
 								logger.info(this + ": finished channel " + channelId);

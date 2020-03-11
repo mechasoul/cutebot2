@@ -34,7 +34,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	/*
 	 * TODO
 	 * add some like loadMostRecentBackup() to GuildDatabase, implement it
-	 * saveBackup() and loadBackup() need to save/load workingset.txt file
 	 * add proper multithreading support. currently over-synchronizing
 	 */
 
@@ -89,27 +88,32 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					.build();
 		}
 		
-		this.lineGenerator = new SpookyLineGenerator(this.database);
+		this.lineGenerator = new LineGenerator();
 		
 		try {
 			this.workingSet.toFile().createNewFile();
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 		} catch (IOException e) {
-			//TODO rethrow this. shouldnt continue when workingset is broken
-			logger.error(this + ": exception in constructor when during workingset setup, no workingset saved for this session! "
-					+ "ex: " + e.getMessage());
+			logger.error(this + ": exception in constructor during workingset setup, aborting! "
+					+ "ex: " + e.getMessage(), e);
+			throw new RuntimeException(e);
 		}
 	}
 
 	@Override
 	public synchronized boolean processLine(String line) throws IllegalStateException {
+		return this.processLineWithDate(line, MiscUtils.getDateStamp());
+	}
+	
+	@Override
+	public synchronized boolean processLineWithDate(String line, String dateStamp) throws IllegalStateException {
 		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
-		
+
 		line = MiscUtils.replaceNewLinesWithTokens(line);
 		if(this.database.processLine(MiscUtils.tokenize(line))) {
 			try {
-				this.workingSetWriter.append(MiscUtils.getDateStamp() + line);
+				this.workingSetWriter.append(dateStamp + line);
 				this.workingSetWriter.newLine();
 				this.workingSetWriter.flush();
 			} catch (IOException e) {
@@ -123,12 +127,12 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	@Override
 	public synchronized String generateLine() {
-		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine());
+		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(this.database));
 	}
 
 	@Override
 	public synchronized String generateLine(String startWord) {
-		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(startWord));
+		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(this.database, startWord));
 	}
 
 	@Override
@@ -169,17 +173,39 @@ public class GuildDatabaseImpl implements GuildDatabase {
 
 	@Override
 	public synchronized Path saveBackup(String backupName) throws IOException {
+		//shouldn't continue if workingset is nonfunctional, so check its IOException separately
+		try {
+			this.workingSetWriter.close();
+			Files.copy(this.workingSet, PathUtils.getBackupWorkingSetFile(this.id, backupName), StandardCopyOption.REPLACE_EXISTING);
+			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+		} catch (IOException e) {
+			logger.error(this + ": exception when trying to backup workingset when creating backup '" + backupName + "'! ex: "
+					+ e, e);
+			throw new RuntimeException(e);
+		}
 		return this.database.saveBackup(backupName);
 	}
 
 	@Override
 	public synchronized void loadBackup(String backupName) throws FileNotFoundException, IOException {
-		this.database.loadBackup(backupName);
+		try {
+			this.database.loadBackup(backupName);
+		} catch (IOException e) {
+			logger.error(this + ": exception when trying to load backup '" + backupName 
+					+ "' when loading database, db may be in inconsistent state! ex: " + e, e);
+			throw new RuntimeException(e);
+		}
+		this.workingSetWriter.close();
+		Files.copy(PathUtils.getBackupWorkingSetFile(this.id, backupName), this.workingSet, StandardCopyOption.REPLACE_EXISTING);
+		this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+				StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 	}
 
 	@Override
 	public synchronized void deleteBackup(String backupName) throws IOException {
 		this.database.deleteBackup(backupName);
+		Files.deleteIfExists(PathUtils.getBackupWorkingSetFile(this.id, backupName));
 	}
 	
 	@Override
@@ -196,18 +222,27 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized void prioritizeSpeed() {
 		if(this.prioritizeSpeed) return;
 		
+		logger.info(this + ": creating new database object for prioritized speed");
+		
+		this.prioritizeSpeed = true;
+		
 		this.database.save();
 		this.database = null;
 		
 		this.database = new MarkovDatabaseBuilder(this.id, PathUtils.getDatabaseParentPath())
-				.shardCacheSize(256)
+				.shardCacheSize(800)
 				.build();
 		this.load();
+		logger.info(this + ": finished creating new database object for prioritized speed");
 	}
 
 	@Override
 	public synchronized void prioritizeMemory() {
 		if(!this.prioritizeSpeed) return;
+		
+		logger.info(this + ": creating new database object for prioritized memory");
+		
+		this.prioritizeSpeed = false;
 		
 		this.database.save();
 		this.database = null;
@@ -217,11 +252,16 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				.fixedCleanupThreshold(100)
 				.build();
 		this.load();
+		logger.info(this + ": finished creating new database object for prioritized speed");
 	}
 	
 	@Override
 	public synchronized void exportToText() {
-		this.database.exportToTextFile();
+		try {
+			this.database.exportToTextFile();
+		} catch (IOException e) {
+			logger.warn(this + ": exception when trying to export to text file! ex: " + e, e);
+		}
 	}
 	
 	@Override
@@ -250,8 +290,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 							writer.append(line);
 							writer.newLine();
 						} catch (IOException e) {
-							logger.warn(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
+							logger.error(this + ": exception in maintenance() when writing line '" + line + "' to tempWorkingSet: "
 									+ e.getMessage(), e);
+							throw new RuntimeException(e);
 						}
 					}
 				});
@@ -262,8 +303,9 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			this.workingSetWriter = Files.newBufferedWriter(this.workingSet, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
 					StandardOpenOption.WRITE, StandardOpenOption.APPEND);
 		} catch (IOException ex) {
-			logger.warn(this + ": exception in maintenance() when updating workingset: "
+			logger.error(this + ": exception in maintenance() when updating workingset: "
 					+ ex.getMessage(), ex);
+			throw new RuntimeException(ex);
 		}
 		
 		/*

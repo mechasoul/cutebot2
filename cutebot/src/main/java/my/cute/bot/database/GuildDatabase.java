@@ -11,6 +11,12 @@ public interface GuildDatabase extends Maintainable {
 
 	public boolean processLine(String line);
 	
+	/*
+	 * dont like this being in interface
+	 * dateStamp should be 8-character YYYYMMDD, ie BASIC_ISO_DATE
+	 */
+	public boolean processLineWithDate(String line, String dateStamp);
+	
 	public String generateLine();
 	
 	public String generateLine(String startWord);
