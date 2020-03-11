@@ -1,5 +1,9 @@
 package my.cute.bot;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -16,6 +20,7 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.GuildPreferencesFactory;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
@@ -25,15 +30,37 @@ import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
 	
+	private class AutomaticMessageTask implements Runnable {
+		
+		@Override
+		public void run() {
+			for(String id : automaticMessageGuilds) {
+				String line = getDatabase(id).generateLine();
+				Guild guild = jda.getGuildById(id);
+				guild.getDefaultChannel().sendMessage(line).queue();
+				logger.info("AutomaticMessageTask: sent line '" + line + "' in guild '" + jda.getGuildById(id)
+					+ "' in channel '" + guild.getDefaultChannel());
+			}
+			int delay = RAND.nextInt(180) + 30;
+			taskScheduler.schedule(this, delay, TimeUnit.MINUTES);
+			logger.info("AutomaticMessageTask: scheduled next automatic message in " + delay + "min");
+		}
+		
+	}
+	
 	private static final Logger logger = LoggerFactory.getLogger(MyListener.class);
+	private static final Random RAND = new Random();
 	
 	private final JDA jda;
 	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
+	private final List<String> automaticMessageGuilds;
 	
 	MyListener(JDA jda) {
 		this.jda = jda;
+		this.automaticMessageGuilds = Collections.synchronizedList(new ArrayList<>());
+		this.automaticMessageGuilds.add("101153748377686016");
 		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
 		jda.getGuilds().forEach(guild -> {
 			GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
@@ -46,6 +73,7 @@ public class MyListener extends ListenerAdapter {
 		{ 
 			checkMaintenance();
 		}, 1, 12, TimeUnit.HOURS);
+		this.taskScheduler.execute(new AutomaticMessageTask());
 	}
 	/*
 	 * TODO
@@ -54,10 +82,15 @@ public class MyListener extends ListenerAdapter {
 	 * during maintenance, scan this file over the entire workingset and remove each line in deleted
 	 * messages from the workingset once (and remove from database ofc). this way message deletion
 	 * will be reflected in db
+	 * -> message delete event predictably doesnt provide the deleted message content, just id. 
+	 * possible solution is to manually cache all messages within some timeframe, eg 24 hrs, along 
+	 * w/ their id; when a msg is deleted, check cache for it. manage cache during maintenance
+	 * most deleted msgs that are problematic will be deleted very shortly after posting so holding
+	 * them for a short timeframe like a day should keep things manageable + still be effective
+	 * could combine this w/ workingset by, say, appending msg id after datestamp? i think id rather
+	 * keep workingset trim tho
 	 * 
 	 * can psosibly do the same thing with message edits?
-	 * 
-	 * should we remove messagelisteners/etc when removed from guild?
 	 */
 	
 	@Override
@@ -116,6 +149,7 @@ public class MyListener extends ListenerAdapter {
 	public void shutdown() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
 		this.taskScheduler.shutdownNow();
+		this.privateMessageHandler.getExecutor().shutdownNow();
 		OkHttpClient client = this.jda.getHttpClient();
 		client.connectionPool().evictAll();
 		client.dispatcher().executorService().shutdown();
