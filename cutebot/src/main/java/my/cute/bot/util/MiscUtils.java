@@ -24,11 +24,17 @@ public class MiscUtils {
 	private static final Random RAND = new Random();
 
 	public static String replaceNewLinesWithTokens(String line) {
-		return line.trim().replace(NEW_LINE_TOKEN, "newline").replace("\n", NEW_LINE_TOKEN);
+		/*
+		 * i think theres something to say here about not stripping the newline token
+		 * from messages so people could deliberately insert it into messages
+		 * but in the end it'd just get replaced with a new line and i don't think 
+		 * it really matters at all?
+		 */
+		return line.trim().replaceAll("\\R", NEW_LINE_TOKEN);
 	}
 	
 	public static String replaceNewLineTokens(String line) {
-		return line.replace(NEW_LINE_TOKEN, "\n");
+		return line.replace(NEW_LINE_TOKEN, System.lineSeparator());
 	}
 	
 	public static Emote getRandomEmoteFromCache(JDA jda) {
@@ -40,7 +46,8 @@ public class MiscUtils {
 			} catch (NoSuchElementException e) {
 				logger.warn("MiscUtils: exception when trying to get random emote, size: " + emoteCache.size() + ", ex: "
 						+ e.getMessage(), e);
-				return jda.getEmoteById("684796381671850111");
+				//mothyes
+				return jda.getEmoteById("242763939631333378");
 			}
 		});
 	}
