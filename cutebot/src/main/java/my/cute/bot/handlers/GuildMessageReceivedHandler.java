@@ -30,7 +30,7 @@ public class GuildMessageReceivedHandler {
 	
 	private final JDA jda;
 	private final long id;
-	private GuildDatabase database;
+	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final CommandSet commands;
 	

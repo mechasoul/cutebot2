@@ -35,6 +35,11 @@ public final class PathUtils {
 				+ File.separator + backupName + "-last.txt");
 	}
 	
+	public static Path getBackupWorkingSetFile(String guildId, String backupName) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + BACKUP_DIRECTORY_NAME
+				+ File.separator + guildId + "_" + backupName + "_workingset.txt");
+	}
+	
 	public static Path getDatabaseScrapeDirectory(String databaseId) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + databaseId + File.separator + SCRAPE_DIRECTORY_NAME);
 	}

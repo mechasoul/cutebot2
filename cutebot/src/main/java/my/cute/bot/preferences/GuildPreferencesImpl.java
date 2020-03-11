@@ -2,6 +2,7 @@ package my.cute.bot.preferences;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -16,8 +17,9 @@ import com.google.gson.GsonBuilder;
 
 import my.cute.bot.util.PathUtils;
 
-class GuildPreferencesImpl implements GuildPreferences {
+class GuildPreferencesImpl implements GuildPreferences, Serializable {
 
+	private static final long serialVersionUID = 1L;
 	private static final Logger logger = LoggerFactory.getLogger(GuildPreferencesImpl.class);
 	private static final Gson GSON = new GsonBuilder().create();
 	
@@ -44,7 +46,7 @@ class GuildPreferencesImpl implements GuildPreferences {
 	public GuildPreferencesImpl(String id) {
 		this.id = id;
 		this.commandPrefix = "!";
-		this.databaseAge = 365;
+		this.databaseAge = 1095;
 		this.discussionChannels = null;
 	}
 	

@@ -49,4 +49,12 @@ public class GuildDatabaseSetupTask implements Runnable {
 		}
 	}
 
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("GuildDatabaseSetupTask-");
+		builder.append(id);
+		return builder.toString();
+	}
+
 }
