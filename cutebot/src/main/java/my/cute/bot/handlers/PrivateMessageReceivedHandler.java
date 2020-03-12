@@ -187,6 +187,17 @@ public class PrivateMessageReceivedHandler {
 			} catch (NumberFormatException e) {
 				event.getChannel().sendMessage("error parsing guild id '" + words[1] + "'").queue();
 			}
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!discchan ")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length != 2) {
+				event.getChannel().sendMessage("syntax error").queue();
+				return;
+			}
+			
+			GuildPreferences prefs = this.bot.getPreferences(words[1]);
+			event.getChannel().sendMessage(prefs == null ? "no guild found with id '" + words[1] + "'" 
+					: prefs.getDiscussionChannels().toString()).queue();
+
 		} else {
 			event.getChannel().sendMessage("??").queue();
 		}

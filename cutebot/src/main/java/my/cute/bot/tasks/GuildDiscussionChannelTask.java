@@ -33,6 +33,13 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		this.prefs = prefs;
 	}
 	
+	/*
+	 * TODO
+	 * 
+	 * need change algorithm a bit
+	 * needs to be more lax. include less active channels
+	 * somewhat active channels are commonly excluded
+	 */
 	@Override
 	public void run() {
 		

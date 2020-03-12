@@ -89,6 +89,11 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 			return this.discussionChannels.contains(channelId);
 		}
 	}
+	
+	@Override
+	public ImmutableList<String> getDiscussionChannels() {
+		return this.discussionChannels;
+	}
 
 	@Override
 	public void setDiscussionChannels(List<String> discussionChannels) {

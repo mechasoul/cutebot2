@@ -74,6 +74,16 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 		
 		/*
 		 * TODO
+		 * 
+		 * having start of period be most recent msg time and end of period be oldest message
+		 * means that announcement channels are almost always included + basically any channel
+		 * that gets a handful of messages in a very short time and then is dead forever
+		 * but if we start from current time we likely exclude channels that were once active
+		 * but closed at some point
+		 * possible solns?
+		 * start from current message but check that period is at least some extended time for
+		 * channels that have been alive at least that long
+		 * 
 		 * tidy this
 		 * some duplicated code in if/else condition on whether theres preexisting scrape file
 		 */
