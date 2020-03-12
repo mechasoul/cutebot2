@@ -252,7 +252,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 				.fixedCleanupThreshold(100)
 				.build();
 		this.load();
-		logger.info(this + ": finished creating new database object for prioritized speed");
+		logger.info(this + ": finished creating new database object for prioritized memory");
 	}
 	
 	@Override
