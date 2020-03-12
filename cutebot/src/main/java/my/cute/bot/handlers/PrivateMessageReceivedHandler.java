@@ -6,6 +6,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -51,17 +54,32 @@ public class PrivateMessageReceivedHandler {
 			logger.info(this + ": beginning rebuild on all guilds");
 			event.getChannel().sendMessage("beginning rebuild on all guilds").queue();
 			
-			this.executor.execute(() -> {
-				for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
-					GuildPreferences guildPrefs = this.bot.getPreferences(id);
-					if(guildPrefs != null) {
-						new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)).run();;
-					}
-				}
-			});
+			List<CompletableFuture<Void>> futures = new ArrayList<>();
 			
-			logger.info(this + ": completed rebuild on all guilds");
-			event.getChannel().sendMessage("completed rebuild on all guilds").queue();
+			Activity previousActivity = this.jda.getPresence().getActivity();
+			this.jda.getPresence().setActivity(Activity.playing("VERY busy"));
+			
+			for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
+				GuildPreferences guildPrefs = this.bot.getPreferences(id);
+				if(guildPrefs != null) {
+					futures.add(CompletableFuture.runAsync(new GuildDatabaseSetupTask(this.jda,
+							id, guildPrefs, this.bot.getDatabase(id)), this.executor));
+				} else {
+					logger.warn(this + ": found id in guild list '" + id + "' with no corresponding prefs object?");
+				}
+			}
+			
+			CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+			.whenComplete((result, throwable) -> {
+				if(throwable == null) {
+					logger.info(this + ": successfully completed rebuild on all guilds");
+					event.getChannel().sendMessage("successfully completed rebuild on all guilds").queue();
+				} else {
+					logger.info(this + ": encountered problems during rebuild. likely not successful");
+					event.getChannel().sendMessage("encountered problems during rebuild. likely not successful").queue();
+				}
+				this.jda.getPresence().setActivity(previousActivity);
+			});
 			
 		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!rebuild")) {
 			String[] words = event.getMessage().getContentDisplay().split("\\s");

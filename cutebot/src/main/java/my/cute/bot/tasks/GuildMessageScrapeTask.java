@@ -25,6 +25,7 @@ import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.utils.TimeUtil;
 
 public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>> {
@@ -85,23 +86,24 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 		
 		this.guild.getTextChannelCache().forEach(channel ->
 		{
-			logger.info(this + ": starting on " + channel);
-			Message latestMessage=null;
-			for(Message msg : channel.getHistory().retrievePast(3).complete()) {
-				if (msg != null) {
-					latestMessage = msg;
-					break;
-				}
-			}
-			//no messages, go next channel
-			if(latestMessage == null) return;
-			
-			Message oldestMessage = null;
-			List<Message> oldestMessages = channel.getHistoryFromBeginning(1).complete().getRetrievedHistory();
-			if(oldestMessages.isEmpty()) return;
-			oldestMessage = oldestMessages.get(0);
-			
 			try {
+				
+				logger.info(this + ": starting on " + channel);
+				Message latestMessage=null;
+				for(Message msg : channel.getHistory().retrievePast(3).complete()) {
+					if (msg != null) {
+						latestMessage = msg;
+						break;
+					}
+				}
+				//no messages, go next channel
+				if(latestMessage == null) return;
+				
+				Message oldestMessage = null;
+				List<Message> oldestMessages = channel.getHistoryFromBeginning(1).complete().getRetrievedHistory();
+				if(oldestMessages.isEmpty()) return;
+				oldestMessage = oldestMessages.get(0);
+				
 				Path scrapeFile = this.scrapeDirectory.resolve(channel.getId() + ".txt");
 				if(Files.exists(scrapeFile)) {
 
@@ -232,6 +234,9 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 								}
 							}));
 				}
+			} catch (InsufficientPermissionException e) {
+				logger.info(this + ": missing permissions on channel '" + channel + "', proceeding to next channel. ex: "
+						+ e, e);
 			} catch (IOException ex) {
 				logger.warn(this + ": IOException during general task process in channel '" + channel + "'! ex: " 
 						+ ex.getMessage(), ex);

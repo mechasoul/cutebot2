@@ -26,7 +26,8 @@ public class GuildDatabaseSetupTask implements Runnable {
 	
 	@Override
 	public void run() {
-		this.jda.getPresence().setActivity(Activity.playing("busy"));
+		boolean doingNothing = this.jda.getPresence().getActivity() == null;
+		if(doingNothing) this.jda.getPresence().setActivity(Activity.playing("busy"));
 		try {
 			new GuildMessageScrapeTask(this.jda.getGuildById(this.id), PathUtils.getDatabaseScrapeDirectory(id), 
 							prefs.getDatabaseAge()).call()
@@ -41,7 +42,7 @@ public class GuildDatabaseSetupTask implements Runnable {
 							+ this.jda.getGuildById(this.id) + "'; setup process aborted! ex: " 
 							+ throwable.getMessage(), throwable);
 					}
-					this.jda.getPresence().setActivity(null);
+					if(doingNothing) this.jda.getPresence().setActivity(null);
 				});
 		} catch (Exception e) {
 			logger.warn(this + ": encountered exception when trying to set up new guild '" 
