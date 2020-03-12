@@ -62,8 +62,14 @@ public class GuildMessageReceivedHandler {
 			}
 		}
 		
-		if(this.prefs.isDiscussionChannel(event.getChannel().getId())) {
-			this.database.processLine(content);
+		/*
+		 * TODO
+		 * quick fix for ensuring cutebot responds in dedicated cutebot channels
+		 * need a better way to do this probably
+		 */
+		boolean discussionChannel = this.prefs.isDiscussionChannel(event.getChannel().getId());
+		if(discussionChannel || event.getChannel().getName().contains("bot")) {
+			if(discussionChannel) this.database.processLine(content);
 			
 			if(BOT_NAME.matcher(content).matches()) {
 				if(isQuestion(content)) {
