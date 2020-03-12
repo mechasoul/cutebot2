@@ -236,7 +236,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 				}
 			} catch (InsufficientPermissionException e) {
 				logger.info(this + ": missing permissions on channel '" + channel + "', proceeding to next channel. ex: "
-						+ e, e);
+						+ e.getMessage());
 			} catch (IOException ex) {
 				logger.warn(this + ": IOException during general task process in channel '" + channel + "'! ex: " 
 						+ ex.getMessage(), ex);

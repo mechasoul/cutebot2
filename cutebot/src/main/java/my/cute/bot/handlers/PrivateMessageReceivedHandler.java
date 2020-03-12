@@ -22,6 +22,8 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 
 public class PrivateMessageReceivedHandler {
@@ -62,8 +64,13 @@ public class PrivateMessageReceivedHandler {
 			for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
 				GuildPreferences guildPrefs = this.bot.getPreferences(id);
 				if(guildPrefs != null) {
-					futures.add(CompletableFuture.runAsync(new GuildDatabaseSetupTask(this.jda,
-							id, guildPrefs, this.bot.getDatabase(id)), this.executor));
+					try {
+						futures.add(new GuildDatabaseSetupTask(this.jda,
+								id, guildPrefs, this.bot.getDatabase(id)).call());
+					} catch (Exception e) {
+						logger.warn(this + ": exception from call() on guild '" + id + "' during setup, "
+								+ "going to next guild (something broken?). ex: " + e, e);
+					}
 				} else {
 					logger.warn(this + ": found id in guild list '" + id + "' with no corresponding prefs object?");
 				}
@@ -99,7 +106,7 @@ public class PrivateMessageReceivedHandler {
 						return;
 					}
 				}
-				this.executor.execute(new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)));
+				this.executor.submit(new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)));
 				event.getChannel().sendMessage("rebuilding database for guild " + this.jda.getGuildById(id)).queue();
 			} else {
 				event.getChannel().sendMessage("no such guild id found").queue();
@@ -153,6 +160,32 @@ public class PrivateMessageReceivedHandler {
 						+ this.jda.getGuildById(words[1]) + "'").queue();
 			} else {
 				event.getChannel().sendMessage("no such guild id found").queue();
+			}
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!channel ")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length != 2) {
+				event.getChannel().sendMessage("syntax error").queue();
+				return;
+			}
+			try {
+				TextChannel channel = this.jda.getTextChannelById(words[1]);
+				event.getChannel().sendMessage(channel != null ? channel.toString() : "no channel found with id '" 
+						+ words[1] + "'").queue();
+			} catch (NumberFormatException e) {
+				event.getChannel().sendMessage("error parsing channel id '" + words[1] + "'").queue();
+			}
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!guild ")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length != 2) {
+				event.getChannel().sendMessage("syntax error").queue();
+				return;
+			}
+			try {
+				Guild guild = this.jda.getGuildById(words[1]);
+				event.getChannel().sendMessage(guild != null ? guild.toString() : "no guild found with id '" 
+						+ words[1] + "'").queue();
+			} catch (NumberFormatException e) {
+				event.getChannel().sendMessage("error parsing guild id '" + words[1] + "'").queue();
 			}
 		} else {
 			event.getChannel().sendMessage("??").queue();
