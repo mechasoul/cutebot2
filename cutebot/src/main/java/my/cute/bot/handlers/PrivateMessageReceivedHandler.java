@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +23,6 @@ import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
 
 public class PrivateMessageReceivedHandler {
 
-	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PrivateMessageReceivedHandler.class);
 	
 	private final MyListener bot;
@@ -46,6 +46,23 @@ public class PrivateMessageReceivedHandler {
 				event.getChannel().sendMessage("set status to '" + words[1] + "'").queue();
 				this.jda.getPresence().setActivity(Activity.playing(words[1]));
 			}
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().equals("!rebuild all")) {
+			
+			logger.info(this + ": beginning rebuild on all guilds");
+			event.getChannel().sendMessage("beginning rebuild on all guilds").queue();
+			
+			this.executor.execute(() -> {
+				for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
+					GuildPreferences guildPrefs = this.bot.getPreferences(id);
+					if(guildPrefs != null) {
+						new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)).run();;
+					}
+				}
+			});
+			
+			logger.info(this + ": completed rebuild on all guilds");
+			event.getChannel().sendMessage("completed rebuild on all guilds").queue();
+			
 		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!rebuild")) {
 			String[] words = event.getMessage().getContentDisplay().split("\\s");
 			if(words.length < 2 || words.length > 3) {
@@ -126,5 +143,10 @@ public class PrivateMessageReceivedHandler {
 	
 	public ExecutorService getExecutor() {
 		return this.executor;
+	}
+
+	@Override
+	public String toString() {
+		return "PrivateMessageReceivedHandler";
 	}
 }
