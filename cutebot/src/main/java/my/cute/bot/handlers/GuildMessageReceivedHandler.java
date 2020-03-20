@@ -129,6 +129,10 @@ public class GuildMessageReceivedHandler {
 		return this.prefs;
 	}
 	
+	public void updatePreferences() {
+		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
+	}
+	
 	//TODO this sucks
 	private static boolean isQuestion(String s) {
 		if(s.contains("what") || s.contains("who") || s.contains("why") || s.contains("wat") || s.contains("how") || s.contains("when") || s.contains("will") || s.contains("are you") || s.contains("are u") || s.contains("can you") || s.contains("do you") || s.contains("can u") || s.contains("do u") || s.contains("where") || s.contains("?")) {

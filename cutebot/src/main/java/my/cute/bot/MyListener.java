@@ -176,6 +176,13 @@ public class MyListener extends ListenerAdapter {
 			return null;
 		}
 	}
+	
+	public void update(String id) {
+		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
+		if(handler != null) {
+			handler.updatePreferences();
+		}
+	}
 
 	@Override
 	public String toString() {
