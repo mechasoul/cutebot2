@@ -24,4 +24,8 @@ public interface GuildPreferences {
 	public ImmutableList<String> getDiscussionChannels();
 	
 	public void setDiscussionChannels(List<String> discussionChannels);
+	
+	public void setAutomaticResponseTime(int minutes);
+	
+	public int getAutomaticResponseTime();
 }

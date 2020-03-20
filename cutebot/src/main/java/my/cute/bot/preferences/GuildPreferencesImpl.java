@@ -42,6 +42,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	 * if this is null, every channel will be considered to be a discussion channel
 	 */
 	private ImmutableList<String> discussionChannels;
+	private int automaticMessageTime = 0;
 	
 	public GuildPreferencesImpl(String id) {
 		this.id = id;
@@ -103,6 +104,16 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 			this.discussionChannels = ImmutableList.copyOf(discussionChannels);
 		}
 	}
+	
+	@Override
+	public void setAutomaticResponseTime(int minutes) {
+		this.automaticMessageTime = minutes;
+	}
+
+	@Override
+	public int getAutomaticResponseTime() {
+		return this.automaticMessageTime;
+	}
 
 	@Override
 	public String toString() {
@@ -118,5 +129,4 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 		builder.append("]");
 		return builder.toString();
 	}
-	
 }

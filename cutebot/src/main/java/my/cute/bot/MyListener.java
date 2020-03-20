@@ -30,6 +30,7 @@ import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
 	
+	@SuppressWarnings("unused")
 	private class AutomaticMessageTask implements Runnable {
 		
 		@Override
@@ -73,7 +74,9 @@ public class MyListener extends ListenerAdapter {
 		{ 
 			checkMaintenance();
 		}, 1, 12, TimeUnit.HOURS);
-		this.taskScheduler.execute(new AutomaticMessageTask());
+		//shelving this for now and going back to old method of automatic messages
+		//(generate message after someone else sends a message after the given time)
+//		this.taskScheduler.execute(new AutomaticMessageTask());
 	}
 	/*
 	 * TODO

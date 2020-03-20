@@ -26,13 +26,16 @@ public class GuildMessageReceivedHandler {
 	private static final Pattern BOT_NAME = (CutebotTask.ACTIVE_TOKEN == CutebotTask.CUTEBOT_PRIME_TOKEN) ?
 			Pattern.compile(".*(?:cutebot prime|cbp).*", Pattern.CASE_INSENSITIVE) : 
 			Pattern.compile(".*(?:cutebot).*", Pattern.CASE_INSENSITIVE);
-	private static final Random RAND = new Random();
 	
 	private final JDA jda;
 	private final long id;
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final CommandSet commands;
+	private final Random random = new Random();
+	
+	private long lastAutoMessageTime = 0;
+	private long timeUntilNextAutoMessage;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs) {
 		this.jda = jda;
@@ -43,6 +46,8 @@ public class GuildMessageReceivedHandler {
 				.build();
 		this.database.load();
 		this.commands = CommandSetFactory.newDefaultTextChannelSet();
+		
+		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
 	}
 	
 	public void handle(GuildMessageReceivedEvent event) {
@@ -62,31 +67,28 @@ public class GuildMessageReceivedHandler {
 			}
 		}
 		
-		/*
-		 * TODO
-		 * quick fix for ensuring cutebot responds in dedicated cutebot channels
-		 * need a better way to do this probably
-		 */
-		boolean discussionChannel = this.prefs.isDiscussionChannel(event.getChannel().getId());
-		if(discussionChannel || event.getChannel().getName().contains("bot")) {
-			if(discussionChannel) this.database.processLine(content);
+		this.database.processLine(content);
 			
-			if(BOT_NAME.matcher(content).matches()) {
-				if(isQuestion(content)) {
-					event.getChannel().sendMessage(this.database.generateLine()).queue();
+		if(this.shouldSendAutomaticMessage()) {
+			String line = this.database.generateLine();
+			event.getChannel().sendMessage(line).queue();
+			this.lastAutoMessageTime = System.currentTimeMillis();
+			this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
+			logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in " 
+					+ (this.timeUntilNextAutoMessage / 60000L) + " mins");
+		} else if(BOT_NAME.matcher(content).matches()) {
+			if(isQuestion(content)) {
+				event.getChannel().sendMessage(this.database.generateLine()).queue();
+			} else {
+				if(random.nextInt(10) == 0) {
+					event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
 				} else {
-					if(RAND.nextInt(10) == 0) {
-						event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
-					} else {
-						//mothyes
-						event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
-					}
+					//mothyes
+					event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
 				}
-			} else if (content.contains("mothyes")) {
-				event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
 			}
-		} else if(BOT_NAME.matcher(content).matches() || content.contains("mothyes")) {
-			if(RAND.nextInt(10) == 0) {
+		} else if (content.contains("mothyes")) {
+			if(random.nextInt(10) == 0) {
 				event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
 			} else {
 				//mothyes
@@ -134,5 +136,20 @@ public class GuildMessageReceivedHandler {
 		} else {
 			return false;
 		}
+	}
+	
+	private long getTimeInBetweenAutoMessages(final int autoResponseTime) {
+		int minutes;
+		if(autoResponseTime == 0) {
+			minutes = 0;
+		} else {
+			minutes = this.random.nextInt(autoResponseTime) + autoResponseTime;
+		}
+		return ((long)minutes) * 60000L;
+	}
+	
+	private boolean shouldSendAutomaticMessage() {
+		return this.timeUntilNextAutoMessage != 0 && 
+				(System.currentTimeMillis() - this.lastAutoMessageTime) >= this.timeUntilNextAutoMessage;
 	}
 }

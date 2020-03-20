@@ -198,6 +198,26 @@ public class PrivateMessageReceivedHandler {
 			event.getChannel().sendMessage(prefs == null ? "no guild found with id '" + words[1] + "'" 
 					: prefs.getDiscussionChannels().toString()).queue();
 
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!auto ")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length != 3) {
+				event.getChannel().sendMessage("syntax error").queue();
+				return;
+			}
+			
+			GuildPreferences prefs = this.bot.getPreferences(words[1]);
+			if(prefs != null) {
+				try {
+					prefs.setAutomaticResponseTime(Integer.parseInt(words[2]));
+					prefs.save();
+					event.getChannel().sendMessage("set automatic message time for server " + this.jda.getGuildById(words[1])
+						+ " to " + words[2] + " min").queue();
+				} catch (NumberFormatException e) {
+					event.getChannel().sendMessage("invalid number of minutes '" + words[2] + "'").queue();
+				}
+			} else {
+				event.getChannel().sendMessage("no guild found with id " + words[1]).queue();
+			}
 		} else {
 			event.getChannel().sendMessage("??").queue();
 		}
