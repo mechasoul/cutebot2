@@ -17,7 +17,9 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 public class GuildMessageReceivedHandler {
 	
@@ -69,31 +71,28 @@ public class GuildMessageReceivedHandler {
 		
 		this.database.processLine(content);
 			
-		if(this.shouldSendAutomaticMessage()) {
-			String line = this.database.generateLine();
-			event.getChannel().sendMessage(line).queue();
-			this.lastAutoMessageTime = System.currentTimeMillis();
-			this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
-			logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in " 
-					+ (this.timeUntilNextAutoMessage / 60000L) + " mins");
-		} else if(BOT_NAME.matcher(content).matches()) {
-			if(isQuestion(content)) {
-				event.getChannel().sendMessage(this.database.generateLine()).queue();
-			} else {
-				if(random.nextInt(10) == 0) {
-					event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
+		try {
+			if(this.shouldSendAutomaticMessage()) {
+				String line = this.database.generateLine();
+				event.getChannel().sendMessage(line).queue();
+				this.lastAutoMessageTime = System.currentTimeMillis();
+				this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
+				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in " 
+						+ (this.timeUntilNextAutoMessage / 60000L) + " mins");
+			} else if(BOT_NAME.matcher(content).matches()) {
+				if(isQuestion(content)) {
+					event.getChannel().sendMessage(this.database.generateLine()).queue();
 				} else {
-					//mothyes
-					event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
+					addReactionToMessage(event.getMessage());
 				}
+			} else if (content.contains("mothyes")) {
+				addReactionToMessage(event.getMessage());
 			}
-		} else if (content.contains("mothyes")) {
-			if(random.nextInt(10) == 0) {
-				event.getMessage().addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
-			} else {
-				//mothyes
-				event.getMessage().addReaction(this.jda.getEmoteById("242763939631333378")).queue();
-			}
+		} catch (InsufficientPermissionException e) {
+			/*
+			 * missing permission for sendMessage() or similar
+			 * do nothing
+			 */
 		}
 	}
 	
@@ -155,5 +154,21 @@ public class GuildMessageReceivedHandler {
 	private boolean shouldSendAutomaticMessage() {
 		return this.timeUntilNextAutoMessage != 0 && 
 				(System.currentTimeMillis() - this.lastAutoMessageTime) >= this.timeUntilNextAutoMessage;
+	}
+	
+	private void addReactionToMessage(Message message) {
+		try {
+			if(random.nextInt(10) == 0) {
+				message.addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
+			} else {
+				//mothyes
+				message.addReaction(this.jda.getEmoteById("242763939631333378")).queue();
+			}
+		} catch (IllegalArgumentException e) {
+			/*
+			 * thrown from addReaction() if the emote can't be used in the given channel
+			 * do nothing
+			 */
+		}
 	}
 }

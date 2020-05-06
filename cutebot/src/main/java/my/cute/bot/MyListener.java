@@ -94,6 +94,8 @@ public class MyListener extends ListenerAdapter {
 	 * keep workingset trim tho
 	 * 
 	 * can psosibly do the same thing with message edits?
+	 * 
+	 * quick cmd to load db from backup
 	 */
 	
 	@Override
