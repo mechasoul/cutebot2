@@ -1,13 +1,21 @@
 package my.cute.bot.commands;
 
-public abstract class PrivateChannelCommand implements Command {
+abstract class PrivateChannelCommand implements Command {
 
 	private final String name;
 	private final boolean requiresTargetGuild;
+	private final PermissionLevel permission;
 	
 	PrivateChannelCommand(String name, boolean targetGuild) {
 		this.name = name;
 		this.requiresTargetGuild = targetGuild;
+		this.permission = PermissionLevel.USER;
+	}
+	
+	PrivateChannelCommand(String name, boolean targetGuild, PermissionLevel permission) {
+		this.name = name;
+		this.requiresTargetGuild = targetGuild;
+		this.permission = permission;
 	}
 	
 	@Override
@@ -25,6 +33,11 @@ public abstract class PrivateChannelCommand implements Command {
 	public String getHelp() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	@Override
+	public PermissionLevel getRequiredPermissionLevel() {
+		return this.permission;
 	}
 	
 	public boolean requiresTargetGuild() {

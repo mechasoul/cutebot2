@@ -24,4 +24,6 @@ public interface Command {
 	public String getDescription();
 	
 	public String getHelp();
+	
+	public PermissionLevel getRequiredPermissionLevel();
 }

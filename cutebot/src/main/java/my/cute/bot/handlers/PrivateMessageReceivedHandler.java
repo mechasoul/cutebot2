@@ -17,6 +17,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.MyListener;
+import my.cute.bot.commands.CommandSet;
+import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
@@ -32,13 +34,22 @@ public class PrivateMessageReceivedHandler {
 	
 	private final MyListener bot;
 	private final JDA jda;
+	private final CommandSet commands;
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda) {
 		this.bot = bot;
 		this.jda = jda;
+		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.bot, this.jda);
 	}
 	
+	/*
+	 * TODO
+	 * create actual command objects for all of these commands
+	 * implement execute() for all of them and add them in CommandSetFactory.newDefaultPrivateChannelSet()
+	 * replace basically all of this with a check for if event content matches a command
+	 * 		& user has required permission level
+	 */
 	public void handle(PrivateMessageReceivedEvent event) {
 		if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().equals("!exit")) {
 			event.getChannel().sendMessage("ok").queue(msg -> this.bot.shutdown(), ex -> this.bot.shutdown());

@@ -23,7 +23,7 @@ import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 
-public class TextChannelQuoteCommand extends TextChannelCommand {
+class TextChannelQuoteCommand extends TextChannelCommand {
 	
 	/*
 	 * TODO
