@@ -111,6 +111,22 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		if(this.isShutdown) throw new IllegalStateException("can't process lines on a shutdown database");
 
 		line = MiscUtils.replaceNewLinesWithTokens(line);
+		/*
+		 * TODO
+		 * try/catch here to catch runtimeexception thrown on processLine() call
+		 * this happens when program crashes while writing a database shard (probably happens for other reasons
+		 * but this is the most noteworthy right now)
+		 * future attempts to deserialize the broken shard will trigger a runtimeexception around a classnotfoundexception
+		 * (thrown by fast-deserialization library internals)
+		 * which then gets wrapped as an ioexception in my.cute.markov2.impl.DatabaseShard.loadFromObject() and then
+		 * wrapped and thrown again as a RuntimeException in DatabaseShard.load() (maybe i shouldnt do this rewrap?)
+		 * anyway we need to catch it here and then do something about broken db state: preferably that means
+		 * 1) load most recent backup
+		 * 2) test it to see if it's still broken
+		 * 3) if so, load next most recent backup and repeat until not broken or out of backuups
+		 * 4a) if out of backuups, start a task to rebuild db since it's totally ruined
+		 * 4b) if a backuup passed tests, then that's our new db state
+		 */
 		if(this.database.processLine(MiscUtils.tokenize(line))) {
 			try {
 				this.workingSetWriter.append(dateStamp + line);
