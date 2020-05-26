@@ -180,7 +180,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		while(i < this.backupRecords.size() && !foundValidBackup) {
 			try {
 				this.loadBackup(this.backupRecords.get(i).getName());
-				logger.info(this + "-restore: beginning automatic database validity checking");
+				logger.info(this + "-restore: checking validity of new database state");
 				if(this.database.isValid()) {
 					foundValidBackup = true;
 					logger.info(this + "-restore: validity check succeeded");
@@ -188,7 +188,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 			} catch (IOException e) {
 				//unsuccessful. continue checking backups
 			}
-			logger.info(this + "-restore: validity check failed. continuing");
+			if(!foundValidBackup) logger.info(this + "-restore: validity check failed. continuing");
 			i++;
 		}
 		if(foundValidBackup) {
@@ -241,6 +241,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized void clearAutomaticBackups() throws IOException {
 		for(int i=0; i < this.backupRecords.size(); i++) {
 			this.deleteBackup(this.backupRecords.get(i).getName());
+			this.backupRecords.get(i).markForMaintenance();
 		}
 	}
 	

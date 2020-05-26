@@ -170,6 +170,10 @@ public class MyListener extends ListenerAdapter {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.checkMaintenance());
 	}
 	
+	public void forceMaintenance(String id) {
+		this.guildMessageHandlers.get(id).maintenance();
+	}
+	
 	public void shutdown() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
 		this.taskScheduler.shutdownNow();

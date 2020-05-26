@@ -242,6 +242,15 @@ public class PrivateMessageReceivedHandler {
 			} else {
 				event.getChannel().sendMessage("no guild found with id " + words[1]).queue();
 			}
+		} else if (event.getAuthor().getId().equals("115618938510901249") && event.getMessage().getContentDisplay().startsWith("!maint ")) {
+			String[] words = event.getMessage().getContentDisplay().split("\\s");
+			if(words.length != 2) {
+				event.getChannel().sendMessage("syntax error").queue();
+				return;
+			}
+			
+			this.bot.forceMaintenance(words[1]);
+			event.getChannel().sendMessage("maintenance started on server " + words[1]).queue();
 		} else {
 			event.getChannel().sendMessage("??").queue();
 		}

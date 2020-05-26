@@ -83,6 +83,8 @@ public class GuildMessageReceivedHandler {
 			 * TODO is it possible for this to be something other than IOException?
 			 * ie, a problem with loading a shard results in some other exception somehow?
 			 */
+			logger.info(this + ": encountered ReadObjectException during line processing. beginning automatic database restore", e);
+			
 			if(this.database.restoreFromAutomaticBackups()) {
 				
 				try {
@@ -146,16 +148,20 @@ public class GuildMessageReceivedHandler {
 	public boolean checkMaintenance() {
 		boolean needsMaintenance = this.database.needsMaintenance();
 		if(needsMaintenance) {
-			this.executor.execute(() -> 
-			{
-				try {
-					this.database.maintenance();
-				} catch (Throwable th) {
-					logger.error(this + ": maintenance on guild " + this.id + " terminated due to throwable", th);
-				}
-			});
+			this.maintenance();
 		}
 		return needsMaintenance;
+	}
+	
+	public void maintenance() {
+		this.executor.execute(() -> 
+		{
+			try {
+				this.database.maintenance();
+			} catch (Throwable th) {
+				logger.error(this + ": maintenance on guild " + this.id + " terminated due to throwable", th);
+			}
+		});
 	}
 	
 	public void prepareForShutdown() {
