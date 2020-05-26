@@ -43,19 +43,24 @@ public class BackupRecord implements Maintainable {
 			//probably first run. should create backup
 			return true;
 		} catch (IOException e) {
-			logger.warn(this + ": exception when checking needsMaintenance(): " + e.getMessage());
+			logger.warn(this + ": exception when checking needsMaintenance", e);
 			return false;
+		}
+	}
+	
+	@Override
+	public void markForMaintenance() {
+		try {
+			Files.deleteIfExists(this.lastMaintenanceFile);
+		} catch (IOException e) {
+			logger.warn(this + ": exception when trying to mark for maintenance", e);
 		}
 	}
 
 	@Override
-	public void maintenance() {
-		try {
-			Files.write(this.lastMaintenanceFile, ZonedDateTime.now(MiscUtils.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
-					.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
-		} catch (IOException e) {
-			logger.warn(this + ": exception when updating lastMaintenanceFile! ex: " + e, e);
-		}
+	public void maintenance() throws IOException {
+		Files.write(this.lastMaintenanceFile, ZonedDateTime.now(MiscUtils.TIMEZONE).format(DateTimeFormatter.ISO_DATE_TIME)
+				.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
 	}
 	
 	String getName() {
@@ -100,8 +105,5 @@ public class BackupRecord implements Maintainable {
 		builder.append(name);
 		return builder.toString();
 	}
-	
-	
-
 	
 }

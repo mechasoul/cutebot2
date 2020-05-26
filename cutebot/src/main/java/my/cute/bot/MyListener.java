@@ -1,5 +1,7 @@
 package my.cute.bot;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -36,11 +38,15 @@ public class MyListener extends ListenerAdapter {
 		@Override
 		public void run() {
 			for(String id : automaticMessageGuilds) {
-				String line = getDatabase(id).generateLine();
-				Guild guild = jda.getGuildById(id);
-				guild.getDefaultChannel().sendMessage(line).queue();
-				logger.info("AutomaticMessageTask: sent line '" + line + "' in guild '" + jda.getGuildById(id)
-					+ "' in channel '" + guild.getDefaultChannel());
+				try {
+					String line = getDatabase(id).generateLine();
+					Guild guild = jda.getGuildById(id);
+					guild.getDefaultChannel().sendMessage(line).queue();
+					logger.info("AutomaticMessageTask: sent line '" + line + "' in guild '" + jda.getGuildById(id)
+						+ "' in channel '" + guild.getDefaultChannel());
+				} catch (IOException e) {
+					logger.warn("AutomaticMessageTask: encountered IOException on guild '" + jda.getGuildById(id) + "'", e);
+				}
 			}
 			int delay = RAND.nextInt(180) + 30;
 			taskScheduler.schedule(this, delay, TimeUnit.MINUTES);
@@ -58,18 +64,29 @@ public class MyListener extends ListenerAdapter {
 	private final ScheduledExecutorService taskScheduler;
 	private final List<String> automaticMessageGuilds;
 	
-	MyListener(JDA jda) {
+	MyListener(JDA jda) throws IOException {
 		this.jda = jda;
 		this.automaticMessageGuilds = Collections.synchronizedList(new ArrayList<>());
 		this.automaticMessageGuilds.add("101153748377686016");
 		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
-		jda.getGuilds().forEach(guild -> {
-			GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
-			this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs));
-		});
 		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda);
 		
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
+		
+		try {
+			jda.getGuilds().forEach(guild -> {
+				try {
+					GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
+					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, this.taskScheduler));
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
+		}
+		
+		
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
 		{ 
 			checkMaintenance();
@@ -120,8 +137,14 @@ public class MyListener extends ListenerAdapter {
 		//preliminary check to avoid unnecessary GuildMessageReceivedHandler creation since it's slightly expensive
 		if(!this.guildMessageHandlers.containsKey(event.getGuild().getId())) {
 			//verify that guild hasn't been added in the meantime by other thread
-			newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
-					new GuildMessageReceivedHandler(event.getGuild(), jda, prefs)) == null;
+			try {
+				newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
+						new GuildMessageReceivedHandler(event.getGuild(), jda, prefs, this.taskScheduler)) == null;
+			} catch (IOException e) {
+				logger.error(this + ": encountered IOException when trying to construct GuildMessageReceivedHandler for new guild '" +
+						event.getGuild() + "', can't continue!", e);
+				this.shutdown();
+			}
 		}
 		
 		if(newGuild) {
@@ -138,16 +161,12 @@ public class MyListener extends ListenerAdapter {
 		this.guildMessageHandlers.remove(id);
 	}
 	
-	void maintenance() {
+	void checkMaintenance() {
 		/*
 		 * TODO
 		 * discussion channel updating should occur periodically in maintenance
 		 * doesnt need to happen every maintenance tho and in fact should not
 		 */
-		this.guildMessageHandlers.forEach((id, handler) -> handler.maintenance());
-	}
-	
-	void checkMaintenance() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.checkMaintenance());
 	}
 	

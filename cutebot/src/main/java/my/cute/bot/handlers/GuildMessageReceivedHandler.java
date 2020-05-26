@@ -1,7 +1,8 @@
 package my.cute.bot.handlers;
 
+import java.io.IOException;
 import java.util.Random;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -14,7 +15,9 @@ import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.MiscUtils;
+import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -30,19 +33,21 @@ public class GuildMessageReceivedHandler {
 			Pattern.compile(".*(?:cutebot).*", Pattern.CASE_INSENSITIVE);
 	
 	private final JDA jda;
-	private final long id;
+	private final String id;
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final CommandSet commands;
 	private final Random random = new Random();
+	private final ExecutorService executor;
 	
 	private long lastAutoMessageTime = 0;
 	private long timeUntilNextAutoMessage;
 	
-	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs) {
+	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor) throws IOException {
 		this.jda = jda;
-		this.id = guild.getIdLong();
+		this.id = guild.getId();
 		this.prefs = prefs;
+		this.executor = executor;
 		this.database = new GuildDatabaseBuilder(guild)
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
@@ -69,7 +74,43 @@ public class GuildMessageReceivedHandler {
 			}
 		}
 		
-		this.database.processLine(content);
+		try {
+			
+			this.database.processLine(content);
+			
+		} catch (ReadObjectException e) {
+			/*
+			 * TODO is it possible for this to be something other than IOException?
+			 * ie, a problem with loading a shard results in some other exception somehow?
+			 */
+			if(this.database.restoreFromAutomaticBackups()) {
+				
+				try {
+					this.database.clearAutomaticBackups();
+				} catch (IOException e1) {
+					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
+				}
+				//should just run maintenance immediately instead?
+				this.database.markForMaintenance();
+			} else {
+				try {
+					this.database.clearAutomaticBackups();
+				} catch (IOException e1) {
+					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
+				}
+				this.database.markForMaintenance();
+				this.executor.submit(new GuildDatabaseSetupTask(this.jda, this.id, this.prefs, this.database));
+			}
+			//don't continue with line generation and whatever if the database is broken
+			return;
+		} catch (IOException e) {
+			/*
+			 * could indicate a problem with writing to workingset file, or something else
+			 * currently just logging. should maybe throw fatal exception if workingset 
+			 * isnt working properly?
+			 */
+			logger.warn(this + ": general IOException thrown during line processing - possible workingset inconsistency!", e);
+		}
 			
 		try {
 			if(this.shouldSendAutomaticMessage()) {
@@ -93,31 +134,36 @@ public class GuildMessageReceivedHandler {
 			 * missing permission for sendMessage() or similar
 			 * do nothing
 			 */
+		} catch (IOException e) {
+			/*
+			 * an IOException here is technically not fatal. we can wait for it to be thrown
+			 * from a more critical spot, and just continue without doing line generation here
+			 */
+			logger.warn(this + ": encountered IOException during line generation", e);
 		}
 	}
 	
 	public boolean checkMaintenance() {
 		boolean needsMaintenance = this.database.needsMaintenance();
 		if(needsMaintenance) {
-			//TODO dont use commonpool for maintenance. maint is slow & so should be in its own pool 
-			ForkJoinPool.commonPool().execute(() -> 
+			this.executor.execute(() -> 
 			{
 				try {
 					this.database.maintenance();
 				} catch (Throwable th) {
-					logger.error("maintenance on guild " + this.id + " terminated due to throwable: " + th.getMessage(), th);
+					logger.error(this + ": maintenance on guild " + this.id + " terminated due to throwable", th);
 				}
 			});
 		}
 		return needsMaintenance;
 	}
 	
-	public void maintenance() {
-		this.database.maintenance();
-	}
-	
 	public void prepareForShutdown() {
-		this.database.shutdown();
+		try {
+			this.database.shutdown();
+		} catch (IOException e) {
+			logger.warn(this + ": encountered IOException during shutdown, possible database inconsistency", e);
+		}
 	}
 	
 	public GuildDatabase getDatabase() {
@@ -166,7 +212,7 @@ public class GuildMessageReceivedHandler {
 			}
 		} catch (IllegalArgumentException e) {
 			/*
-			 * thrown from addReaction() if the emote can't be used in the given channel
+			 * thrown from MessageaddReaction(Emote) if the emote can't be used in the given channel
 			 * do nothing
 			 */
 		}

@@ -38,7 +38,7 @@ public class GuildPreferencesFactory {
 				return GSON.fromJson(reader.readLine(), GuildPreferencesImpl.class);
 			} catch (IOException e) {
 				logger.warn("GuildPreferencesFactory: IOException thrown when trying to load preferences for id '" + id
-						+ "', loading default preferences instead. ex: " + e.getMessage(), e);
+						+ "', loading default preferences instead", e);
 				return new GuildPreferencesImpl(id);
 			}
 		} else {

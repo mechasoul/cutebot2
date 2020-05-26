@@ -2,6 +2,7 @@ package my.cute.bot.handlers;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -34,6 +35,7 @@ public class PrivateMessageReceivedHandler {
 	
 	private final MyListener bot;
 	private final JDA jda;
+	@SuppressWarnings("unused")
 	private final CommandSet commands;
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
@@ -150,25 +152,35 @@ public class PrivateMessageReceivedHandler {
 					event.getChannel().sendMessage("error parsing number of lines '" + words[2] + "'").queue();
 					return;
 				}
-				this.executor.execute(() ->
-				{
-					boolean manyLines = iterations > 100;
-					if(manyLines) db.prioritizeSpeed();
-					try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("./testlinetest.txt"), StandardCharsets.UTF_8, 
-							StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-						for(int i=0; i < iterations; i++) {
-							writer.append(db.generateLine());
-							writer.newLine();
+				try {
+					this.executor.execute(() ->
+					{
+						try {
+							boolean manyLines = iterations > 100;
+							if(manyLines) db.prioritizeSpeed();
+							try (BufferedWriter writer = Files.newBufferedWriter(Paths.get("./testlinetest.txt"), StandardCharsets.UTF_8, 
+									StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+								for(int i=0; i < iterations; i++) {
+									writer.append(db.generateLine());
+									writer.newLine();
+								}
+							} catch (IOException e) {
+								event.getChannel().sendMessage("exception when writing test lines: " + e.getMessage()).queue();
+								e.printStackTrace();
+							}
+							if(manyLines) db.prioritizeMemory();
+							event.getChannel().sendMessage("line generation finished").queue();
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
 						}
-					} catch (IOException e) {
-						event.getChannel().sendMessage("exception when writing test lines: " + e.getMessage()).queue();
-						e.printStackTrace();
-					}
-					if(manyLines) db.prioritizeMemory();
-					event.getChannel().sendMessage("line generation finished").queue();
-				});
-				event.getChannel().sendMessage("generating " + iterations + " lines from guild '" 
-						+ this.jda.getGuildById(words[1]) + "'").queue();
+					});
+					event.getChannel().sendMessage("generating " + iterations + " lines from guild '" 
+							+ this.jda.getGuildById(words[1]) + "'").queue();
+				} catch (UncheckedIOException e) {
+					logger.warn(this + ": encountered IOException during line test", e);
+					event.getChannel().sendMessage("line test stopped due to IOException").queue();
+				}
+				
 			} else {
 				event.getChannel().sendMessage("no such guild id found").queue();
 			}

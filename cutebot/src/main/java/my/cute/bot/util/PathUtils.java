@@ -1,8 +1,16 @@
 package my.cute.bot.util;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class PathUtils {
 
@@ -30,6 +38,10 @@ public final class PathUtils {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + LAST_MAINTENANCE_FILE_NAME);
 	}
 	
+	public static Path getBackupDirectory(String guildId) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + BACKUP_DIRECTORY_NAME);
+	}
+	
 	public static Path getBackupLastMaintenanceFile(String guildId, String backupName) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + BACKUP_DIRECTORY_NAME
 				+ File.separator + backupName + "-last.txt");
@@ -46,6 +58,19 @@ public final class PathUtils {
 	
 	public static Path getPreferencesFile(String guildId) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + PREFERENCES_FILE_NAME);
+	}
+	
+	public static List<Path> listFilesNewestFirst(Path directory, Pattern regex) throws IOException {
+		try (final Stream<File> matchingFiles = Arrays.stream(directory.toFile().listFiles((file, name) -> regex.matcher(name).matches()))) {
+			return matchingFiles
+					.collect(Collectors.toMap(file -> file, file -> file.lastModified()))
+					.entrySet()
+					.stream()
+					.sorted(Collections.reverseOrder(Map.Entry.comparingByValue()))
+					.map(entry -> entry.getKey())
+					.map(file -> file.toPath())
+					.collect(Collectors.toList());
+		}
 	}
 	
 }
