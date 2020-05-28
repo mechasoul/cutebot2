@@ -19,6 +19,7 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.preferences.GuildPreferences;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
@@ -50,8 +51,11 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	private static final Path DAILY_QUOTE_FILE = Paths.get("./daily_quote.txt");
 	private static final Random RAND = new Random();
 	
-	TextChannelQuoteCommand(String name) {
-		super(name);
+	private final GuildPreferences prefs;
+	
+	TextChannelQuoteCommand(GuildPreferences prefs) {
+		super("quote", PermissionLevel.USER, 0, 0);
+		this.prefs = prefs;
 	}
 
 	@Override
@@ -78,19 +82,9 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 			//need to update quote info file and get new quote
 			dailyQuote = this.updateDailyQuoteFile();
 		}
-		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (!quote)")
+		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (" 
+				+ this.prefs.getPrefix() + "quote)")
 				.setEmbed(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
-	}
-
-	@Override
-	public String getDescription() {
-		return "displays today's Twitch Chat:tm: Quote Of The Day. a good conversation starter";
-	}
-
-	@Override
-	public String getHelp() {
-		// TODO Auto-generated method stub
-		return null;
 	}
 	
 	/*

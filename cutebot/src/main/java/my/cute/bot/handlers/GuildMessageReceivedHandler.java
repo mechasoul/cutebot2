@@ -52,7 +52,7 @@ public class GuildMessageReceivedHandler {
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
 		this.database.load();
-		this.commands = CommandSetFactory.newDefaultTextChannelSet();
+		this.commands = CommandSetFactory.newDefaultTextChannelSet(this.prefs);
 		
 		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
 	}

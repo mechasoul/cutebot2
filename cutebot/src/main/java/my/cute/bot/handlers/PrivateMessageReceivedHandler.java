@@ -42,7 +42,7 @@ public class PrivateMessageReceivedHandler {
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda) {
 		this.bot = bot;
 		this.jda = jda;
-		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.bot, this.jda);
+		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.bot);
 	}
 	
 	/*
