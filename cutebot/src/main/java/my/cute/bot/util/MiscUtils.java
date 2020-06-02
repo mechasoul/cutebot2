@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ public class MiscUtils {
 	private static final Logger logger = LoggerFactory.getLogger(MiscUtils.class);
 	private static final String NEW_LINE_TOKEN = "<_NL>";
 	private static final Random RAND = new Random();
+	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
 	public static String replaceNewLinesWithTokens(String line) {
 		/*
@@ -54,6 +56,10 @@ public class MiscUtils {
 
 	public static List<String> tokenize(String line) {
 		return Arrays.asList(StringUtils.split(line, null));
+	}
+	
+	public static String sanitize(String string) {
+		return WHITESPACE.matcher(string).replaceAll(" ").trim().toLowerCase();
 	}
 
 	public static String getDateStamp() {
