@@ -223,4 +223,9 @@ public class GuildMessageReceivedHandler {
 			 */
 		}
 	}
+	
+	@Override
+	public String toString() {
+		return "GuildMessageReceivedHandler-" + this.id;
+	}
 }

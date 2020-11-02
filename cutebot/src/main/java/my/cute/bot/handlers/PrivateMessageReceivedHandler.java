@@ -233,7 +233,6 @@ public class PrivateMessageReceivedHandler {
 				try {
 					prefs.setAutomaticResponseTime(Integer.parseInt(words[2]));
 					prefs.save();
-					this.bot.update(words[1]);
 					event.getChannel().sendMessage("set automatic message time for server " + this.jda.getGuildById(words[1])
 						+ " to " + words[2] + " min").queue();
 				} catch (NumberFormatException e) {
