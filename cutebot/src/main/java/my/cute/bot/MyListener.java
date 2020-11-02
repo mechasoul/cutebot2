@@ -202,11 +202,8 @@ public class MyListener extends ListenerAdapter {
 		}
 	}
 	
-	public void update(String id) {
-		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
-		if(handler != null) {
-			handler.updatePreferences();
-		}
+	public String getGuildString(String id) {
+		return this.jda.getGuildById(id).toString();
 	}
 
 	@Override
