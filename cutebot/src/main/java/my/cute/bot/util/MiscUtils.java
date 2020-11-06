@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class MiscUtils {
@@ -64,6 +65,10 @@ public class MiscUtils {
 
 	public static String getDateStamp() {
 		return LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
+	}
+	
+	public static String[] getWords(Message message) {
+		return message.getContentDisplay().split("\\s");
 	}
 	
 }

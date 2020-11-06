@@ -2,23 +2,7 @@ package my.cute.bot.commands;
 
 import net.dv8tion.jda.api.entities.Message;
 
-public abstract class Command {
-	
-	private final String name;
-	private final String description;
-	private final String help;
-	private final PermissionLevel requiredPermissionLevel;
-	private final int minParams;
-	private final int maxParams;
-	
-	protected Command(String name, PermissionLevel permission, int min, int max) {
-		this.name = name;
-		this.description = "";
-		this.help = "";
-		this.requiredPermissionLevel = permission;
-		this.minParams = min;
-		this.maxParams = max;
-	}
+public interface Command {
 
 	/*
 	 * TODO
@@ -33,6 +17,7 @@ public abstract class Command {
 	 * try changing to Message and continuing. see if any issues pop up later from not 
 	 * passing in the event
 	 */
+	
 	/*
 	 * executes the Command, using the given Message as a parameter.
 	 * all required arguments for the command are to be given in the Message's content.
@@ -41,48 +26,19 @@ public abstract class Command {
 	 * '!<command name>', where <command name> is Command.name - ie, 
 	 * message.getContentDisplay().startsWith("!" + command.getName)
 	 * returns true
+	 * 
+	 * can take basically any action
 	 */
-	public abstract void execute(Message message);
-	
-	public String getName() {
-		return this.name;
-	}
-	
-	public String getDescription() {
-		return this.description;
-	}
-	
-	public String getHelp() {
-		return this.help;
-	}
-	
-	public PermissionLevel getRequiredPermissionLevel() {
-		return this.requiredPermissionLevel;
-	}
-	
-	public boolean hasCorrectParameterCount(String words[]) {
-		if(words.length - 1 >= this.minParams && words.length - 1 <= this.maxParams) {
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	public boolean hasRequiredPermission(PermissionLevel permission) {
-		if(permission == PermissionLevel.DEVELOPER) {
-			return true;
-		} else if (permission == PermissionLevel.ADMIN) {
-			if(this.requiredPermissionLevel != PermissionLevel.DEVELOPER) {
-				return true;
-			} else {
-				return false;
-			}
-		} else {
-			if(this.requiredPermissionLevel == PermissionLevel.USER) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}
+	void execute(Message message);
+
+	String getName();
+
+	String getDescription();
+
+	String getHelp();
+
+	PermissionLevel getRequiredPermissionLevel();
+
+	boolean hasCorrectParameterCount(String[] words);
+
 }

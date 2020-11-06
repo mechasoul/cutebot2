@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
@@ -27,7 +28,7 @@ public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 	 */
 	@Override
 	public void execute(Message message) {
-		String[] words = message.getContentDisplay().split("\\s");
+		String[] words = MiscUtils.getWords(message);
 		if(words.length == 1) {
 			this.jda.getPresence().setActivity(null);
 			message.getChannel().sendMessage("resetting").queue();

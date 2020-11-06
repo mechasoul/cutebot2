@@ -6,9 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.dv8tion.jda.api.entities.Message;
 
-class CommandSetImpl implements CommandSet {
+class CommandSetImpl<T extends Command> implements CommandSet<T> {
 
-	private final ConcurrentHashMap<String, Command> commandSet;
+	private final ConcurrentHashMap<String, T> commandSet;
 	
 	public CommandSetImpl() {
 		//TODO params
@@ -16,7 +16,7 @@ class CommandSetImpl implements CommandSet {
 	}
 	
 	@Override
-	public Iterator<Entry<String, Command>> iterator() {
+	public Iterator<Entry<String, T>> iterator() {
 		return this.commandSet.entrySet().iterator();
 	}
 	
@@ -36,23 +36,23 @@ class CommandSetImpl implements CommandSet {
 	}
 	
 	@Override
-	public Command get(String commandName) {
+	public T get(String commandName) {
 		return this.commandSet.get(commandName);
 	}
 	
 	@Override
-	public Command put(String name, Command command) {
+	public T put(String name, T command) {
 		return this.commandSet.put(name, command);
 	}
 	
 	@Override
-	public Command remove(String commandName) {
+	public T remove(String commandName) {
 		return this.commandSet.remove(commandName);
 	}
 
 	@Override
 	public boolean execute(String name, Message message) {
-		Command command = this.commandSet.get(name);
+		T command = this.commandSet.get(name);
 		if(command != null) {
 			command.execute(message);
 			return true;

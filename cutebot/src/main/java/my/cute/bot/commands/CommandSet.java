@@ -4,7 +4,7 @@ import java.util.Map.Entry;
 
 import net.dv8tion.jda.api.entities.Message;
 
-public interface CommandSet extends Iterable<Entry<String, Command>> {
+public interface CommandSet<T extends Command> extends Iterable<Entry<String, T>> {
 
 	public int size();
 	
@@ -12,11 +12,11 @@ public interface CommandSet extends Iterable<Entry<String, Command>> {
 	
 	public boolean contains(String commandName);
 	
-	public Command get(String commandName);
+	public T get(String commandName);
 	
-	public Command put(String name, Command command);
+	public T put(String name, T command);
 	
-	public Command remove(String commandName);
+	public T remove(String commandName);
 	
 	/*
 	 * TODO this

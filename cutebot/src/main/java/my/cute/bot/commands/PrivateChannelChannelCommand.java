@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
@@ -15,7 +16,7 @@ public class PrivateChannelChannelCommand extends PrivateChannelCommand {
 	
 	@Override
 	public void execute(Message message) {
-		String[] words = message.getContentDisplay().split("\\s");
+		String[] words = MiscUtils.getWords(message);
 		
 		try {
 			TextChannel channel = this.jda.getTextChannelById(words[1]);

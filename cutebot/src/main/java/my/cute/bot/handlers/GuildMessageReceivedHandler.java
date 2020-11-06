@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.CutebotTask;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
+import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
@@ -36,7 +37,7 @@ public class GuildMessageReceivedHandler {
 	private final String id;
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
-	private final CommandSet commands;
+	private final CommandSet<TextChannelCommand> commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;
 	
@@ -57,6 +58,9 @@ public class GuildMessageReceivedHandler {
 		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
 	}
 	
+	/*
+	 * TODO this is a really big method can maybe separate it into pieces or whatever
+	 */
 	public void handle(GuildMessageReceivedEvent event) {
 		
 		String content = event.getMessage().getContentRaw();

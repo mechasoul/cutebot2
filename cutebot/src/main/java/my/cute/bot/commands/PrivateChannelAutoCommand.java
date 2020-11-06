@@ -2,6 +2,7 @@ package my.cute.bot.commands;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelAutoCommand extends PrivateChannelCommand {
@@ -18,7 +19,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommand {
 	 */
 	@Override
 	public void execute(Message message) {
-		String[] words = message.getContentDisplay().split("\\s");
+		String[] words = MiscUtils.getWords(message);
 		
 		GuildPreferences prefs = this.bot.getPreferences(words[1]);
 		if(prefs != null) {

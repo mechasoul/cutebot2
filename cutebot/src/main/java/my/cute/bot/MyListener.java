@@ -170,8 +170,24 @@ public class MyListener extends ListenerAdapter {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.checkMaintenance());
 	}
 	
+	/*
+	 * used to force maintenance to start on all servers
+	 * checkMaintenance() should generally be used instead. this exists primarily for,
+	 * eg, a developer command so a dev can force maintenance if they need to
+	 */
+	public void forceMaintenance() {
+		this.guildMessageHandlers.forEach((id, handler) -> handler.maintenance());
+	}
+	
+	/*
+	 * same as above but for a specific server
+	 * throws IllegalArgumentException if the given server id isn't a valid key in 
+	 * this.guildMessageHandlers
+	 */
 	public void forceMaintenance(String id) {
-		this.guildMessageHandlers.get(id).maintenance();
+		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
+		if(handler == null) throw new IllegalArgumentException("invalid guild id '" + id + "'");
+		handler.maintenance();
 	}
 	
 	public void shutdown() {

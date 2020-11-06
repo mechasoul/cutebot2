@@ -2,6 +2,7 @@ package my.cute.bot.commands;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.database.GuildDatabase;
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelExportCommand extends PrivateChannelCommand {
@@ -15,7 +16,7 @@ public class PrivateChannelExportCommand extends PrivateChannelCommand {
 	
 	@Override
 	public void execute(Message message) {
-		String words[] = message.getContentDisplay().split("\\s");
+		String[] words = MiscUtils.getWords(message);
 		GuildDatabase db = this.bot.getDatabase(words[1]);
 		if(db != null) {
 			message.getChannel().sendMessage("exporting database to txt for guild id '" + words[1] + "'").queue();

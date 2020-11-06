@@ -39,7 +39,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	
 	@Override
 	public void execute(Message message) {
-		String words[] = MiscUtils.sanitize(message.getContentDisplay()).split("\\s");
+		String[] words = MiscUtils.getWords(message);
 		if(words[1].equals("all")) {
 			logger.info(this + ": beginning rebuild on all guilds");
 			message.getChannel().sendMessage("beginning rebuild on all guilds").queue();

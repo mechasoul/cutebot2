@@ -1,28 +1,31 @@
 package my.cute.bot.commands;
 
-abstract class PrivateChannelCommand extends Command {
+public abstract class PrivateChannelCommand extends CommandImpl {
 
 	/* 
 	 * some commands sent to cutebot via private channel will affect a specific guild
-	 * (especially commands used by admins), so for user convenience, users can specify
-	 * a default guild to be used if they omit the guild ID from a command (see 
-	 * PrivateChannelDefaultCommand for details). this flag indicates whether the command
-	 * works this way; if canUseDefaultGuild is true, then when obtaining the target guild
-	 * for the given command, code should first check to see if a guild was specifically 
-	 * provided by the user, and if not, their default guild should be used (if no default 
-	 * guild is provided then return an error).
+	 * (especially commands used by admins), so the user must identify a target guild
+	 * in order to execute the command. these commands must be handled a bit differently
+	 * (eg we need to obtain the target guild from their message, give an error if one
+	 * isn't supplied, etc), so we use this to check if the command works this way
 	 * 
-	 * default guilds go where? user preferences, separate permissions file?
+	 * if it is such a command, we check for 1) an explicitly provided target guild
+	 * (all commands that require a target guild will check for one provided in the
+	 * last argument given by the user), 2) a set "default guild" for the given user -
+	 * if a default guild is set, then all commands that require a target guild but 
+	 * don't explicitly provide one will be directed to the default guild. if a user
+	 * is only in one cutebot guild, that should be set to their default guild, 
+	 * otherwise it must be set by the user
 	 */
-	private final boolean canUseDefaultGuild;
+	private final boolean requiresTargetGuild;
 	
 	PrivateChannelCommand(String name, PermissionLevel permission, int min, int max, boolean targetGuild) {
 		super(name, permission, min, max);
-		this.canUseDefaultGuild = targetGuild;
+		this.requiresTargetGuild = targetGuild;
 	}
 	
-	public boolean canUseDefaultGuild() {
-		return this.canUseDefaultGuild;
+	public boolean requiresTargetGuild() {
+		return this.requiresTargetGuild;
 	}
 
 }
