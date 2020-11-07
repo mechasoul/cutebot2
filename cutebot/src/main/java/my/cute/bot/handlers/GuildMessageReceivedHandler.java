@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
+import my.cute.bot.MyListener;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.TextChannelCommand;
@@ -40,12 +41,14 @@ public class GuildMessageReceivedHandler {
 	private final CommandSet<TextChannelCommand> commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;
+	private final MyListener bot;
 	
 	private long lastAutoMessageTime = 0;
 	private long timeUntilNextAutoMessage;
 	
-	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor) throws IOException {
+	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor, MyListener bot) throws IOException {
 		this.jda = jda;
+		this.bot = bot;
 		this.id = guild.getId();
 		this.prefs = prefs;
 		this.executor = executor;
@@ -116,7 +119,8 @@ public class GuildMessageReceivedHandler {
 			 * currently just logging. should maybe throw fatal exception if workingset 
 			 * isnt working properly?
 			 */
-			logger.warn(this + ": general IOException thrown during line processing - possible workingset inconsistency!", e);
+			logger.error(this + ": unknown IOException thrown during line processing - possible workingset inconsistency! shutting down", e);
+			this.bot.shutdown();
 		}
 			
 		try {

@@ -77,7 +77,7 @@ public class MyListener extends ListenerAdapter {
 			jda.getGuilds().forEach(guild -> {
 				try {
 					GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
-					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, this.taskScheduler));
+					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, this.taskScheduler, this));
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				}
@@ -139,7 +139,7 @@ public class MyListener extends ListenerAdapter {
 			//verify that guild hasn't been added in the meantime by other thread
 			try {
 				newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
-						new GuildMessageReceivedHandler(event.getGuild(), jda, prefs, this.taskScheduler)) == null;
+						new GuildMessageReceivedHandler(event.getGuild(), jda, prefs, this.taskScheduler, this)) == null;
 			} catch (IOException e) {
 				logger.error(this + ": encountered IOException when trying to construct GuildMessageReceivedHandler for new guild '" +
 						event.getGuild() + "', can't continue!", e);
