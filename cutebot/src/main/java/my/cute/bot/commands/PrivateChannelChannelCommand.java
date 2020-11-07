@@ -1,6 +1,5 @@
 package my.cute.bot.commands;
 
-import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.TextChannel;
@@ -15,15 +14,13 @@ public class PrivateChannelChannelCommand extends PrivateChannelCommand {
 	}
 	
 	@Override
-	public void execute(Message message) {
-		String[] words = MiscUtils.getWords(message);
-		
+	public void execute(Message message, String[] params) {
 		try {
-			TextChannel channel = this.jda.getTextChannelById(words[1]);
+			TextChannel channel = this.jda.getTextChannelById(params[1]);
 			message.getChannel().sendMessage(channel != null ? channel.toString() : "no channel found with id '" 
-					+ words[1] + "'").queue();
+					+ params[1] + "'").queue();
 		} catch (NumberFormatException e) {
-			message.getChannel().sendMessage("error parsing channel id '" + words[1] + "'").queue();
+			message.getChannel().sendMessage("error parsing channel id '" + params[1] + "'").queue();
 		}
 	}
 

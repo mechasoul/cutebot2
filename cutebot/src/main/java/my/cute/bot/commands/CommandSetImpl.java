@@ -51,10 +51,10 @@ class CommandSetImpl<T extends Command> implements CommandSet<T> {
 	}
 
 	@Override
-	public boolean execute(String name, Message message) {
+	public boolean execute(String name, Message message, String[] params) {
 		T command = this.commandSet.get(name);
 		if(command != null) {
-			command.execute(message);
+			command.execute(message, params);
 			return true;
 		} else {
 			return false;

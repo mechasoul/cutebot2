@@ -43,7 +43,7 @@ public abstract class CommandImpl implements Command {
 	 * returns true
 	 */
 	@Override
-	public abstract void execute(Message message);
+	public abstract void execute(Message message, String[] params);
 	
 	@Override
 	public String getName() {

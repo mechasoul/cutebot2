@@ -24,5 +24,5 @@ public interface CommandSet<T extends Command> extends Iterable<Entry<String, T>
 	 * see Command.execute() for consideration
 	 * 
 	 */
-	public boolean execute(String name, Message message);
+	public boolean execute(String name, Message message, String[] params);
 }

@@ -2,7 +2,6 @@ package my.cute.bot.commands;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
-import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelAutoCommand extends PrivateChannelCommand {
@@ -18,22 +17,20 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommand {
 	 * TODO some kind of locking on the preferences for the server in question
 	 */
 	@Override
-	public void execute(Message message) {
-		String[] words = MiscUtils.getWords(message);
-		
-		GuildPreferences prefs = this.bot.getPreferences(words[1]);
+	public void execute(Message message, String[] params) {
+		GuildPreferences prefs = this.bot.getPreferences(params[1]);
 		if(prefs != null) {
 			try {
-				prefs.setAutomaticResponseTime(Integer.parseInt(words[2]));
+				prefs.setAutomaticResponseTime(Integer.parseInt(params[2]));
 				prefs.save();
 				//note new auto response time won't take effect until after the next auto response
-				message.getChannel().sendMessage("set automatic message time for server " + bot.getGuildString(words[1])
-					+ " to " + words[2] + " min").queue();
+				message.getChannel().sendMessage("set automatic message time for server " + bot.getGuildString(params[1])
+					+ " to " + params[2] + " min").queue();
 			} catch (NumberFormatException e) {
-				message.getChannel().sendMessage("invalid number of minutes '" + words[2] + "'").queue();
+				message.getChannel().sendMessage("invalid number of minutes '" + params[2] + "'").queue();
 			}
 		} else {
-			message.getChannel().sendMessage("no guild found with id " + words[1]).queue();
+			message.getChannel().sendMessage("no guild found with id " + params[1]).queue();
 		}
 	}
 

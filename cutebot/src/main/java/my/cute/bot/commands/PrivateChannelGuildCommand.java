@@ -1,6 +1,5 @@
 package my.cute.bot.commands;
 
-import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -15,15 +14,13 @@ private final JDA jda;
 	}
 	
 	@Override
-	public void execute(Message message) {
-		String[] words = MiscUtils.getWords(message);
-
+	public void execute(Message message, String[] params) {
 		try {
-			Guild guild = this.jda.getGuildById(words[1]);
+			Guild guild = this.jda.getGuildById(params[1]);
 			message.getChannel().sendMessage(guild != null ? guild.toString() : "no guild found with id '" 
-					+ words[1] + "'").queue();
+					+ params[1] + "'").queue();
 		} catch (NumberFormatException e) {
-			message.getChannel().sendMessage("error parsing guild id '" + words[1] + "'").queue();
+			message.getChannel().sendMessage("error parsing guild id '" + params[1] + "'").queue();
 		}
 	}
 

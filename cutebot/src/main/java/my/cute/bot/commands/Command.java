@@ -29,7 +29,7 @@ public interface Command {
 	 * 
 	 * can take basically any action
 	 */
-	void execute(Message message);
+	void execute(Message message, String[] params);
 
 	String getName();
 

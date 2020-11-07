@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
-import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
@@ -38,9 +37,8 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	}
 	
 	@Override
-	public void execute(Message message) {
-		String[] words = MiscUtils.getWords(message);
-		if(words[1].equals("all")) {
+	public void execute(Message message, String[] params) {
+		if(params[1].equals("all")) {
 			logger.info(this + ": beginning rebuild on all guilds");
 			message.getChannel().sendMessage("beginning rebuild on all guilds").queue();
 			
@@ -82,15 +80,15 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 				this.jda.getPresence().setActivity(previousActivity);
 			});
 		} else {
-			String id = words[1];
+			String id = params[1];
 			GuildPreferences guildPrefs = this.bot.getPreferences(id);
 			if(guildPrefs != null) {
-				if(words.length == 3) {
+				if(params.length == 3) {
 					try {
-						guildPrefs.setDatabaseAge(Integer.parseInt(words[2]));
+						guildPrefs.setDatabaseAge(Integer.parseInt(params[2]));
 						guildPrefs.save();
 					} catch (NumberFormatException e) {
-						message.getChannel().sendMessage("error parsing new database age '" + words[2] + "'").queue();
+						message.getChannel().sendMessage("error parsing new database age '" + params[2] + "'").queue();
 						return;
 					}
 				}

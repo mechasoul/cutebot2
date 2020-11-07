@@ -67,11 +67,12 @@ public class GuildMessageReceivedHandler {
 		
 		if(!StringUtils.isWhitespace(content)) {
 			//message nonempty. check for command
-			String firstWord = content.split("\\s")[0];
+			String[] params = MiscUtils.getWords(event.getMessage());
+			String firstWord = params[0];
 			if(firstWord.startsWith(this.prefs.getPrefix())) {
 				//first word starts with designated command prefix. check if it's a command
 				String commandName = firstWord.substring(this.prefs.getPrefix().length());
-				if(this.commands.execute(commandName, event.getMessage())) {
+				if(this.commands.execute(commandName, event.getMessage(), params)) {
 					//don't process commands into database
 					return;
 				}

@@ -59,7 +59,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	}
 
 	@Override
-	public void execute(Message message) {
+	public void execute(Message message, String[] params) {
 		String dailyQuote = null;
 		/*
 		 * prevent possibly having two guilds try to update quote file at same time,

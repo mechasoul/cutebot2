@@ -13,7 +13,7 @@ class PrivateChannelExitCommand extends PrivateChannelCommand {
 	}
 
 	@Override
-	public void execute(Message message) {
+	public void execute(Message message, String[] params) {
 		message.getChannel().sendMessage("ok").queue(msg -> this.bot.shutdown(), ex -> this.bot.shutdown());
 	}
 
