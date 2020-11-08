@@ -9,7 +9,7 @@ public class PrivateChannelChannelCommand extends PrivateChannelCommand {
 	private final JDA jda;
 	
 	public PrivateChannelChannelCommand(JDA jda) {
-		super("channel", PermissionLevel.DEVELOPER, 1, 1, false);
+		super("channel", PermissionLevel.DEVELOPER, 1, 1);
 		this.jda = jda;
 	}
 	

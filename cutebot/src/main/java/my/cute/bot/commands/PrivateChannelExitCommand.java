@@ -8,7 +8,7 @@ class PrivateChannelExitCommand extends PrivateChannelCommand {
 	private MyListener bot;
 	
 	PrivateChannelExitCommand(MyListener bot) {
-		super("exit", PermissionLevel.DEVELOPER, 0, 0, false);
+		super("exit", PermissionLevel.DEVELOPER, 0, 0);
 		this.bot = bot;
 	}
 

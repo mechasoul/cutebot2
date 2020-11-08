@@ -115,9 +115,9 @@ public class GuildMessageReceivedHandler {
 			return;
 		} catch (IOException e) {
 			/*
-			 * could indicate a problem with writing to workingset file, or something else
-			 * currently just logging. should maybe throw fatal exception if workingset 
-			 * isnt working properly?
+			 * could indicate a problem with writing to workingset file, or something else unanticipated 
+			 * further operation will make workingset inconsistent. shutdown program and require user
+			 * intervention
 			 */
 			logger.error(this + ": unknown IOException thrown during line processing - possible workingset inconsistency! shutting down", e);
 			this.bot.shutdown();

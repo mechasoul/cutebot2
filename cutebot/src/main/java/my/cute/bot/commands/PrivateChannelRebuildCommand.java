@@ -25,12 +25,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	private final ExecutorService executor;
 	
 	public PrivateChannelRebuildCommand(JDA jda, MyListener bot, ExecutorService executor) {
-		/*
-		 * don't use default guild for this command
-		 * rebuilding database is a substantial task and so 
-		 * the dev must specify exactly what to do
-		 */
-		super("rebuild", PermissionLevel.DEVELOPER, 1, 2, false);
+		super("rebuild", PermissionLevel.DEVELOPER, 1, 2);
 		this.jda = jda;
 		this.bot = bot;
 		this.executor = executor;

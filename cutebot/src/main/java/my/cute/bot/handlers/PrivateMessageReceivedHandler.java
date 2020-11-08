@@ -10,6 +10,7 @@ import my.cute.bot.MyListener;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.PrivateChannelCommand;
+import my.cute.bot.commands.PrivateChannelCommandTargeted;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
@@ -35,10 +36,10 @@ public class PrivateMessageReceivedHandler {
 	 * TODO this
 	 */
 	public void handle(PrivateMessageReceivedEvent event) {
-		String[] words = MiscUtils.getWords(event.getMessage());
+		String[] params = MiscUtils.getWords(event.getMessage());
 		PrivateChannelCommand command = null;
-		if(words[0].startsWith("!")) {
-			String commandName = words[0].substring(1);
+		if(params[0].startsWith("!")) {
+			String commandName = params[0].substring(1);
 			command = this.commands.get(commandName);
 		}
 		
@@ -54,6 +55,24 @@ public class PrivateMessageReceivedHandler {
 		 * --> implement everything needed for above process (can check old cutebot v2 for ref)
 		 */
 		//if(command == null || command.hasRequiredPermission(permission))
+		if(command == null) {
+			event.getChannel().sendMessage("invalid command: '" + params[0].substring(1) 
+					+ "'. try !help for a list of commands").queue();
+			return;
+		}
+		
+		//TODO permission check somewhere
+		if(command instanceof PrivateChannelCommandTargeted) {
+			String targetGuild = params[params.length - 1];
+			if(this.jda.getGuildById(targetGuild) == null) {
+				//TODO do default guild stuff here
+				//if still no targetGuild then error msg + return
+			}
+			//legit targetGuild here
+			((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);
+		} else {
+			command.execute(event.getMessage(), params);
+		}
 	}
 	
 	public ExecutorService getExecutor() {

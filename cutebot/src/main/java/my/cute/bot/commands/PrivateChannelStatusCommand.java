@@ -9,7 +9,7 @@ public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 	private final JDA jda;
 	
 	public PrivateChannelStatusCommand(JDA jda) {
-		super("status", PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE, false);
+		super("status", PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
 		this.jda = jda;
 	}
 	

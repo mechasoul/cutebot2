@@ -8,7 +8,7 @@ public class PrivateChannelMaintCommand extends PrivateChannelCommand {
 	private MyListener bot;
 
 	PrivateChannelMaintCommand(MyListener bot) {
-		super("maint", PermissionLevel.DEVELOPER, 1, 1, true);
+		super("maint", PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 

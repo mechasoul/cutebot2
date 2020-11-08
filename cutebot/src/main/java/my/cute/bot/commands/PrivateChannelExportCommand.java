@@ -9,7 +9,7 @@ public class PrivateChannelExportCommand extends PrivateChannelCommand {
 	private final MyListener bot;
 	
 	public PrivateChannelExportCommand(MyListener bot) {
-		super("export", PermissionLevel.DEVELOPER, 1, 1, false);
+		super("export", PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 	
