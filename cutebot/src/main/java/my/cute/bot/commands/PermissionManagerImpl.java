@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 
 public class PermissionManagerImpl implements PermissionManager {
 	
@@ -46,6 +48,11 @@ public class PermissionManagerImpl implements PermissionManager {
 	public boolean add(String userId, PermissionLevel permission) throws IOException {
 		return this.permissions.get(GLOBAL_KEY).add(userId, permission);
 	}
+	
+	@Override
+	public boolean add(User user, PermissionLevel permission) throws IOException {
+		return this.add(user.getId(), permission);
+	}
 
 	/*
 	 * some input validation should be performed before calling this to make sure
@@ -65,10 +72,20 @@ public class PermissionManagerImpl implements PermissionManager {
 					+ "guildId='" + guildId + "', permission='" + permission + "'");
 		}
 	}
+	
+	@Override
+	public boolean add(User user, Guild guild, PermissionLevel permission) throws IOException {
+		return this.add(user.getId(), guild.getId(), permission);
+	}
 
 	@Override
 	public boolean remove(String userId, PermissionLevel permission) throws IOException {
 		return this.permissions.get(GLOBAL_KEY).remove(userId, permission);
+	}
+	
+	@Override
+	public boolean remove(User user, PermissionLevel permission) throws IOException {
+		return this.remove(user.getId(), permission);
 	}
 
 	/*
@@ -85,10 +102,20 @@ public class PermissionManagerImpl implements PermissionManager {
 					+ "guildId='" + guildId + "', permission='" + permission + "'");
 		}
 	}
+	
+	@Override
+	public boolean remove(User user, Guild guild, PermissionLevel permission) throws IOException {
+		return this.remove(user.getId(), guild.getId(), permission);
+	}
 
 	@Override
 	public boolean hasPermission(String userId, PermissionLevel permission) {
 		return this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission);
+	}
+	
+	@Override
+	public boolean hasPermission(User user, PermissionLevel permission) {
+		return this.hasPermission(user.getId(), permission);
 	}
 
 	/*
@@ -104,6 +131,11 @@ public class PermissionManagerImpl implements PermissionManager {
 					+ "id. params userId='" + userId + "', "
 					+ "guildId='" + guildId + "', permission='" + permission + "'");
 		}
+	}
+	
+	@Override
+	public boolean hasPermission(User user, Guild guild, PermissionLevel permission) {
+		return this.hasPermission(user.getId(), guild.getId(), permission);
 	}
 
 	public String toString() {

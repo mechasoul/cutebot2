@@ -21,7 +21,8 @@ public final class PathUtils {
 	private static final String BACKUP_DIRECTORY_NAME = "~backups";
 	private static final String SCRAPE_DIRECTORY_NAME = "~scrape";
 	private static final String PREFERENCES_FILE_NAME = "preferences.ini";
-	private static final String PERMISSIONS_FILE_NAME = "permissions.ini";
+	private static final String PERMISSIONS_FILE_NAME = "permissions.db";
+	private static final String DEFAULT_GUILDS_FILE_NAME = "defaultguilds.db";
 	
 	public static String getDatabaseParentPath() {
 		return DATABASE_PARENT_DIRECTORY;
@@ -63,6 +64,10 @@ public final class PathUtils {
 	
 	public static Path getPermissionsFile(String guildId) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + PERMISSIONS_FILE_NAME);
+	}
+	
+	public static Path getDefaultGuildsFile() {
+		return Paths.get(DEFAULT_GUILDS_FILE_NAME);
 	}
 	
 	public static List<Path> listFilesNewestFirst(Path directory, Pattern regex) throws IOException {

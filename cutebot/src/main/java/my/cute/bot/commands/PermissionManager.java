@@ -2,6 +2,9 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
+
 public interface PermissionManager {
 
 	/*
@@ -25,10 +28,14 @@ public interface PermissionManager {
 	 */
 	public boolean add(String userId, PermissionLevel permission) throws IOException;
 	
+	public boolean add(User user, PermissionLevel permission) throws IOException;
+	
 	/*
 	 * same as above, but gives per-guild permissions
 	 */
 	public boolean add(String userId, String guildId, PermissionLevel permission) throws IOException;
+	
+	public boolean add(User user, Guild guild, PermissionLevel permission) throws IOException;
 	
 	/*
 	 * removes the specified global permission level from the specified user id
@@ -38,10 +45,14 @@ public interface PermissionManager {
 	 */
 	public boolean remove(String userId, PermissionLevel permission) throws IOException;
 	
+	public boolean remove(User user, PermissionLevel permission) throws IOException;
+	
 	/*
 	 * same as above, but removes per-guild permissions
 	 */
 	public boolean remove(String userId, String guildId, PermissionLevel permission) throws IOException;
+	
+	public boolean remove(User user, Guild guild, PermissionLevel permission) throws IOException;
 	
 	/*
 	 * checks to see if the given user has the given global permission
@@ -50,8 +61,12 @@ public interface PermissionManager {
 	 */
 	public boolean hasPermission(String userId, PermissionLevel permission);
 	
+	public boolean hasPermission(User user, PermissionLevel permission);
+	
 	/*
 	 * same as above, but checks per-guild permissions
 	 */
 	public boolean hasPermission(String userId, String guildId, PermissionLevel permission);
+	
+	public boolean hasPermission(User user, Guild guild, PermissionLevel permission);
 }

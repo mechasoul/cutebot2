@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TLongHashSet;
 import my.cute.bot.util.PathUtils;
+import net.dv8tion.jda.api.entities.User;
 
 class PermissionDatabaseImpl implements PermissionDatabase {
 	
@@ -55,6 +56,11 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 		if(newPermission) this.save();
 		return newPermission;
 	}
+	
+	@Override
+	public synchronized boolean add(User user, PermissionLevel permission) throws IOException {
+		return this.add(user.getId(), permission);
+	}
 
 	@Override
 	public synchronized boolean remove(String userId, PermissionLevel permission) throws IOException {
@@ -62,10 +68,20 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 		if(removedPermission) this.save();
 		return removedPermission;
 	}
+	
+	@Override
+	public synchronized boolean remove(User user, PermissionLevel permission) throws IOException {
+		return this.remove(user.getId(), permission);
+	}
 
 	@Override
 	public synchronized boolean hasPermission(String userId, PermissionLevel permission) {
 		return this.users.contains(Long.parseLong(userId));
+	}
+	
+	@Override
+	public synchronized boolean hasPermission(User user, PermissionLevel permission) {
+		return this.hasPermission(user.getId(), permission);
 	}
 
 	@Override

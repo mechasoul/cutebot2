@@ -2,6 +2,8 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 
+import net.dv8tion.jda.api.entities.User;
+
 public interface PermissionDatabase {
 
 	/*
@@ -25,6 +27,8 @@ public interface PermissionDatabase {
 	 */
 	public boolean add(String userId, PermissionLevel permission) throws IOException;
 	
+	public boolean add(User user, PermissionLevel permission) throws IOException;
+	
 	/*
 	 * removes the specified permission level from the specified user id
 	 * after calling this, hasPermission(userId, permission) should return false
@@ -34,6 +38,8 @@ public interface PermissionDatabase {
 	 * throws IOException if an IOException occurred while updating database file
 	 */
 	public boolean remove(String userId, PermissionLevel permission) throws IOException;
+	
+	public boolean remove(User user, PermissionLevel permission) throws IOException;
 
 	/*
 	 * checks to see if the given user has the given permission
@@ -45,6 +51,8 @@ public interface PermissionDatabase {
 	 * checking permission would also need to use disk
 	 */
 	public boolean hasPermission(String userId, PermissionLevel permission);
+	
+	public boolean hasPermission(User user, PermissionLevel permission);
 	
 	/*
 	 * return the string associated with this database
