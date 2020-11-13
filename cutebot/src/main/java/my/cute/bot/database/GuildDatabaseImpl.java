@@ -34,7 +34,6 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	
 	/*
 	 * TODO
-	 * add some like loadMostRecentBackup() to GuildDatabase, implement it
 	 * add proper multithreading support. currently over-synchronizing
 	 */
 

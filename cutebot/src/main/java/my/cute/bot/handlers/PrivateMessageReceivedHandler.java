@@ -102,6 +102,8 @@ public class PrivateMessageReceivedHandler {
 			 * command error message in order to not reveal hidden commands
 			 * TODO these hasPermission checks can throw IllegalArgumentException in rare cases maybe?
 			 * (when targetGuild was acquired above but not found in permission manager)
+			 * 
+			 * also TODO need basic commands checks (syntax, correct number of params?)
 			 */
 			if(this.permissions.hasPermission(event.getAuthor().getId(), targetGuild, command.getRequiredPermissionLevel())) {
 				((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);

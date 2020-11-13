@@ -10,9 +10,8 @@ class CommandSetImpl<T extends Command> implements CommandSet<T> {
 
 	private final ConcurrentHashMap<String, T> commandSet;
 	
-	public CommandSetImpl() {
-		//TODO params
-		this.commandSet = new ConcurrentHashMap<>();
+	public CommandSetImpl(int capacity) {
+		this.commandSet = new ConcurrentHashMap<>(capacity);
 	}
 	
 	@Override

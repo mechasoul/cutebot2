@@ -17,8 +17,6 @@ public interface PermissionManager {
 	 * something
 	 */
 	
-	//TODO add methods for adding/removing permission databases for guild join/leave
-	
 	/*
 	 * gives the specified user id the specified permission level, globally
 	 * after calling this, hasPermission(userId, permission) should return true
@@ -69,4 +67,26 @@ public interface PermissionManager {
 	public boolean hasPermission(String userId, String guildId, PermissionLevel permission);
 	
 	public boolean hasPermission(User user, Guild guild, PermissionLevel permission);
+	
+	/*
+	 * adds a new guild to manage permissions for
+	 * use eg on guild join
+	 * 
+	 * returns true if the guild added was new (did not already exist in the manager), 
+	 * false otherwise
+	 */
+	public boolean addGuild(String guildId) throws IOException;
+	
+	public boolean addGuild(Guild guild) throws IOException;
+	
+	/*
+	 * removes a guild from the manager. clean up files on disk?
+	 * use eg on guild leave
+	 * 
+	 * returns true if a guild was removed from the manager as a result of this call,
+	 * false otherwise (eg given guild id wasn't found in manager)
+	 */
+	public boolean removeGuild(String guildId);
+	
+	public boolean removeGuild(Guild guild);
 }

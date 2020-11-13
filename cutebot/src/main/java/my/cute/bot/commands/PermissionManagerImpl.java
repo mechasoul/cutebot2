@@ -27,8 +27,7 @@ public class PermissionManagerImpl implements PermissionManager {
 	private final JDA jda;
 	
 	public PermissionManagerImpl(JDA jda) throws IOException {
-		//TODO args
-		this.permissions = new ConcurrentHashMap<String, PermissionDatabase>();
+		this.permissions = new ConcurrentHashMap<String, PermissionDatabase>(jda.getGuilds().size() * 4 / 3);
 		this.jda = jda;
 		try {
 			this.jda.getGuilds().forEach(guild -> {
@@ -138,6 +137,29 @@ public class PermissionManagerImpl implements PermissionManager {
 		return this.hasPermission(user.getId(), guild.getId(), permission);
 	}
 
+	@Override
+	public boolean addGuild(String guildId) throws IOException {
+		return this.permissions.putIfAbsent(guildId, new PermissionDatabaseImpl(guildId)) == null;
+	}
+
+	@Override
+	public boolean addGuild(Guild guild) throws IOException {
+		return this.addGuild(guild.getId());
+	}
+
+	/*
+	 * TODO should this delete local permission file on disk?
+	 */
+	@Override
+	public boolean removeGuild(String guildId) {
+		return this.permissions.remove(guildId) != null;
+	}
+
+	@Override
+	public boolean removeGuild(Guild guild) {
+		return this.removeGuild(guild.getId());
+	}
+	
 	public String toString() {
 		return "PermissionManagerImpl";
 	}
