@@ -8,6 +8,12 @@ public abstract class CommandImpl implements Command {
 	private final String description;
 	private final String help;
 	private final PermissionLevel requiredPermissionLevel;
+	/*
+	 * number of parameters required for the command
+	 * not including the command itself, so eg !command <parameter> would be 1
+	 * some commands include optional parameters, so we have minimum and maximum
+	 * parameter count
+	 */
 	private final int minParams;
 	private final int maxParams;
 	
@@ -52,6 +58,12 @@ public abstract class CommandImpl implements Command {
 		return this.requiredPermissionLevel;
 	}
 	
+	/*
+	 * note we pass in all words in the user's command, including the command itself
+	 * (as given by MiscUtils.getWords(Message), but in command construction we specify
+	 * parameter count as the number of actual parameters, not including the command
+	 * itself. so subtract one from words.length here
+	 */
 	@Override
 	public boolean hasCorrectParameterCount(String[] words) {
 		if(words.length - 1 >= this.minParams && words.length - 1 <= this.maxParams) {

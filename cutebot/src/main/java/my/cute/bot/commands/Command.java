@@ -38,7 +38,11 @@ public interface Command {
 	String getHelp();
 
 	PermissionLevel getRequiredPermissionLevel();
-
+	
+	/*
+	 * syntax check
+	 * should pass in all the user's words as given by MiscUtils.getWords(Message)
+	 */
 	boolean hasCorrectParameterCount(String[] words);
 
 }

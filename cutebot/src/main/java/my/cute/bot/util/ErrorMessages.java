@@ -19,4 +19,8 @@ public class ErrorMessages {
 		return "an unknown error has occurred. please call an adult";
 	}
 	
+	public static String invalidSyntax(String commandName) {
+		return "invalid syntax. try !help " + commandName;
+	}
+	
 }

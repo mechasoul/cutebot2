@@ -96,6 +96,7 @@ public class PrivateMessageReceivedHandler {
 			//final validity check, ensure they're in the given guild
 			if(!this.jda.getGuildById(targetGuild).isMember(event.getAuthor())) {
 				event.getChannel().sendMessage(ErrorMessages.invalidGuild(targetGuild)).queue();
+				return;
 			}
 			/*
 			 * target guild acquired, now do permissions check. if no permission, send generic unknown
@@ -103,16 +104,24 @@ public class PrivateMessageReceivedHandler {
 			 * TODO these hasPermission checks can throw IllegalArgumentException in rare cases maybe?
 			 * (when targetGuild was acquired above but not found in permission manager)
 			 * 
-			 * also TODO need basic commands checks (syntax, correct number of params?)
+			 * also any other general command checks?
 			 */
 			if(this.permissions.hasPermission(event.getAuthor().getId(), targetGuild, command.getRequiredPermissionLevel())) {
-				((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);
+				if(command.hasCorrectParameterCount(params)) {
+					((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);
+				} else {
+					event.getChannel().sendMessage(ErrorMessages.invalidSyntax(command.getName())).queue();
+				}
 			} else {
 				event.getChannel().sendMessage(ErrorMessages.unknownCommand(params[0])).queue();
 			}
 		} else {
 			if(this.permissions.hasPermission(event.getAuthor(), command.getRequiredPermissionLevel())) {
-				command.execute(event.getMessage(), params);
+				if(command.hasCorrectParameterCount(params)) {
+					command.execute(event.getMessage(), params);
+				} else {
+					event.getChannel().sendMessage(ErrorMessages.invalidSyntax(command.getName())).queue();
+				}
 			} else {
 				event.getChannel().sendMessage(ErrorMessages.unknownCommand(params[0])).queue();
 			}
