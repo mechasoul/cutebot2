@@ -44,6 +44,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	private ImmutableList<String> discussionChannels;
 	private int automaticMessageTime = 0;
 	
+	
 	public GuildPreferencesImpl(String id) {
 		this.id = id;
 		this.commandPrefix = "!";
@@ -83,7 +84,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	}
 	
 	@Override
-	public boolean isDiscussionChannel(String channelId) {
+	public synchronized boolean isDiscussionChannel(String channelId) {
 		if(this.discussionChannels == null) {
 			return true;
 		} else {
@@ -92,12 +93,12 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	}
 	
 	@Override
-	public ImmutableList<String> getDiscussionChannels() {
+	public synchronized ImmutableList<String> getDiscussionChannels() {
 		return this.discussionChannels;
 	}
 
 	@Override
-	public void setDiscussionChannels(List<String> discussionChannels) {
+	public synchronized void setDiscussionChannels(List<String> discussionChannels) {
 		if(discussionChannels == null || discussionChannels.isEmpty()) {
 			this.discussionChannels = null;
 		} else {

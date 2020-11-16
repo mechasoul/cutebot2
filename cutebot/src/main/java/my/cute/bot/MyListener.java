@@ -64,6 +64,21 @@ public class MyListener extends ListenerAdapter {
 	private final ScheduledExecutorService taskScheduler;
 	private final List<String> automaticMessageGuilds;
 	
+	/*
+	 * i think it's supposed to be bad practice to use "this" as an argument to something 
+	 * else from inside a constructor because the object isn't properly initialized or 
+	 * something but it's really a lot simpler this way and i'm trying to be careful to 
+	 * make sure nothing is done with the reference aside from saving it
+	 * 
+	 * there are ways around it (eg make the privateMessageHandler field not final, have
+	 * a method to create it and call that method after creating the MyListener object),
+	 * but this seems generally uglier than just doing it like this (could avoid most
+	 * problems by say making ctor private, having an internal factory class, and have
+	 * the factory create method be public and take care of calling the initialization
+	 * methods? then its just like MyListener.Factory.create() to build and all the other
+	 * stuff is hidden away in the create method. but still that field has to be non-final
+	 * and i dont think it really matters as long as im careful)
+	 */
 	MyListener(JDA jda) throws IOException {
 		this.jda = jda;
 		this.automaticMessageGuilds = Collections.synchronizedList(new ArrayList<>());

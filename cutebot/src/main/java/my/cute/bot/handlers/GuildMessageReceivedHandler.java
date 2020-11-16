@@ -28,6 +28,27 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 public class GuildMessageReceivedHandler {
 	
+	private class AutonomyHandler {
+		private long lastAutoMessageTime=0;
+		private final Random RAND = new Random();
+		private float randomFactor = this.getNewRandomFactor();
+		
+		private boolean shouldSendAutomaticMessage() {
+			int autoMessageTime = prefs.getAutomaticResponseTime();
+			return autoMessageTime != 0 && 
+					(System.currentTimeMillis() - this.lastAutoMessageTime) >= ((long)(autoMessageTime * this.randomFactor) * 60000L);
+		}
+		
+		private void update() {
+			this.lastAutoMessageTime = System.currentTimeMillis();
+			this.randomFactor = this.getNewRandomFactor();
+		}
+		
+		private float getNewRandomFactor() {
+			return (this.RAND.nextFloat() * (2f/3f)) + (2f/3f);
+		}
+	}
+	
 	private static final Logger logger = LoggerFactory.getLogger(GuildMessageReceivedHandler.class);
 	@SuppressWarnings("unused")
 	private static final Pattern BOT_NAME = (CutebotTask.ACTIVE_TOKEN == CutebotTask.CUTEBOT_PRIME_TOKEN) ?
@@ -42,23 +63,20 @@ public class GuildMessageReceivedHandler {
 	private final Random random = new Random();
 	private final ExecutorService executor;
 	private final MyListener bot;
-	
-	private long lastAutoMessageTime = 0;
-	private long timeUntilNextAutoMessage;
+	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor, MyListener bot) throws IOException {
 		this.jda = jda;
 		this.bot = bot;
 		this.id = guild.getId();
 		this.prefs = prefs;
+		this.autonomyHandler = new AutonomyHandler();
 		this.executor = executor;
 		this.database = new GuildDatabaseBuilder(guild)
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
 		this.database.load();
 		this.commands = CommandSetFactory.newDefaultTextChannelSet(this.prefs);
-		
-		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
 	}
 	
 	/*
@@ -97,11 +115,12 @@ public class GuildMessageReceivedHandler {
 				
 				try {
 					this.database.clearAutomaticBackups();
+					this.database.maintenance();
 				} catch (IOException e1) {
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
 				//should just run maintenance immediately instead?
-				this.database.markForMaintenance();
+				
 			} else {
 				try {
 					this.database.clearAutomaticBackups();
@@ -124,13 +143,12 @@ public class GuildMessageReceivedHandler {
 		}
 			
 		try {
-			if(this.shouldSendAutomaticMessage()) {
+			if(this.autonomyHandler.shouldSendAutomaticMessage()) {
 				String line = this.database.generateLine();
 				event.getChannel().sendMessage(line).queue();
-				this.lastAutoMessageTime = System.currentTimeMillis();
-				this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
-				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in " 
-						+ (this.timeUntilNextAutoMessage / 60000L) + " mins");
+				this.autonomyHandler.update();
+				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
+						+ this.prefs.getAutomaticResponseTime() + " mins");
 			} else if(BOT_NAME.matcher(content).matches()) {
 				if(isQuestion(content)) {
 					event.getChannel().sendMessage(this.database.generateLine()).queue();
@@ -189,10 +207,6 @@ public class GuildMessageReceivedHandler {
 		return this.prefs;
 	}
 	
-	public void updatePreferences() {
-		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
-	}
-	
 	//TODO this sucks
 	private static boolean isQuestion(String s) {
 		if(s.contains("what") || s.contains("who") || s.contains("why") || s.contains("wat") || s.contains("how") || s.contains("when") || s.contains("will") || s.contains("are you") || s.contains("are u") || s.contains("can you") || s.contains("do you") || s.contains("can u") || s.contains("do u") || s.contains("where") || s.contains("?")) {
@@ -202,20 +216,6 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	private long getTimeInBetweenAutoMessages(final int autoResponseTime) {
-		int minutes;
-		if(autoResponseTime == 0) {
-			minutes = 0;
-		} else {
-			minutes = this.random.nextInt(autoResponseTime) + autoResponseTime;
-		}
-		return ((long)minutes) * 60000L;
-	}
-	
-	private boolean shouldSendAutomaticMessage() {
-		return this.timeUntilNextAutoMessage != 0 && 
-				(System.currentTimeMillis() - this.lastAutoMessageTime) >= this.timeUntilNextAutoMessage;
-	}
 	
 	private void addReactionToMessage(Message message) {
 		try {

@@ -18,11 +18,5 @@ public interface CommandSet<T extends Command> extends Iterable<Entry<String, T>
 	
 	public T remove(String commandName);
 	
-	/*
-	 * TODO this
-	 * what param gets passed in?
-	 * see Command.execute() for consideration
-	 * 
-	 */
 	public boolean execute(String name, Message message, String[] params);
 }

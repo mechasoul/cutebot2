@@ -22,5 +22,9 @@ public class ErrorMessages {
 	public static String invalidSyntax(String commandName) {
 		return "invalid syntax. try !help " + commandName;
 	}
+
+	public static String invalidAutoResponseTime(String givenMinutes) {
+		return "invalid automatic response time: '" + givenMinutes + "'. please use a number from 1 to 525600";
+	}
 	
 }
