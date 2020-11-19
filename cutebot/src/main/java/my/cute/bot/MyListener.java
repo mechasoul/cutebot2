@@ -79,6 +79,17 @@ public class MyListener extends ListenerAdapter {
 	 * stuff is hidden away in the create method. but still that field has to be non-final
 	 * and i dont think it really matters as long as im careful)
 	 */
+	
+	/*
+	 * TODO maybe a better way of distributing prefs and wordfilter to commands is to make like
+	 * a map in ctor and populate it with the prefs/wordfilter objects, then pass it in to the
+	 * privatemessagereceivedhandler ctor and have that pass it in to the commandset which passes
+	 * it in to any commands that require it. could stay final and we just remove/add on guild
+	 * leave/join. wordfilters could be replaced during runtime so theres possible concurrency
+	 * problems, but by doing this we avoid having awkward MyListener.getPreferences(String) 
+	 * methods and whatever that dont really make sense to be here (also load wordfilter here
+	 * and pass it in to guildmessagereceivedhandler like with prefs)
+	 */
 	MyListener(JDA jda) throws IOException {
 		this.jda = jda;
 		this.automaticMessageGuilds = Collections.synchronizedList(new ArrayList<>());

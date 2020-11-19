@@ -23,6 +23,7 @@ public final class PathUtils {
 	private static final String PREFERENCES_FILE_NAME = "preferences.ini";
 	private static final String PERMISSIONS_FILE_NAME = "permissions.db";
 	private static final String DEFAULT_GUILDS_FILE_NAME = "defaultguilds.db";
+	private static final String WORD_FILTER_FILE_NAME = "wordfilter.ini";
 	
 	public static String getDatabaseParentPath() {
 		return DATABASE_PARENT_DIRECTORY;
@@ -68,6 +69,10 @@ public final class PathUtils {
 	
 	public static Path getDefaultGuildsFile() {
 		return Paths.get(DEFAULT_GUILDS_FILE_NAME);
+	}
+	
+	public static Path getWordFilterFile(String guildId) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + WORD_FILTER_FILE_NAME);
 	}
 	
 	public static List<Path> listFilesNewestFirst(Path directory, Pattern regex) throws IOException {

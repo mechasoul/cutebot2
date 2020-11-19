@@ -7,7 +7,7 @@ public class ErrorMessages {
 	}
 	
 	public static String noTargetGuild() {
-		return "error: invalid guild. either give a target server or set a default "
+		return "error: invalid server. either give a target server or set a default "
 				+ "server for your commands (see !default)";
 	}
 	

@@ -37,9 +37,9 @@ public class PrivateMessageReceivedHandler {
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda) throws IOException {
 		this.bot = bot;
 		this.jda = jda;
-		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.bot);
-		this.permissions = new PermissionManagerImpl(this.jda);
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
+		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds);
+		this.permissions = new PermissionManagerImpl(this.jda);
 	}
 	
 	/*
@@ -94,6 +94,7 @@ public class PrivateMessageReceivedHandler {
 			}
 			
 			//final validity check, ensure they're in the given guild
+			//requires GUILD_MEMBERS gateway intent i think
 			if(!this.jda.getGuildById(targetGuild).isMember(event.getAuthor())) {
 				event.getChannel().sendMessage(ErrorMessages.invalidGuild(targetGuild)).queue();
 				return;

@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.utils.cache.CacheView;
 
@@ -69,6 +70,10 @@ public class MiscUtils {
 	
 	public static String[] getWords(Message message) {
 		return message.getContentDisplay().split("\\s");
+	}
+	
+	public static String getGuildString(Guild guild) {
+		return guild.getName() + " (id=" + guild.getId() + ")";
 	}
 	
 }
