@@ -11,30 +11,34 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
-public class WordFilterBasicImpl implements WordFilter {
+public class WordFilterImpl implements WordFilter {
 
 	private static final int MAX_FILTERED_WORDS = 60;
-	protected static final String EMPTY_COMPILED_FILTER_TOKEN = "[null]";
+	private static final String EMPTY_COMPILED_FILTER_TOKEN = "[null]";
 	
-	protected final String id;
-	protected final Path path;
+	private final String id;
+	private final Path path;
+	private WordFilter.Type mode;
 	private Set<String> filteredWords;
-	protected Pattern compiledFilter;
-	protected EnumSet<FilterResponseAction> responseActions;
+	private Pattern compiledFilter;
+	private EnumSet<FilterResponseAction> responseActions;
 	
-	WordFilterBasicImpl(String id, Path path) {
+	WordFilterImpl(String id, Path path) {
 		this.id = id;
 		this.path = path;
+		this.mode = WordFilter.Type.BASIC;
 		this.filteredWords = new HashSet<String>(3);
 		this.compiledFilter = null;
 		this.responseActions = FilterResponseAction.DEFAULT;
 	}
 	
-	WordFilterBasicImpl(String id, Path path, String[] words, String pattern, EnumSet<FilterResponseAction> actions) {
+	WordFilterImpl(String id, Path path, WordFilter.Type type, String[] words, String pattern, EnumSet<FilterResponseAction> actions) {
 		this.id = id;
 		this.path = path;
+		this.mode = type;
 		this.filteredWords = new HashSet<String>((words.length * 4 / 3) + 1);
 		for(String word : words) {
 			this.filteredWords.add(word);
@@ -55,6 +59,7 @@ public class WordFilterBasicImpl implements WordFilter {
 
 	@Override
 	public synchronized boolean add(final String[] words) throws IOException {
+		if(this.mode == WordFilter.Type.REGEX) return false;
 		int initialNumFilteredWords = this.filteredWords.size();
 		if(initialNumFilteredWords >= MAX_FILTERED_WORDS) return false;
 		for(String word : words) {
@@ -71,6 +76,7 @@ public class WordFilterBasicImpl implements WordFilter {
 
 	@Override
 	public synchronized boolean remove(String[] words) throws IOException {
+		if(this.mode == WordFilter.Type.REGEX) return false;
 		int initialNumFilteredWords = this.filteredWords.size();
 		if(this.filteredWords.isEmpty()) return false;
 		for(String word : words) {
@@ -87,28 +93,40 @@ public class WordFilterBasicImpl implements WordFilter {
 
 	@Override
 	public synchronized void clear() throws IOException {
+		this.mode = WordFilter.Type.BASIC;
 		this.filteredWords.clear();
 		this.updateCompiledFilter();
 		this.save();
 	}
 
 	/**
-	 * assume the given String is a comma-separated list of words
+	 * assume the given String is a comma-separated list of words, or an 
+	 * explicit regex string (depends on mode)
+	 * <br><br>note no validation on the given String is performed, so do
+	 * that before calling this if allowing explicit regex
 	 */
 	@Override
-	public synchronized void set(String words) throws IOException {
-		this.filteredWords.clear();
-		for(String word : words.split(",")) {
-			if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
-			this.filteredWords.add(word);
+	public synchronized void set(String words) throws IOException, PatternSyntaxException {
+		if(this.mode == WordFilter.Type.BASIC) {
+			this.filteredWords.clear();
+			for(String word : words.split(",")) {
+				if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
+				this.filteredWords.add(word);
+			}
+			this.updateCompiledFilter();
+		} else /* this.mode == WordFilter.Type.REGEX */ {
+			this.compiledFilter = Pattern.compile(words, Pattern.CASE_INSENSITIVE);
 		}
-		this.updateCompiledFilter();
 		this.save();
 	}
 
 	@Override
 	public String get() {
-		return String.join(",", this.filteredWords);
+		if(this.mode == WordFilter.Type.BASIC) {
+			return String.join(",", this.filteredWords);
+		} else /* this.mode == WordFilter.Type.REGEX */ {
+			return this.compiledFilter.pattern();
+		}
 	}
 
 	@Override
@@ -129,7 +147,7 @@ public class WordFilterBasicImpl implements WordFilter {
 	
 	@Override
 	public WordFilter.Type getType() {
-		return WordFilter.Type.BASIC;
+		return this.mode;
 	}
 	
 	/**
