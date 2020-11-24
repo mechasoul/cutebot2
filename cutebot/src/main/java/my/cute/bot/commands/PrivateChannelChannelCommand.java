@@ -6,10 +6,11 @@ import net.dv8tion.jda.api.entities.TextChannel;
 
 public class PrivateChannelChannelCommand extends PrivateChannelCommand {
 
+	final static String NAME = "channel";
 	private final JDA jda;
 	
 	public PrivateChannelChannelCommand(JDA jda) {
-		super("channel", PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
 		this.jda = jda;
 	}
 	

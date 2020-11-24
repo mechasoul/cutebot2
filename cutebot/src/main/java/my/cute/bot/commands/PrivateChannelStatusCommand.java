@@ -6,10 +6,12 @@ import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 
+	final static String NAME = "status";
+	
 	private final JDA jda;
 	
 	public PrivateChannelStatusCommand(JDA jda) {
-		super("status", PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
+		super(NAME, PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
 		this.jda = jda;
 	}
 	

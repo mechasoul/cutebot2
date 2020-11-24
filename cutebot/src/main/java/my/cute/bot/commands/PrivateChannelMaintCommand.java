@@ -5,10 +5,11 @@ import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelMaintCommand extends PrivateChannelCommand {
 	
+	final static String NAME = "maint";
 	private MyListener bot;
 
 	PrivateChannelMaintCommand(MyListener bot) {
-		super("maint", PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 

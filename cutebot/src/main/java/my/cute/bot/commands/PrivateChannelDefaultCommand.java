@@ -26,12 +26,13 @@ import net.dv8tion.jda.api.entities.User;
 public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelDefaultCommand.class);
+	final static String NAME = "default";
 	
 	private final DefaultGuildDatabase defaultGuilds;
 	private final JDA jda;
 
 	protected PrivateChannelDefaultCommand(JDA jda, DefaultGuildDatabase guilds) {
-		super("exit", PermissionLevel.USER, 1, 1);
+		super(NAME, PermissionLevel.USER, 1, 1);
 		this.defaultGuilds = guilds;
 		this.jda = jda;
 	}

@@ -6,10 +6,11 @@ import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelGuildCommand extends PrivateChannelCommand {
 
-private final JDA jda;
+	final static String NAME = "guild";
+	private final JDA jda;
 	
 	public PrivateChannelGuildCommand(JDA jda) {
-		super("guild", PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
 		this.jda = jda;
 	}
 	

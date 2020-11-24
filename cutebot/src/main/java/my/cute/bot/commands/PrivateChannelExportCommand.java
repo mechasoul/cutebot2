@@ -6,10 +6,11 @@ import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelExportCommand extends PrivateChannelCommand {
 
+	final static String NAME = "export";
 	private final MyListener bot;
 	
 	public PrivateChannelExportCommand(MyListener bot) {
-		super("export", PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 	

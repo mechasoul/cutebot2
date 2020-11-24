@@ -20,6 +20,7 @@ import net.dv8tion.jda.api.entities.Message;
 public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRebuildCommand.class);
+	final static String NAME = "rebuild";
 	
 	private final JDA jda;
 	private final MyListener bot;
@@ -27,7 +28,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	private final Map<String, GuildPreferences> allPrefs;
 	
 	public PrivateChannelRebuildCommand(JDA jda, MyListener bot, ExecutorService executor, Map<String, GuildPreferences> allPrefs) {
-		super("rebuild", PermissionLevel.DEVELOPER, 1, 2);
+		super(NAME, PermissionLevel.DEVELOPER, 1, 2);
 		this.jda = jda;
 		this.bot = bot;
 		this.executor = executor;

@@ -23,12 +23,13 @@ import net.dv8tion.jda.api.entities.Message;
 public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAutoCommand.class);
+	final static String NAME = "auto";
 
 	private final Map<String, GuildPreferences> allPrefs;
 	private final MyListener bot;
 	
 	public PrivateChannelAutoCommand(MyListener bot, Map<String, GuildPreferences> prefs) {
-		super("auto", PermissionLevel.ADMIN, 1, 2);
+		super(NAME, PermissionLevel.ADMIN, 1, 2);
 		this.bot = bot;
 		this.allPrefs = prefs;
 	}

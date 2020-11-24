@@ -19,17 +19,17 @@ public class CommandSetFactory {
 	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(JDA jda, MyListener bot, 
 			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, ExecutorService executor) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
-		set.put("auto", new PrivateChannelAutoCommand(bot, allPrefs));
-		set.put("channel", new PrivateChannelChannelCommand(jda));
-		set.put("default", new PrivateChannelDefaultCommand(jda, defaultGuilds));
-		set.put("exit", new PrivateChannelExitCommand(bot));
-		set.put("export", new PrivateChannelExportCommand(bot));
+		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(bot, allPrefs));
+		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand(jda));
+		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(jda, defaultGuilds));
+		set.put(PrivateChannelExitCommand.NAME, new PrivateChannelExitCommand(bot));
+		set.put(PrivateChannelExportCommand.NAME, new PrivateChannelExportCommand(bot));
 		//TODO 
 		//set.put("filter", new PrivateChannelFilterCommand());
-		set.put("guild", new PrivateChannelGuildCommand(jda));
-		set.put("maint", new PrivateChannelMaintCommand(bot));
-		set.put("rebuild", new PrivateChannelRebuildCommand(jda, bot, executor, allPrefs));
-		set.put("status", new PrivateChannelStatusCommand(jda));
+		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand(jda));
+		set.put(PrivateChannelMaintCommand.NAME, new PrivateChannelMaintCommand(bot));
+		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(jda, bot, executor, allPrefs));
+		set.put(PrivateChannelStatusCommand.NAME, new PrivateChannelStatusCommand(jda));
 		
 		return set;
 	}

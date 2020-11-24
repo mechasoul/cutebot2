@@ -1,5 +1,8 @@
 package my.cute.bot.commands;
 
+import java.util.Map;
+
+import my.cute.bot.preferences.wordfilter.WordFilter;
 import net.dv8tion.jda.api.entities.Message;
 
 /**
@@ -30,9 +33,17 @@ import net.dv8tion.jda.api.entities.Message;
  */
 public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 
-	PrivateChannelFilterCommand(String name, PermissionLevel permission, int min, int max) {
-		super(name, permission, min, max);
-		// TODO Auto-generated constructor stub
+	final static String NAME = "filter";
+	private final Map<String, WordFilter> allFilters;
+	
+	PrivateChannelFilterCommand(Map<String, WordFilter> filters) {
+		/*
+		 * practically speaking the max params is like, 3, but if arbitrary regex is allowed
+		 * then someone should be able to use a regex with whatever amount of spaces they
+		 * want, so we do this. TODO can i still get the targetguild if i do that?
+		 */
+		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+		this.allFilters = filters;
 	}
 
 	@Override
