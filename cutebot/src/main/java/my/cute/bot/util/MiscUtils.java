@@ -76,4 +76,26 @@ public class MiscUtils {
 		return guild.getName() + " (id=" + guild.getId() + ")";
 	}
 	
+	public static String getSignature() {
+		StringBuilder builder = new StringBuilder();
+		builder.append(System.lineSeparator());
+		builder.append(System.lineSeparator());
+		
+		int randomNum = RAND.nextInt(5);
+		if(randomNum == 0) {
+			builder.append("yours truly,");
+		} else if (randomNum == 1) {
+			builder.append("sincerely,");
+		} else if (randomNum == 2) {
+			builder.append("best wishes,");
+		} else if (randomNum == 3) {
+			builder.append("warmest regards,");
+		} else {
+			builder.append("hope this helps,");
+		}
+		builder.append(System.lineSeparator());
+		builder.append("cutebot");
+		return builder.toString();
+	}
+	
 }

@@ -2,6 +2,7 @@ package my.cute.bot.handlers;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,6 +17,8 @@ import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PermissionManagerImpl;
 import my.cute.bot.commands.PrivateChannelCommand;
 import my.cute.bot.commands.PrivateChannelCommandTargeted;
+import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.util.ErrorMessages;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
@@ -32,13 +35,15 @@ public class PrivateMessageReceivedHandler {
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
 	private final DefaultGuildDatabase defaultGuilds;
+	//used for multithreaded tasks in some commands
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
-	public PrivateMessageReceivedHandler(MyListener bot, JDA jda) throws IOException {
+	public PrivateMessageReceivedHandler(MyListener bot, JDA jda, Map<String, GuildPreferences> allPrefs, 
+			Map<String, WordFilter> allFilters) throws IOException {
 		this.bot = bot;
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
-		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds);
+		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, this.executor);
 		this.permissions = new PermissionManagerImpl(this.jda);
 	}
 	

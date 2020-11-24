@@ -20,6 +20,7 @@ public class RegexValidator {
 	
 	//return true if no line in the test lines takes at least TIMEOUT_THRESHOLD time
 	//return false if at least one line does
+	//TODO need a way to abort test immediately if it's running too long (thread timeout?)
 	public static boolean regexTimeoutTest(Pattern pattern) throws IOException {
 		Stopwatch stopwatch = Stopwatch.createUnstarted();
 		try (Stream<String> lines = Files.lines(Paths.get("./testinput.txt"), StandardCharsets.UTF_8)) {

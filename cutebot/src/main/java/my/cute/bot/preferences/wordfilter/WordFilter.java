@@ -74,7 +74,7 @@ public interface WordFilter {
 	 * gets the set of actions that are taken when a user triggers the wordfilter
 	 * @return the set of actions
 	 */
-	public EnumSet<FilterResponseAction> getAction();
+	public EnumSet<FilterResponseAction> getActions();
 	
 	/**
 	 * gets the id of the guild with which this wordfilter is associated
@@ -83,6 +83,23 @@ public interface WordFilter {
 	public String getId();
 	
 	public WordFilter.Type getType();
+	
+	/**
+	 * sets the wordfilter role id. one option for a FilterResponseAction is to apply
+	 * a role to users who trigger the wordfilter (can be used to eg apply a "mute" role),
+	 * so this should be used to set the id of that role
+	 * @param id the id of the role to apply 
+	 * @throws IOException 
+	 */
+	public void setRoleId(String id) throws IOException;
+	
+	/**
+	 * gets the set wordfilter role id. one option for a FilterResponseAction is to apply
+	 * a role to users who trigger the wordfilter (can be used to eg apply a "mute" role),
+	 * so this should be used to get the id of that role.
+	 * @return the id of the role to apply
+	 */
+	public String getRoleId();
 	
 	/*
 	 * i dont like that i have save() in the implementation class and load() in a 

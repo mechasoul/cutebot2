@@ -1,6 +1,7 @@
 package my.cute.bot.handlers;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.regex.Pattern;
@@ -10,20 +11,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
-import my.cute.bot.MyListener;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.preferences.wordfilter.FilterResponseAction;
+import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.MiscUtils;
 import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 public class GuildMessageReceivedHandler {
@@ -59,17 +63,18 @@ public class GuildMessageReceivedHandler {
 	private final String id;
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
+	private final WordFilter wordFilter;
 	private final CommandSet<TextChannelCommand> commands;
 	private final Random random = new Random();
-	private final ExecutorService executor;
-	private final MyListener bot;
+	private final ExecutorService executor;;
 	private final AutonomyHandler autonomyHandler;
 	
-	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor, MyListener bot) throws IOException {
+	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
+			ExecutorService executor) throws IOException {
 		this.jda = jda;
-		this.bot = bot;
 		this.id = guild.getId();
 		this.prefs = prefs;
+		this.wordFilter = filter;
 		this.autonomyHandler = new AutonomyHandler();
 		this.executor = executor;
 		this.database = new GuildDatabaseBuilder(guild)
@@ -82,7 +87,7 @@ public class GuildMessageReceivedHandler {
 	/*
 	 * TODO this is a really big method can maybe separate it into pieces or whatever
 	 */
-	public void handle(GuildMessageReceivedEvent event) {
+	public void handle(GuildMessageReceivedEvent event) throws IOException {
 		
 		String content = event.getMessage().getContentRaw();
 		
@@ -98,6 +103,11 @@ public class GuildMessageReceivedHandler {
 					return;
 				}
 			}
+		}
+		
+		if(this.handleWordFilter(event.getMessage())) {
+			//wordfilter found a match
+			if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
 		}
 		
 		try {
@@ -139,7 +149,8 @@ public class GuildMessageReceivedHandler {
 			 * intervention
 			 */
 			logger.error(this + ": unknown IOException thrown during line processing - possible workingset inconsistency! shutting down", e);
-			this.bot.shutdown();
+			//TODO some kind of mark on the database to indicate that it should load from backup at next opportunity (maint?)
+			throw e;
 		}
 			
 		try {
@@ -230,6 +241,58 @@ public class GuildMessageReceivedHandler {
 			 * thrown from MessageaddReaction(Emote) if the emote can't be used in the given channel
 			 * do nothing
 			 */
+		}
+	}
+	
+	private boolean handleWordFilter(Message message) {
+		String filteredWord = this.wordFilter.check(message.getContentRaw());
+		if(filteredWord != null) {
+			this.applyWordFilterActions(message, filteredWord);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	//TODO add try/catch with admin notification to other actions (ban, etc)
+	private void applyWordFilterActions(final Message message, final String filteredWord) {
+		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
+		if(actions.contains(FilterResponseAction.BAN)) {
+			message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
+		} else if (actions.contains(FilterResponseAction.KICK)) {
+			message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
+		}
+		if(actions.contains(FilterResponseAction.DELETE_MESSAGE)) {
+			message.delete().queue();
+		}
+		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
+			MessageBuilder builder = new MessageBuilder();
+			builder.mention(message.getAuthor());
+			builder.append(message.getAuthor());
+			builder.append(" your message contained a flagged phrase please don't do that");
+			message.getChannel().sendMessage(builder.build()).queue();
+		}
+		if(actions.contains(FilterResponseAction.SEND_RESPONSE_PRIVATE)) {
+			MessageBuilder builder = new MessageBuilder();
+			builder.append("your message (");
+			builder.append(message.getJumpUrl());
+			builder.append(") in server '");
+			builder.append(MiscUtils.getGuildString(message.getGuild()));
+			builder.append("' contained the flagged phrase '");
+			builder.append(filteredWord);
+			builder.append("'. please don't do that");
+			builder.append(MiscUtils.getSignature());
+			message.getAuthor().openPrivateChannel()
+					.flatMap(channel -> channel.sendMessage(builder.build())).queue();
+		}
+		if(actions.contains(FilterResponseAction.ROLE)) {
+			try {
+				message.getGuild().addRoleToMember(message.getAuthor().getId(), 
+						message.getGuild().getRoleById(this.wordFilter.getRoleId())).queue();
+			} catch (IllegalArgumentException | InsufficientPermissionException | HierarchyException e) {
+				//exception thrown from addRoleToMember, indicates some issue with stored role id
+				//TODO notify cutebot admin of relevant server
+			}
 		}
 	}
 	

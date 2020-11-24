@@ -1,5 +1,7 @@
 package my.cute.bot.commands;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,25 +10,27 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.ErrorMessages;
 import net.dv8tion.jda.api.entities.Message;
 
-/*
+/**
  * changes the target guild's automatic response time, to control how frequently
  * cutebot responds to user messages without being prompted
  * 
- * use: !auto <minutes>|off [guild id]
+ * <br><br>use: !auto minutes|'off' [guild id]
  * 
- * parameter 1 is either the word "off", which turns off automatic response, or 
+ * <br><br>parameter 1 is either the word "off", which turns off automatic response, or 
  * a number of minutes in [1, 525600] (shoutouts 2 rent)
- * parameter 2 is the target guild id (can be omitted to use default guild)
+ * <br>parameter 2 is the target guild id (can be omitted to use default guild)
  */
 public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAutoCommand.class);
 
+	private final Map<String, GuildPreferences> allPrefs;
 	private final MyListener bot;
 	
-	public PrivateChannelAutoCommand(MyListener bot) {
+	public PrivateChannelAutoCommand(MyListener bot, Map<String, GuildPreferences> prefs) {
 		super("auto", PermissionLevel.ADMIN, 1, 2);
 		this.bot = bot;
+		this.allPrefs = prefs;
 	}
 	
 	/*
@@ -36,7 +40,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	 */
 	@Override
 	public void execute(Message message, String[] params, String targetGuild) {
-		GuildPreferences prefs = this.bot.getPreferences(targetGuild);
+		GuildPreferences prefs = this.allPrefs.get(targetGuild);
 		if(prefs != null) {
 			if (params[1].equals("off")) {
 				synchronized(prefs) {
@@ -57,7 +61,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 						prefs.setAutomaticResponseTime(minutes);
 						prefs.save();
 					}
-					message.getChannel().sendMessage("set automatic message time for server " + bot.getGuildString(targetGuild)
+					message.getChannel().sendMessage("set automatic message time for server " + this.bot.getGuildString(targetGuild)
 					+ " to " + params[1] + " min").queue();
 				} catch (NumberFormatException e) {
 					message.getChannel().sendMessage(ErrorMessages.invalidAutoResponseTime(params[1])).queue();

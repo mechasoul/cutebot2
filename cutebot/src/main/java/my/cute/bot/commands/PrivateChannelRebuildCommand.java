@@ -2,6 +2,7 @@ package my.cute.bot.commands;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
@@ -23,12 +24,14 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	private final JDA jda;
 	private final MyListener bot;
 	private final ExecutorService executor;
+	private final Map<String, GuildPreferences> allPrefs;
 	
-	public PrivateChannelRebuildCommand(JDA jda, MyListener bot, ExecutorService executor) {
+	public PrivateChannelRebuildCommand(JDA jda, MyListener bot, ExecutorService executor, Map<String, GuildPreferences> allPrefs) {
 		super("rebuild", PermissionLevel.DEVELOPER, 1, 2);
 		this.jda = jda;
 		this.bot = bot;
 		this.executor = executor;
+		this.allPrefs = allPrefs;
 	}
 	
 	@Override
@@ -43,7 +46,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 			this.jda.getPresence().setActivity(Activity.playing("VERY busy"));
 			
 			for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
-				GuildPreferences guildPrefs = this.bot.getPreferences(id);
+				GuildPreferences guildPrefs = this.allPrefs.get(id);
 				if(guildPrefs != null) {
 					/*
 					 * this feels terrible but idk how else to do this
@@ -76,7 +79,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 			});
 		} else {
 			String id = params[1];
-			GuildPreferences guildPrefs = this.bot.getPreferences(id);
+			GuildPreferences guildPrefs = this.allPrefs.get(id);
 			if(guildPrefs != null) {
 				if(params.length == 3) {
 					try {

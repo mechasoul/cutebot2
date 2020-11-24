@@ -22,6 +22,7 @@ public class WordFilterImpl implements WordFilter {
 	private final String id;
 	private final Path path;
 	private WordFilter.Type mode;
+	private String roleId;
 	private Set<String> filteredWords;
 	private Pattern compiledFilter;
 	private EnumSet<FilterResponseAction> responseActions;
@@ -30,15 +31,17 @@ public class WordFilterImpl implements WordFilter {
 		this.id = id;
 		this.path = path;
 		this.mode = WordFilter.Type.BASIC;
+		this.roleId = "";
 		this.filteredWords = new HashSet<String>(3);
 		this.compiledFilter = null;
 		this.responseActions = FilterResponseAction.DEFAULT;
 	}
 	
-	WordFilterImpl(String id, Path path, WordFilter.Type type, String[] words, String pattern, EnumSet<FilterResponseAction> actions) {
+	WordFilterImpl(String id, Path path, WordFilter.Type type, String roleId, String[] words, String pattern, EnumSet<FilterResponseAction> actions) {
 		this.id = id;
 		this.path = path;
 		this.mode = type;
+		this.roleId = roleId;
 		this.filteredWords = new HashSet<String>((words.length * 4 / 3) + 1);
 		for(String word : words) {
 			this.filteredWords.add(word);
@@ -136,7 +139,7 @@ public class WordFilterImpl implements WordFilter {
 	}
 
 	@Override
-	public EnumSet<FilterResponseAction> getAction() {
+	public EnumSet<FilterResponseAction> getActions() {
 		return this.responseActions;
 	}
 	
@@ -148,6 +151,17 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public WordFilter.Type getType() {
 		return this.mode;
+	}
+	
+	@Override
+	public void setRoleId(String id) throws IOException {
+		this.roleId = id;
+		this.save();
+	}
+
+	@Override
+	public String getRoleId() {
+		return this.roleId;
 	}
 	
 	/**
@@ -174,6 +188,8 @@ public class WordFilterImpl implements WordFilter {
 				StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			writer.append(this.getType().name());
 			writer.newLine();
+			writer.append(this.roleId);
+			writer.newLine();
 			writer.append(String.join(",", this.filteredWords));
 			writer.newLine();
 			writer.append(this.compiledFilter == null ? EMPTY_COMPILED_FILTER_TOKEN : this.compiledFilter.pattern());
@@ -181,4 +197,6 @@ public class WordFilterImpl implements WordFilter {
 			writer.append(this.responseActions.stream().map(action -> action.name()).collect(Collectors.joining(",")));
 		}
 	}
+
+	
 }

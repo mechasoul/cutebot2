@@ -31,7 +31,7 @@ public class GuildPreferencesFactory {
 		return new GuildPreferencesImpl(id);
 	}
 	
-	public static GuildPreferences loadGuildPreferences(String id) {
+	public static GuildPreferences load(String id) {
 		Path preferencesFile = PathUtils.getPreferencesFile(id);
 		if(Files.exists(preferencesFile)) {
 			try (BufferedReader reader = Files.newBufferedReader(preferencesFile, StandardCharsets.UTF_8)) {
