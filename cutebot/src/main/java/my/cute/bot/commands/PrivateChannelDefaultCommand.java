@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.util.ErrorMessages;
+import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -59,13 +59,13 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 					message.getChannel().sendMessage("your default server has been set to '" + MiscUtils
 							.getGuildString(this.jda.getGuildById(params[1])) + "'").queue();
 				} else {
-					message.getChannel().sendMessage(ErrorMessages.invalidGuild(params[1])).queue();
+					message.getChannel().sendMessage(StandardMessages.invalidGuild(params[1])).queue();
 				}
 			}
 		} catch (IOException e) {
 			logger.warn("unknown IOException thrown when trying to set default server. user: '" + message.getAuthor() 
 				+ "', message: '" + message.getContentRaw() + "'");
-			message.getChannel().sendMessage(ErrorMessages.unknownError()).queue();
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 			
 		}
 	}

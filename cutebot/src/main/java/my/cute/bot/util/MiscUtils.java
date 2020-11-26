@@ -69,7 +69,7 @@ public class MiscUtils {
 	}
 	
 	public static String[] getWords(Message message) {
-		return message.getContentDisplay().split("\\s");
+		return message.getContentRaw().trim().split("\\s+");
 	}
 	
 	public static String getGuildString(Guild guild) {

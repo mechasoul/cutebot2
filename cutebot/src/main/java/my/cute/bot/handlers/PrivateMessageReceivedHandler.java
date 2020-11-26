@@ -19,7 +19,7 @@ import my.cute.bot.commands.PrivateChannelCommand;
 import my.cute.bot.commands.PrivateChannelCommandTargeted;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.wordfilter.WordFilter;
-import my.cute.bot.util.ErrorMessages;
+import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -66,7 +66,7 @@ public class PrivateMessageReceivedHandler {
 		}
 		
 		if(command == null) {
-			event.getChannel().sendMessage(ErrorMessages.unknownCommand(params[0])).queue();
+			event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0])).queue();
 			return;
 		}
 		
@@ -82,26 +82,26 @@ public class PrivateMessageReceivedHandler {
 						targetGuild = this.registerSingleServerDefaultGuild(event.getAuthor());
 						if(targetGuild == null) {
 							//no target guild found, can't continue
-							event.getChannel().sendMessage(ErrorMessages.noTargetGuild()).queue();
+							event.getChannel().sendMessage(StandardMessages.noTargetGuild()).queue();
 							return;
 						} 
 					} 
 					//validate the stored default guild
 					if(this.jda.getGuildById(targetGuild) == null) {
-						event.getChannel().sendMessage(ErrorMessages.invalidGuild(targetGuild)).queue();
+						event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuild)).queue();
 						this.defaultGuilds.clearDefaultGuildId(event.getAuthor());
 					}
 				} catch (IOException e) {
 					logger.warn(this + ": general IOException thrown during check for default guild! author: '" + event.getAuthor() 
 						+ "', message: '" + event.getMessage().getContentRaw() + "'", e);
-					event.getChannel().sendMessage(ErrorMessages.unknownError()).queue();
+					event.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 				}
 			}
 			
 			//final validity check, ensure they're in the given guild
 			//requires GUILD_MEMBERS gateway intent i think
 			if(!this.jda.getGuildById(targetGuild).isMember(event.getAuthor())) {
-				event.getChannel().sendMessage(ErrorMessages.invalidGuild(targetGuild)).queue();
+				event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuild)).queue();
 				return;
 			}
 			/*
@@ -116,20 +116,20 @@ public class PrivateMessageReceivedHandler {
 				if(command.hasCorrectParameterCount(params)) {
 					((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);
 				} else {
-					event.getChannel().sendMessage(ErrorMessages.invalidSyntax(command.getName())).queue();
+					event.getChannel().sendMessage(StandardMessages.invalidSyntax(command.getName())).queue();
 				}
 			} else {
-				event.getChannel().sendMessage(ErrorMessages.unknownCommand(params[0])).queue();
+				event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0])).queue();
 			}
 		} else {
 			if(this.permissions.hasPermission(event.getAuthor(), command.getRequiredPermissionLevel())) {
 				if(command.hasCorrectParameterCount(params)) {
 					command.execute(event.getMessage(), params);
 				} else {
-					event.getChannel().sendMessage(ErrorMessages.invalidSyntax(command.getName())).queue();
+					event.getChannel().sendMessage(StandardMessages.invalidSyntax(command.getName())).queue();
 				}
 			} else {
-				event.getChannel().sendMessage(ErrorMessages.unknownCommand(params[0])).queue();
+				event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0])).queue();
 			}
 		}
 	}

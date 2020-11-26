@@ -126,14 +126,14 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public String get() {
 		if(this.mode == WordFilter.Type.BASIC) {
-			return String.join(",", this.filteredWords);
+			return String.join(",", this.filteredWords.stream().sorted().collect(Collectors.toList()));
 		} else /* this.mode == WordFilter.Type.REGEX */ {
 			return this.compiledFilter.pattern();
 		}
 	}
 
 	@Override
-	public synchronized void setAction(EnumSet<FilterResponseAction> actions) throws IOException {
+	public synchronized void setActions(EnumSet<FilterResponseAction> actions) throws IOException {
 		this.responseActions = EnumSet.copyOf(actions);
 		this.save();
 	}
@@ -146,6 +146,16 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public String getId() {
 		return this.id;
+	}
+	
+	@Override
+	public void setType(WordFilter.Type type) throws IOException {
+		Type previousType = this.mode;
+		this.mode = type;
+		if(previousType == Type.REGEX && type == Type.BASIC) {
+			this.updateCompiledFilter();
+		}
+		this.save();
 	}
 	
 	@Override

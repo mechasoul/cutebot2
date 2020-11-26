@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
-import my.cute.bot.util.ErrorMessages;
+import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.entities.Message;
 
 /**
@@ -55,7 +55,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 				try {
 					int minutes = Integer.parseInt(params[1]);
 					if(minutes < 1 || minutes > 525600) {
-						message.getChannel().sendMessage(ErrorMessages.invalidAutoResponseTime(params[1])).queue();
+						message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
 						return;
 					}
 					synchronized(prefs) {
@@ -65,7 +65,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 					message.getChannel().sendMessage("set automatic message time for server " + this.bot.getGuildString(targetGuild)
 					+ " to " + params[1] + " min").queue();
 				} catch (NumberFormatException e) {
-					message.getChannel().sendMessage(ErrorMessages.invalidAutoResponseTime(params[1])).queue();
+					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
 				}
 			}
 		} else {
@@ -75,7 +75,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 			 * possible somehow that i cant think of
 			 */
 			logger.warn(this + ": couldn't find prefs for valid guild id '" + targetGuild + "'");
-			message.getChannel().sendMessage(ErrorMessages.unknownError()).queue();
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		}
 	}
 	

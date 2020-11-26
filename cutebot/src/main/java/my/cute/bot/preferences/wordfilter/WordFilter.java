@@ -68,7 +68,7 @@ public interface WordFilter {
 	 * @param actions the set of actions to take when a user triggers the wordfilter
 	 * @throws IOException 
 	 */
-	public void setAction(EnumSet<FilterResponseAction> actions) throws IOException;
+	public void setActions(EnumSet<FilterResponseAction> actions) throws IOException;
 	
 	/**
 	 * gets the set of actions that are taken when a user triggers the wordfilter
@@ -83,6 +83,8 @@ public interface WordFilter {
 	public String getId();
 	
 	public WordFilter.Type getType();
+	
+	void setType(Type type) throws IOException;
 	
 	/**
 	 * sets the wordfilter role id. one option for a FilterResponseAction is to apply
@@ -112,5 +114,7 @@ public interface WordFilter {
 	 * @throws IOException 
 	 */
 	public void save() throws IOException;
+
+	
 
 }

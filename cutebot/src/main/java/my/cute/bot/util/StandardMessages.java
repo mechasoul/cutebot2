@@ -1,6 +1,6 @@
 package my.cute.bot.util;
 
-public class ErrorMessages {
+public class StandardMessages {
 	
 	public static String unknownCommand(String givenCommand) {
 		return "invalid command: '" + givenCommand + "'. try !help for a list of commands";
@@ -25,6 +25,10 @@ public class ErrorMessages {
 
 	public static String invalidAutoResponseTime(String givenMinutes) {
 		return "invalid automatic response time: '" + givenMinutes + "'. please use a number from 1 to 525600";
+	}
+	
+	public static String wordfilterModified() {
+		return "wordfilter has been successfully modified";
 	}
 	
 }
