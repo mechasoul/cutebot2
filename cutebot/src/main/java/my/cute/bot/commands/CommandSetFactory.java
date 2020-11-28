@@ -19,13 +19,12 @@ public class CommandSetFactory {
 	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(JDA jda, MyListener bot, 
 			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, ExecutorService executor) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
-		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(bot, allPrefs));
+		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
 		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand(jda));
 		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(jda, defaultGuilds));
 		set.put(PrivateChannelExitCommand.NAME, new PrivateChannelExitCommand(bot));
 		set.put(PrivateChannelExportCommand.NAME, new PrivateChannelExportCommand(bot));
-		//TODO 
-		//set.put("filter", new PrivateChannelFilterCommand());
+		set.put(PrivateChannelFilterCommand.NAME, new PrivateChannelFilterCommand(allFilters));
 		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand(jda));
 		set.put(PrivateChannelMaintCommand.NAME, new PrivateChannelMaintCommand(bot));
 		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(jda, bot, executor, allPrefs));

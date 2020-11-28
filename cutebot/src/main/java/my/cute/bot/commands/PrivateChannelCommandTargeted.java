@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
 public abstract class PrivateChannelCommandTargeted extends PrivateChannelCommand {
@@ -21,7 +22,7 @@ public abstract class PrivateChannelCommandTargeted extends PrivateChannelComman
 	 * require a specific target guild on execution, so we use a slightly different execute
 	 * method
 	 */
-	public abstract void execute(Message message, String[] params, String targetGuild);
+	public abstract void execute(Message message, String[] params, Guild targetGuild);
 
 	@Override
 	public void execute(Message message, String[] params) {

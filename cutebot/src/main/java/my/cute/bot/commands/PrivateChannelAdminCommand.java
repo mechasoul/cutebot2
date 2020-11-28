@@ -8,7 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
-import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
 /**
@@ -42,25 +42,25 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	final static String NAME = "admin";
 	
 	private final PermissionManager allPermissions;
-	private final JDA jda;
 	
-	PrivateChannelAdminCommand(PermissionManager perms, JDA jda) {
+	PrivateChannelAdminCommand(PermissionManager perms) {
 		super(NAME, PermissionLevel.ADMIN, 1, 3);
 		this.allPermissions = perms;
-		this.jda = jda;
 	}
 
 	@Override
-	public void execute(Message message, String[] params, String targetGuild) {
+	public void execute(Message message, String[] params, Guild targetGuild) {
 		try {
 			if(params[1].equals("add")) {
 				if(params.length >= 3) {
 					//ensure given id is a member in target guild
 					try {
-						this.jda.getGuildById(targetGuild).retrieveMemberById(params[2], false).queue(member ->
+						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
+						//this is fine if ugly
+						targetGuild.retrieveMemberById(params[2], false).queue(member ->
 						{
 							try {
-								boolean newAdmin = this.allPermissions.add(member.getId(), targetGuild, PermissionLevel.ADMIN);
+								boolean newAdmin = this.allPermissions.add(member.getUser(), targetGuild, PermissionLevel.ADMIN);
 								if(newAdmin) {
 									message.getChannel().sendMessage("user " + MiscUtils.getUserString(member.getUser()) 
 											+ " now has cutebot admin privileges in server " + MiscUtils.getGuildString(member.getGuild())).queue();
@@ -73,10 +73,10 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 							}
 							
 						}, 
-						error -> message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue()
+						error -> message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild.getId())).queue()
 						);
 					} catch (NumberFormatException e) {
-						message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue();
+						message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild.getId())).queue();
 					} catch (UncheckedIOException e) {
 						throw e.getCause();
 					}
@@ -95,7 +95,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
 		} catch (IOException e) {
-			logger.warn(this + ": unknown IOException during command execution", e);
+			logger.warn(this + ": unknown IOException during command execution! msg: " + message, e);
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		}
 	}

@@ -71,36 +71,40 @@ public class PrivateMessageReceivedHandler {
 		
 		if(command instanceof PrivateChannelCommandTargeted) {
 			//check for explicitly provided guild
-			String targetGuild = params[params.length - 1];
-			if(this.jda.getGuildById(targetGuild) == null) {
+			String targetGuildId = params[params.length - 1];
+			Guild targetGuild = this.jda.getGuildById(targetGuildId);
+			if(targetGuild == null) {
 				try {
 					//check for default guild
-					targetGuild = this.defaultGuilds.getDefaultGuildId(event.getAuthor());
-					if(targetGuild == null) {
+					targetGuildId = this.defaultGuilds.getDefaultGuildId(event.getAuthor());
+					if(targetGuildId == null) {
 						//no found default guild. check if they're in only one guild
-						targetGuild = this.registerSingleServerDefaultGuild(event.getAuthor());
-						if(targetGuild == null) {
+						targetGuildId = this.registerSingleServerDefaultGuild(event.getAuthor());
+						if(targetGuildId == null) {
 							//no target guild found, can't continue
 							event.getChannel().sendMessage(StandardMessages.noTargetGuild()).queue();
 							return;
 						} 
 					} 
+					targetGuild = this.jda.getGuildById(targetGuildId);
 					//validate the stored default guild
-					if(this.jda.getGuildById(targetGuild) == null) {
-						event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuild)).queue();
+					if(targetGuild == null) {
+						event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuildId)).queue();
 						this.defaultGuilds.clearDefaultGuildId(event.getAuthor());
+						return;
 					}
 				} catch (IOException e) {
 					logger.warn(this + ": general IOException thrown during check for default guild! author: '" + event.getAuthor() 
 						+ "', message: '" + event.getMessage().getContentRaw() + "'", e);
 					event.getChannel().sendMessage(StandardMessages.unknownError()).queue();
+					return;
 				}
 			}
 			
 			//final validity check, ensure they're in the given guild
 			//requires GUILD_MEMBERS gateway intent i think
-			if(!this.jda.getGuildById(targetGuild).isMember(event.getAuthor())) {
-				event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuild)).queue();
+			if(!targetGuild.isMember(event.getAuthor())) {
+				event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuildId)).queue();
 				return;
 			}
 			/*
@@ -111,7 +115,7 @@ public class PrivateMessageReceivedHandler {
 			 * 
 			 * also any other general command checks?
 			 */
-			if(this.permissions.hasPermission(event.getAuthor().getId(), targetGuild, command.getRequiredPermissionLevel())) {
+			if(this.permissions.hasPermission(event.getAuthor().getId(), targetGuildId, command.getRequiredPermissionLevel())) {
 				if(command.hasCorrectParameterCount(params)) {
 					((PrivateChannelCommandTargeted) command).execute(event.getMessage(), params, targetGuild);
 				} else {

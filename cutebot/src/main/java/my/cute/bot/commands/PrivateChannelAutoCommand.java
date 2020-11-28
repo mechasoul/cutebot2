@@ -5,9 +5,10 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
 /**
@@ -26,11 +27,9 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	final static String NAME = "auto";
 
 	private final Map<String, GuildPreferences> allPrefs;
-	private final MyListener bot;
 	
-	public PrivateChannelAutoCommand(MyListener bot, Map<String, GuildPreferences> prefs) {
+	public PrivateChannelAutoCommand(Map<String, GuildPreferences> prefs) {
 		super(NAME, PermissionLevel.ADMIN, 1, 2);
-		this.bot = bot;
 		this.allPrefs = prefs;
 	}
 	
@@ -40,8 +39,8 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	 * auto response if its turned off
 	 */
 	@Override
-	public void execute(Message message, String[] params, String targetGuild) {
-		GuildPreferences prefs = this.allPrefs.get(targetGuild);
+	public void execute(Message message, String[] params, Guild targetGuild) {
+		GuildPreferences prefs = this.allPrefs.get(targetGuild.getId());
 		if(prefs != null) {
 			if (params[1].equals("off")) {
 				synchronized(prefs) {
@@ -49,7 +48,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 					prefs.save();
 				}
 				message.getChannel().sendMessage("disabled automatic messages for server " 
-						+ this.bot.getGuildString(targetGuild)).queue();
+						+ MiscUtils.getGuildString(targetGuild)).queue();
 				
 			} else {
 				try {
@@ -62,7 +61,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 						prefs.setAutomaticResponseTime(minutes);
 						prefs.save();
 					}
-					message.getChannel().sendMessage("set automatic message time for server " + this.bot.getGuildString(targetGuild)
+					message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
 					+ " to " + params[1] + " min").queue();
 				} catch (NumberFormatException e) {
 					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();

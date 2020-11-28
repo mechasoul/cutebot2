@@ -9,12 +9,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.MyListener;
 import my.cute.bot.preferences.wordfilter.FilterResponseAction;
 import my.cute.bot.preferences.wordfilter.WordFilter;
+import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 
@@ -52,10 +52,8 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 	private final static Pattern ACTION_FLAGS = Pattern.compile("[1234567]+");
 	
 	private final Map<String, WordFilter> allFilters;
-	private final MyListener bot;
-	private final JDA jda;
 	
-	PrivateChannelFilterCommand(Map<String, WordFilter> filters, MyListener bot, JDA jda) {
+	PrivateChannelFilterCommand(Map<String, WordFilter> filters) {
 		/*
 		 * practically speaking the max params is like, 3, but if arbitrary regex is allowed
 		 * then someone should be able to use a regex with whatever amount of spaces they
@@ -63,16 +61,14 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		 */
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allFilters = filters;
-		this.bot = bot;
-		this.jda = jda;
 	}
 
 	@Override
-	public void execute(Message message, String[] params, String targetGuild) {
-		WordFilter filter = this.allFilters.get(targetGuild);
+	public void execute(Message message, String[] params, Guild targetGuild) {
+		WordFilter filter = this.allFilters.get(targetGuild.getId());
 		//should only have valid targetguild, but make check anyway
 		if(filter == null) {
-			logger.warn(this + ": guild id '" + targetGuild + "' had no mapped wordfilter? msg: " + message);
+			logger.warn(this + ": guild '" + targetGuild + "' had no mapped wordfilter? msg: " + message);
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 			return;
 		}
@@ -142,7 +138,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if (params[1].equals("role")) {
 				if(params.length >= 3) {
-					Role newRole = this.jda.getGuildById(targetGuild).getRoleById(params[2]);
+					Role newRole = targetGuild.getRoleById(params[2]);
 					if(newRole != null) {
 						filter.setRoleId(params[2]);
 						message.getChannel().sendMessage("set role '" + newRole.getName() + "' (id=" + newRole.getId()
@@ -153,13 +149,13 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 						}
 					} else {
 						message.getChannel().sendMessage("no role found with id '" + params[2] 
-								+ "' in server '" + this.bot.getGuildString(targetGuild)).queue();
+								+ "' in server " + MiscUtils.getGuildString(targetGuild)).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
 			} else if (params[1].equals("view")) {
-				this.getFormattedWordfilterView(filter).forEach(builtMsg -> message.getChannel().sendMessage(builtMsg).queue());
+				this.getFormattedWordfilterView(filter, targetGuild).forEach(builtMsg -> message.getChannel().sendMessage(builtMsg).queue());
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
@@ -169,9 +165,9 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		}
 	}
 	
-	private Queue<Message> getFormattedWordfilterView(WordFilter filter) {
+	private Queue<Message> getFormattedWordfilterView(WordFilter filter, Guild guild) {
 		MessageBuilder builder = new MessageBuilder();
-		builder.append("wordfilter for server '" + this.bot.getGuildString(filter.getId()) + "'");
+		builder.append("wordfilter for server " + MiscUtils.getGuildString(guild));
 		builder.append(System.lineSeparator());
 		builder.append(System.lineSeparator());
 		builder.append("mode: " + filter.getType().name().toLowerCase());
@@ -192,7 +188,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			builder.append("role to apply when filter is triggered: " );
 			//guild should never be null unless something really weird happens
 			//possible that the role is null (eg role deleted since id was set)
-			Role role = this.jda.getGuildById(filter.getId()).getRoleById(filter.getRoleId());
+			Role role = guild.getRoleById(filter.getRoleId());
 			if(role != null) {
 				builder.append(role.getName());
 				builder.append(" (id=");
