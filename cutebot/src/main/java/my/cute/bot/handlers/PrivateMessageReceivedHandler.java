@@ -14,13 +14,12 @@ import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.DefaultGuildDatabase;
 import my.cute.bot.commands.PermissionManager;
-import my.cute.bot.commands.PermissionManagerImpl;
 import my.cute.bot.commands.PrivateChannelCommand;
 import my.cute.bot.commands.PrivateChannelCommandTargeted;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.wordfilter.WordFilter;
-import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -39,12 +38,12 @@ public class PrivateMessageReceivedHandler {
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda, Map<String, GuildPreferences> allPrefs, 
-			Map<String, WordFilter> allFilters) throws IOException {
+			Map<String, WordFilter> allFilters, PermissionManager permissions) throws IOException {
 		this.bot = bot;
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
 		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, this.executor);
-		this.permissions = new PermissionManagerImpl(this.jda);
+		this.permissions = permissions;
 	}
 	
 	/*

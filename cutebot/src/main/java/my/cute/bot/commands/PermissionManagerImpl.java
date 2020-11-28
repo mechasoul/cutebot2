@@ -32,7 +32,7 @@ public class PermissionManagerImpl implements PermissionManager {
 		try {
 			this.jda.getGuilds().forEach(guild -> {
 				try {
-					this.permissions.put(guild.getId(), new PermissionDatabaseImpl(guild.getId()));
+					this.permissions.put(guild.getId(), PermissionDatabaseFactory.load(guild.getId()));
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				}
@@ -40,7 +40,7 @@ public class PermissionManagerImpl implements PermissionManager {
 		} catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
-		this.permissions.put(GLOBAL_KEY, new PermissionDatabaseImpl(GLOBAL_KEY));
+		this.permissions.put(GLOBAL_KEY, PermissionDatabaseFactory.load(GLOBAL_KEY));
 	}
 
 	@Override
@@ -124,7 +124,7 @@ public class PermissionManagerImpl implements PermissionManager {
 	public boolean hasPermission(String userId, String guildId, PermissionLevel permission) {
 		PermissionDatabase permDb = this.permissions.get(guildId);
 		if(permDb != null) {
-			 return permDb.hasPermission(userId, permission);
+			 return (permDb.hasPermission(userId, permission) || this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission));
 		} else {
 			throw new IllegalArgumentException(this + ": called hasPermission with invalid guild "
 					+ "id. params userId='" + userId + "', "
@@ -139,7 +139,7 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean addGuild(String guildId) throws IOException {
-		return this.permissions.putIfAbsent(guildId, new PermissionDatabaseImpl(guildId)) == null;
+		return this.permissions.putIfAbsent(guildId, PermissionDatabaseFactory.load(guildId)) == null;
 	}
 
 	@Override

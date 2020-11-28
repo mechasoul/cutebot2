@@ -11,6 +11,9 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.commands.PermissionLevel;
+import my.cute.bot.commands.PermissionManager;
+import my.cute.bot.commands.PermissionManagerImpl;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
@@ -64,6 +67,7 @@ public class MyListener extends ListenerAdapter {
 	private final ConcurrentFinalEntryMap<String, GuildPreferences> allPrefs;
 	private final ConcurrentFinalEntryMap<String, WordFilter> allFilters;
 	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
+	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
 	
@@ -98,6 +102,7 @@ public class MyListener extends ListenerAdapter {
 		int numActiveGuilds = this.jda.getGuilds().size();
 		this.allPrefs = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.allFilters = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.permissions = new PermissionManagerImpl(this.jda);
 		this.guildMessageHandlers = new ConcurrentHashMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
@@ -109,6 +114,13 @@ public class MyListener extends ListenerAdapter {
 					this.allPrefs.put(guild.getId(), prefs);
 					this.allFilters.put(guild.getId(), filter);
 					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, filter, this.taskScheduler));
+					guild.retrieveOwner(false).queue(owner -> {
+						try {
+							this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						}
+					});
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				}
@@ -117,7 +129,7 @@ public class MyListener extends ListenerAdapter {
 			throw e.getCause();
 		}
 		
-		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters);
+		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters, this.permissions);
 		
 		
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
@@ -169,6 +181,7 @@ public class MyListener extends ListenerAdapter {
 	}
 	
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that
+	//TODO anything else to do on guuild join?
 	@Override
 	public void onGuildJoin(GuildJoinEvent event) {
 		boolean newGuild = false;
@@ -185,6 +198,14 @@ public class MyListener extends ListenerAdapter {
 						event.getGuild() + "', can't continue!", e);
 				this.shutdown();
 			}
+		}
+
+		try {
+			this.permissions.addGuild(event.getGuild());
+		} catch (IOException e) {
+			logger.error(this + ": encountered IOException when trying to construct PermissionDatabase for new guild '"
+					+ event.getGuild() + "', can't continue! ", e);
+			this.shutdown();
 		}
 		
 		if(newGuild) {

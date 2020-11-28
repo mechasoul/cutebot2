@@ -15,6 +15,10 @@ public class StandardMessages {
 		return "invalid server: '" + guildId + "'";
 	}
 	
+	public static String invalidMember(String userId, String guildId) {
+		return "no member found with id '" + userId + "' in server '" + guildId + "'";
+	}
+	
 	public static String unknownError() {
 		return "an unknown error has occurred. please call an adult";
 	}

@@ -4,16 +4,13 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import gnu.trove.set.TLongSet;
-import gnu.trove.set.hash.TLongHashSet;
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.entities.User;
 
@@ -37,17 +34,18 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 	 * later
 	 */
 	
+	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PermissionDatabaseImpl.class);
 
 	private final String id;
 	private final Path path;
 	private final TLongSet users;
 	
-	PermissionDatabaseImpl(String id) throws IOException {
+	PermissionDatabaseImpl(String id, TLongSet users) throws IOException {
 		this.id = id;
 		this.path = PathUtils.getPermissionsFile(this.id);
 		Files.createDirectories(this.path.getParent());
-		this.users = this.load();
+		this.users = users;
 	}
 	
 	@Override
@@ -83,6 +81,11 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 	public synchronized boolean hasPermission(User user, PermissionLevel permission) {
 		return this.hasPermission(user.getId(), permission);
 	}
+	
+	@Override
+	public synchronized boolean isEmpty() {
+		return this.users.isEmpty();
+	}
 
 	@Override
 	public String getId() {
@@ -101,16 +104,6 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 			});
 			writer.append(data.toString().trim());
 		}
-	}
-	
-	private synchronized TLongSet load() throws IOException {
-		TLongSet users = new TLongHashSet(2);
-		try (Stream<String> lines = Files.lines(this.path, StandardCharsets.UTF_8)) {
-			lines.forEach(userId -> users.add(Long.parseLong(userId)));
-		} catch (NoSuchFileException e) {
-			logger.info(this + ": NoSuchFileException when trying to load permissions list (first run?)");
-		}
-		return users;
 	}
 	
 	@Override

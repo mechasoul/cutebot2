@@ -54,6 +54,8 @@ public interface PermissionDatabase {
 	
 	public boolean hasPermission(User user, PermissionLevel permission);
 	
+	public boolean isEmpty();
+	
 	/*
 	 * return the string associated with this database
 	 */

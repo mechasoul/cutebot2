@@ -17,6 +17,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class MiscUtils {
@@ -74,6 +75,10 @@ public class MiscUtils {
 	
 	public static String getGuildString(Guild guild) {
 		return guild.getName() + " (id=" + guild.getId() + ")";
+	}
+	
+	public static String getUserString(User user) {
+		return user.getName() + user.getDiscriminator() + " (id=" + user.getId() + ")";
 	}
 	
 	public static String getSignature() {
