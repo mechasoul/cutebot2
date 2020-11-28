@@ -2,6 +2,8 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 
+import com.google.common.collect.ImmutableSet;
+
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
@@ -89,4 +91,8 @@ public interface PermissionManager {
 	public boolean removeGuild(String guildId);
 	
 	public boolean removeGuild(Guild guild);
+	
+	public ImmutableSet<Long> getAdmins(String guildId);
+	
+	public int getSize(String guildId);
 }

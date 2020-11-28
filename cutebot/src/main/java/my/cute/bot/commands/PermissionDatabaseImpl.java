@@ -10,6 +10,8 @@ import java.nio.file.StandardOpenOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableSet;
+
 import gnu.trove.set.TLongSet;
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.entities.User;
@@ -85,6 +87,21 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 	@Override
 	public synchronized boolean isEmpty() {
 		return this.users.isEmpty();
+	}
+	
+	@Override
+	public synchronized ImmutableSet<Long> getUsersWithPermission(PermissionLevel permission) {
+		ImmutableSet.Builder<Long> builder =  ImmutableSet.builderWithExpectedSize(this.users.size());
+		this.users.forEach(user -> {
+			builder.add(user);
+			return true;
+		});
+		return builder.build();
+	}
+	
+	@Override
+	public int size() {
+		return this.users.size();
 	}
 
 	@Override

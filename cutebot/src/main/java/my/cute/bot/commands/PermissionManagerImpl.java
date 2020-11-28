@@ -8,6 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableSet;
+
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -17,6 +19,7 @@ public class PermissionManagerImpl implements PermissionManager {
 	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PermissionManagerImpl.class);
 	private final static String GLOBAL_KEY = "global";
+	private final static int MAX_ADMINS = 30;
 
 	/*
 	 * structure for holding cutebot permissions
@@ -45,7 +48,11 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean add(String userId, PermissionLevel permission) throws IOException {
-		return this.permissions.get(GLOBAL_KEY).add(userId, permission);
+		if(this.permissions.get(GLOBAL_KEY).size() >= MAX_ADMINS) {
+			return false;
+		} else {
+			return this.permissions.get(GLOBAL_KEY).add(userId, permission);
+		}
 	}
 	
 	@Override
@@ -64,7 +71,11 @@ public class PermissionManagerImpl implements PermissionManager {
 	public boolean add(String userId, String guildId, PermissionLevel permission) throws IOException {
 		PermissionDatabase permDb = this.permissions.get(guildId);
 		if(permDb != null) {
-			 return permDb.add(userId, permission);
+			if(permDb.size() >= MAX_ADMINS) {
+				return false;
+			} else {
+				return permDb.add(userId, permission);
+			}
 		} else {
 			throw new IllegalArgumentException(this + ": called add with invalid guild id. params "
 					+ "userId='" + userId + "', "
@@ -158,6 +169,26 @@ public class PermissionManagerImpl implements PermissionManager {
 	@Override
 	public boolean removeGuild(Guild guild) {
 		return this.removeGuild(guild.getId());
+	}
+	
+	@Override
+	public ImmutableSet<Long> getAdmins(String guildId) {
+		PermissionDatabase db = this.permissions.get(guildId);
+		if(db != null) {
+			return db.getUsersWithPermission(PermissionLevel.ADMIN);
+		} else {
+			throw new IllegalArgumentException("no permission database with id '" + guildId + "'");
+		}
+	}
+	
+	@Override
+	public int getSize(String guildId) {
+		PermissionDatabase db = this.permissions.get(guildId);
+		if(db != null) {
+			return db.size();
+		} else {
+			throw new IllegalArgumentException("no permission database with id '" + guildId + "'");
+		}
 	}
 	
 	public String toString() {

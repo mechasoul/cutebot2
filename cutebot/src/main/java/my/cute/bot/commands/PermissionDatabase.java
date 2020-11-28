@@ -2,6 +2,8 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 
+import com.google.common.collect.ImmutableSet;
+
 import net.dv8tion.jda.api.entities.User;
 
 public interface PermissionDatabase {
@@ -55,6 +57,15 @@ public interface PermissionDatabase {
 	public boolean hasPermission(User user, PermissionLevel permission);
 	
 	public boolean isEmpty();
+	
+	/**
+	 * gets the set of all users in the database who have the given permission level
+	 * @param permission the permission level users must have to be in the returned set
+	 * @return an immutable view of all users in the database with the given permission level
+	 */
+	public ImmutableSet<Long> getUsersWithPermission(PermissionLevel permission);
+	
+	public int size();
 	
 	/*
 	 * return the string associated with this database

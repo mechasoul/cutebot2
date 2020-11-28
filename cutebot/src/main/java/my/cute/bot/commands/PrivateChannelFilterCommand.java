@@ -155,7 +155,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
 			} else if (params[1].equals("view")) {
-				this.getFormattedWordfilterView(filter, targetGuild).forEach(builtMsg -> message.getChannel().sendMessage(builtMsg).queue());
+				MiscUtils.sendMessages(message.getChannel(), this.getFormattedWordfilterMessages(filter, targetGuild));
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
@@ -165,7 +165,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		}
 	}
 	
-	private Queue<Message> getFormattedWordfilterView(WordFilter filter, Guild guild) {
+	private Queue<Message> getFormattedWordfilterMessages(WordFilter filter, Guild guild) {
 		MessageBuilder builder = new MessageBuilder();
 		builder.append("wordfilter for server " + MiscUtils.getGuildString(guild));
 		builder.append(System.lineSeparator());

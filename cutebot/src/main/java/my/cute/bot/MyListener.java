@@ -202,7 +202,14 @@ public class MyListener extends ListenerAdapter {
 
 		try {
 			this.permissions.addGuild(event.getGuild());
-		} catch (IOException e) {
+			event.getGuild().retrieveOwner(false).queue(owner -> {
+				try {
+					this.permissions.add(owner.getUser(), event.getGuild(), PermissionLevel.ADMIN);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		} catch (IOException | UncheckedIOException e) {
 			logger.error(this + ": encountered IOException when trying to construct PermissionDatabase for new guild '"
 					+ event.getGuild() + "', can't continue! ", e);
 			this.shutdown();

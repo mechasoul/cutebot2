@@ -2,14 +2,19 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.Queue;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.User;
 
 /**
  * command for managing user permissions. users have the authority to add and remove
@@ -42,10 +47,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	final static String NAME = "admin";
 	
 	private final PermissionManager allPermissions;
+	private final JDA jda;
 	
-	PrivateChannelAdminCommand(PermissionManager perms) {
+	PrivateChannelAdminCommand(PermissionManager perms, JDA jda) {
 		super(NAME, PermissionLevel.ADMIN, 1, 3);
 		this.allPermissions = perms;
+		this.jda = jda;
 	}
 
 	@Override
@@ -53,8 +60,8 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 		try {
 			if(params[1].equals("add")) {
 				if(params.length >= 3) {
-					//ensure given id is a member in target guild
 					try {
+						//ensure given id is a member in target guild
 						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
 						//this is fine if ugly
 						targetGuild.retrieveMemberById(params[2], false).queue(member ->
@@ -85,12 +92,42 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if(params[1].equals("remove")) {
 				if(params.length >= 3) {
-					
+					try {
+						//ensure given id is a member in target guild
+						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
+						//this is fine if ugly
+						targetGuild.retrieveMemberById(params[2], false).queue(member -> 
+						{
+							try {
+								if(member.equals(targetGuild.getOwner())) {
+									message.getChannel().sendMessage("error: can't remove admin privileges from server owner").queue();
+								} else {
+									boolean removedAdmin = this.allPermissions.remove(member.getUser(), targetGuild, PermissionLevel.ADMIN);
+									if(removedAdmin) {
+										message.getChannel().sendMessage("removed admin privileges from user " + MiscUtils.getUserString(member.getUser()) 
+												+ " in server " + MiscUtils.getGuildString(member.getGuild())).queue();
+									} else {
+										message.getChannel().sendMessage("unable to remove admin privileges from user " 
+												+ MiscUtils.getUserString(member.getUser()) + " in server "
+												+ MiscUtils.getGuildString(member.getGuild()) + " (not an admin?)").queue();
+									}
+								}
+							} catch (IOException e) {
+								throw new UncheckedIOException(e);
+							}
+						}, 
+						error -> message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild.getId())).queue()
+						);
+					} catch (NumberFormatException e) {
+						message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild.getId())).queue();
+					} catch (UncheckedIOException e) {
+						throw e.getCause();
+					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
 			} else if(params[1].equals("view")) {
-				
+				MiscUtils.sendMessages(message.getChannel(), this.getFormattedAdminListMessages(targetGuild));
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
@@ -98,6 +135,23 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			logger.warn(this + ": unknown IOException during command execution! msg: " + message, e);
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		}
+	}
+	
+	private Queue<Message> getFormattedAdminListMessages(Guild targetGuild) {
+		MessageBuilder builder = new MessageBuilder();
+		builder.append("admin list for server " + MiscUtils.getGuildString(targetGuild));
+		builder.append(System.lineSeparator());
+		builder.append(System.lineSeparator());
+		builder.append(String.join(System.lineSeparator(), this.allPermissions.getAdmins(targetGuild.getId()).stream().map(userId ->
+		{
+			User user = this.jda.getUserById(userId);
+			if(user != null) {
+				return MiscUtils.getUserString(user);
+			} else {
+				return "unknown user id " + userId;
+			}
+		}).collect(Collectors.toList())));
+		return builder.buildAll();
 	}
 	
 	@Override
