@@ -59,7 +59,9 @@ public interface PermissionDatabase {
 	public boolean isEmpty();
 	
 	/**
-	 * gets the set of all users in the database who have the given permission level
+	 * gets the set of all users in the database who have the given permission level. 
+	 * note current implementation copies backing store into an immutabelist, so this 
+	 * is O(n)
 	 * @param permission the permission level users must have to be in the returned set
 	 * @return an immutable view of all users in the database with the given permission level
 	 */

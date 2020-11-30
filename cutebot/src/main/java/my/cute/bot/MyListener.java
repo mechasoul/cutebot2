@@ -2,6 +2,7 @@ package my.cute.bot;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.EnumSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -28,7 +29,9 @@ import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.ErrorHandler;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
@@ -134,8 +137,12 @@ public class MyListener extends ListenerAdapter {
 		
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
 		{ 
-			checkMaintenance();
+			this.checkMaintenance();
 		}, 1, 12, TimeUnit.HOURS);
+		this.taskScheduler.scheduleWithFixedDelay(() ->
+		{
+			this.permissionMaintenance();
+		}, 1, 36, TimeUnit.HOURS);
 		//shelving this for now and going back to old method of automatic messages
 		//(generate message after someone else sends a message after the given time)
 //		this.taskScheduler.execute(new AutomaticMessageTask());
@@ -256,6 +263,31 @@ public class MyListener extends ListenerAdapter {
 		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
 		if(handler == null) throw new IllegalArgumentException("invalid guild id '" + id + "'");
 		handler.maintenance();
+	}
+	
+	private void permissionMaintenance() {
+		this.jda.getGuildCache().forEach(guild -> {
+			guild.retrieveOwner().queue(owner -> {
+				try {
+					this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+			this.permissions.getAdmins(guild.getId()).forEach(id -> {
+				guild.retrieveMemberById(id).queue(null, new ErrorHandler()
+						.handle(EnumSet.of(ErrorResponse.UNKNOWN_USER, ErrorResponse.UNKNOWN_MEMBER), 
+								ex -> {
+									try {
+										this.permissions.remove(id+"", guild.getId(), PermissionLevel.ADMIN);
+									} catch (IOException e) {
+										throw new UncheckedIOException(e);
+									}
+								}
+						)
+				);
+			});
+		});
 	}
 	
 	public void shutdown() {

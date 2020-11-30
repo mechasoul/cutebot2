@@ -92,6 +92,14 @@ public interface PermissionManager {
 	
 	public boolean removeGuild(Guild guild);
 	
+	/**
+	 * gets an immutable set view of all admins in a given server. note this makes a 
+	 * copy of the backing data structure and so is O(n)
+	 * @param guildId the id of a guild
+	 * @return the set of all user ids with admin permissions in the given guild
+	 * @throws IllegalArgumentException if the given guild id is not a valid guild id in
+	 * this PermissionManager
+	 */
 	public ImmutableSet<Long> getAdmins(String guildId);
 	
 	public int getSize(String guildId);
