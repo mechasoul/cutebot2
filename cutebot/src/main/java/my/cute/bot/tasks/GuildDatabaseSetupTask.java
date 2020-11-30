@@ -1,7 +1,9 @@
 package my.cute.bot.tasks;
 
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,18 +13,19 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 
 public class GuildDatabaseSetupTask implements Callable<CompletableFuture<Void>> {
 
 	private static final Logger logger = LoggerFactory.getLogger(GuildDatabaseSetupTask.class);
 	private final JDA jda;
-	private final String id;
+	private final Guild guild;
 	private final GuildPreferences prefs;
 	private final GuildDatabase db;
 	
-	public GuildDatabaseSetupTask(JDA jda, String guildId, GuildPreferences prefs, GuildDatabase db) {
+	public GuildDatabaseSetupTask(JDA jda, Guild guild, GuildPreferences prefs, GuildDatabase db) {
 		this.jda = jda;
-		this.id = guildId;
+		this.guild = guild;
 		this.prefs = prefs;
 		this.db = db;
 	}
@@ -32,7 +35,7 @@ public class GuildDatabaseSetupTask implements Callable<CompletableFuture<Void>>
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("GuildDatabaseSetupTask-");
-		builder.append(id);
+		builder.append(this.guild.getId());
 		return builder.toString();
 	}
 
@@ -68,17 +71,19 @@ public class GuildDatabaseSetupTask implements Callable<CompletableFuture<Void>>
 	public CompletableFuture<Void> call() throws Exception {
 		boolean doingNothing = this.jda.getPresence().getActivity() == null;
 		if(doingNothing) this.jda.getPresence().setActivity(Activity.playing("busy"));
-		return new GuildMessageScrapeTask(this.jda.getGuildById(this.id), PathUtils.getDatabaseScrapeDirectory(id), 
-				prefs.getDatabaseAge()).call()
-				.thenRun(new GuildDiscussionChannelTask(id, prefs))
-				.thenRun(new GuildDatabaseRebuildTask(id, db, prefs))
+		Set<String> cuteChannels = this.guild.getChannels().stream().filter(channel -> channel.getName() != null && channel.getName().contains("cute"))
+				.map(channel -> channel.getId()).collect(Collectors.toSet());
+		return new GuildMessageScrapeTask(this.guild, PathUtils.getDatabaseScrapeDirectory(this.guild.getId()), 
+				this.prefs.getDatabaseAge()).call()
+				.thenRun(new GuildDiscussionChannelTask(this.guild.getId(), this.prefs, cuteChannels))
+				.thenRun(new GuildDatabaseRebuildTask(this.guild.getId(), this.db, this.prefs))
 				.whenComplete((result, throwable) ->
 				{
 					if(throwable == null) {
-						logger.info(this + ": successfully set up new guild '" + this.jda.getGuildById(this.id) + "'");
+						logger.info(this + ": successfully set up new guild '" + this.guild + "'");
 					} else {
 						logger.warn(this + ": encountered exception when trying to set up new guild '" 
-								+ this.jda.getGuildById(this.id) + "'; setup process aborted! ex: " 
+								+ this.guild + "'; setup process aborted! ex: " 
 								+ throwable.getMessage(), throwable);
 					}
 					if(doingNothing) this.jda.getPresence().setActivity(null);

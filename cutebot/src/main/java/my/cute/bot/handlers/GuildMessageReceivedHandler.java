@@ -110,6 +110,9 @@ public class GuildMessageReceivedHandler {
 			if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
 		}
 		
+		//don't process messages / send automatic messages in non-discussion channels
+		if(!this.prefs.isDiscussionChannel(event.getChannel().getId())) return;
+		
 		try {
 			
 			this.database.processLine(content);
@@ -138,7 +141,7 @@ public class GuildMessageReceivedHandler {
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
 				this.database.markForMaintenance();
-				this.executor.submit(new GuildDatabaseSetupTask(this.jda, this.id, this.prefs, this.database));
+				this.executor.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.prefs, this.database));
 			}
 			//don't continue with line generation and whatever if the database is broken
 			return;

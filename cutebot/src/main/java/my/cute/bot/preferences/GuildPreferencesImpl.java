@@ -6,7 +6,7 @@ import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
-import java.util.List;
+import java.util.Collection;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,8 +58,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			writer.append(GSON.toJson(this));
 		} catch (IOException e) {
-			e.printStackTrace();
-			logger.error("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed! ex: " + e.getMessage(), e);
+			logger.warn("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed! ex: " + e.getMessage(), e);
 		}
 	}
 	
@@ -98,7 +97,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	}
 
 	@Override
-	public synchronized void setDiscussionChannels(List<String> discussionChannels) {
+	public synchronized void setDiscussionChannels(Collection<String> discussionChannels) {
 		if(discussionChannels == null || discussionChannels.isEmpty()) {
 			this.discussionChannels = null;
 		} else {

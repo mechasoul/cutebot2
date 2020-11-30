@@ -1,6 +1,6 @@
 package my.cute.bot.preferences;
 
-import java.util.List;
+import java.util.Collection;
 
 import com.google.common.collect.ImmutableList;
 
@@ -23,7 +23,7 @@ public interface GuildPreferences {
 	
 	public ImmutableList<String> getDiscussionChannels();
 	
-	public void setDiscussionChannels(List<String> discussionChannels);
+	public void setDiscussionChannels(Collection<String> discussionChannels);
 	
 	public void setAutomaticResponseTime(int minutes);
 	

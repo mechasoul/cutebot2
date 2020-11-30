@@ -9,14 +9,17 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableSet;
 
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.PathUtils;
@@ -27,10 +30,12 @@ public final class GuildDiscussionChannelTask implements Runnable {
 	
 	private final String guildId;
 	private final GuildPreferences prefs;
+	private final ImmutableSet<String> forcedChannels;
 	
-	public GuildDiscussionChannelTask(String id, GuildPreferences prefs) {
+	public GuildDiscussionChannelTask(String id, GuildPreferences prefs, Collection<String> forcedChannels) {
 		this.guildId = id;
 		this.prefs = prefs;
+		this.forcedChannels = ImmutableSet.copyOf(forcedChannels);
 	}
 	
 	/*
@@ -79,7 +84,7 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		long totalMessageCount = lineCounts.values().stream().mapToLong(i -> i.longValue()).sum();
 		final double totalMessagesPerSecond = (double)totalMessageCount / (totalDuration.get() / 1000);
 		
-		List<String> discussionChannels = new ArrayList<>(10);
+		Set<String> discussionChannels = new HashSet<>(10);
 		
 		lineCounts.entrySet().forEach(entry ->
 		{
@@ -88,6 +93,8 @@ public final class GuildDiscussionChannelTask implements Runnable {
 				discussionChannels.add(entry.getKey());
 			}
 		});
+		
+		discussionChannels.addAll(this.forcedChannels);
 		
 		this.prefs.setDiscussionChannels(discussionChannels);
 		this.prefs.save();

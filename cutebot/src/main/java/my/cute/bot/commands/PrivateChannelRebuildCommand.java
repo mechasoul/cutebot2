@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +14,7 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
@@ -46,7 +46,8 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 			Activity previousActivity = this.jda.getPresence().getActivity();
 			this.jda.getPresence().setActivity(Activity.playing("VERY busy"));
 			
-			for(String id : this.jda.getGuilds().stream().map(guild -> guild.getId()).collect(Collectors.toList())) {
+			for(Guild guild : this.jda.getGuilds()) {
+				String id = guild.getId();
 				GuildPreferences guildPrefs = this.allPrefs.get(id);
 				if(guildPrefs != null) {
 					/*
@@ -55,7 +56,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					 */
 					CompletableFuture.supplyAsync(() -> {
 						try {
-							return new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)).call();
+							return new GuildDatabaseSetupTask(this.jda, guild, guildPrefs, this.bot.getDatabase(id)).call();
 						} catch (Exception e) {
 							return CompletableFuture.<Void>failedFuture(e);
 						}
@@ -80,8 +81,9 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 			});
 		} else {
 			String id = params[1];
+			Guild guild = this.jda.getGuildById(id);
 			GuildPreferences guildPrefs = this.allPrefs.get(id);
-			if(guildPrefs != null) {
+			if(guild != null && guildPrefs != null) {
 				if(params.length == 3) {
 					try {
 						guildPrefs.setDatabaseAge(Integer.parseInt(params[2]));
@@ -91,7 +93,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 						return;
 					}
 				}
-				this.executor.submit(new GuildDatabaseSetupTask(this.jda, id, guildPrefs, this.bot.getDatabase(id)));
+				this.executor.submit(new GuildDatabaseSetupTask(this.jda, guild, guildPrefs, this.bot.getDatabase(id)));
 				message.getChannel().sendMessage("rebuilding database for guild " + this.jda.getGuildById(id)).queue();
 			} else {
 				message.getChannel().sendMessage("no such guild id found").queue();

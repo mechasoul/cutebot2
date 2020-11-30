@@ -224,7 +224,7 @@ public class MyListener extends ListenerAdapter {
 		
 		if(newGuild) {
 			String id = event.getGuild().getId().intern();
-			this.taskScheduler.submit(new GuildDatabaseSetupTask(this.jda, id, this.allPrefs.get(id), this.getDatabase(id)));
+			this.taskScheduler.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.allPrefs.get(id), this.getDatabase(id)));
 		}
 	}
 	
