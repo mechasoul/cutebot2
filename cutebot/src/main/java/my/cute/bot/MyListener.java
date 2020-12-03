@@ -3,8 +3,6 @@ package my.cute.bot;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.EnumSet;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -12,9 +10,12 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.commands.CommandSet;
+import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PermissionManagerImpl;
+import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
@@ -25,6 +26,7 @@ import my.cute.bot.preferences.wordfilter.WordFilterFactory;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.ConcurrentFinalEntryMap;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
@@ -69,7 +71,8 @@ public class MyListener extends ListenerAdapter {
 	private final JDA jda;
 	private final ConcurrentFinalEntryMap<String, GuildPreferences> allPrefs;
 	private final ConcurrentFinalEntryMap<String, WordFilter> allFilters;
-	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
+	private final ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> guildCommands;
+	private final ConcurrentFinalEntryMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
 	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
@@ -105,18 +108,15 @@ public class MyListener extends ListenerAdapter {
 		int numActiveGuilds = this.jda.getGuilds().size();
 		this.allPrefs = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.allFilters = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.guildCommands = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.permissions = new PermissionManagerImpl(this.jda);
-		this.guildMessageHandlers = new ConcurrentHashMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.guildMessageHandlers = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
 		try {
 			this.jda.getGuilds().forEach(guild -> {
 				try {
-					GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
-					WordFilter filter = WordFilterFactory.load(guild.getId());
-					this.allPrefs.put(guild.getId(), prefs);
-					this.allFilters.put(guild.getId(), filter);
-					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, filter, this.taskScheduler));
+					this.registerGuild(guild);
 					guild.retrieveOwner(false).queue(owner -> {
 						try {
 							this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
@@ -196,30 +196,12 @@ public class MyListener extends ListenerAdapter {
 		if(!this.guildMessageHandlers.containsKey(event.getGuild().getId())) {
 			//verify that guild hasn't been added in the meantime by other thread
 			try {
-				GuildPreferences prefs = GuildPreferencesFactory.load(event.getGuild().getId());
-				WordFilter filter = WordFilterFactory.load(event.getGuild().getId());
-				newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
-						new GuildMessageReceivedHandler(event.getGuild(), jda, prefs, filter, this.taskScheduler)) == null;
+				newGuild = this.registerGuild(event.getGuild());
 			} catch (IOException e) {
 				logger.error(this + ": encountered IOException when trying to construct GuildMessageReceivedHandler for new guild '" +
 						event.getGuild() + "', can't continue!", e);
 				this.shutdown();
 			}
-		}
-
-		try {
-			this.permissions.addGuild(event.getGuild());
-			event.getGuild().retrieveOwner(false).queue(owner -> {
-				try {
-					this.permissions.add(owner.getUser(), event.getGuild(), PermissionLevel.ADMIN);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
-		} catch (IOException | UncheckedIOException e) {
-			logger.error(this + ": encountered IOException when trying to construct PermissionDatabase for new guild '"
-					+ event.getGuild() + "', can't continue! ", e);
-			this.shutdown();
 		}
 		
 		if(newGuild) {
@@ -307,6 +289,40 @@ public class MyListener extends ListenerAdapter {
 		} else {
 			return null;
 		}
+	}
+	
+	/**
+	 * to be called when a new guild needs to be managed. adds all necessary resources to
+	 * maps and whatever so they can be received wherever they're needed. note if an already
+	 * registered guild is passed in to this, nothing will break, although it will probably
+	 * cost a bit of processing time (mostly since a new GuildMessageReceivedHandler will be
+	 * constructed, which requires loading that guild's database. the handler won't go in the
+	 * map and will eventually be garbage collected but loading db can take some time)
+	 * @param guild the new guild to manage
+	 * @return true if the guild is newly registered, or false if it was already registered
+	 * @throws IOException if an unknown IOException occurs when trying to load resources from 
+	 * disk
+	 */
+	private boolean registerGuild(Guild guild) throws IOException {
+		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
+		WordFilter filter = WordFilterFactory.load(guild.getId());
+		CommandSet<TextChannelCommand> commands = CommandSetFactory.newDefaultTextChannelSet(prefs);
+		this.allPrefs.put(guild.getId(), prefs);
+		this.allFilters.put(guild.getId(), filter);
+		this.guildCommands.put(guild.getId(), commands);
+		this.permissions.addGuild(guild);
+		try {
+			guild.retrieveOwner(false).queue(owner -> {
+				try {
+					this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
+		}
+		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, this.jda, prefs, filter, this.taskScheduler, commands)) == null;
 	}
 	
 	public String getGuildString(String id) {

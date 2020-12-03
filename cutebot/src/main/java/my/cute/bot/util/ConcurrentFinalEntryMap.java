@@ -33,6 +33,10 @@ public final class ConcurrentFinalEntryMap<K, V> extends ForwardingMap<K, V> {
 		return this.map;
 	}
 	
+	/**
+	 * associates the given key with the given value if the given key is not already
+	 * present in the map. if the given key is already present, no changes are made
+	 */
 	@Override
 	public V put(K key, V value) {
 		return this.map.putIfAbsent(key, value);

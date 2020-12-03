@@ -2,14 +2,13 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 
+import my.cute.bot.util.ConcurrentFinalEntryMap;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -26,11 +25,11 @@ public class PermissionManagerImpl implements PermissionManager {
 	 * uses key=guild id, value = permission database for that guild id
 	 * also use key GLOBAL_KEY for the global permission database
 	 */
-	private final Map<String, PermissionDatabase> permissions;
+	private final ConcurrentFinalEntryMap<String, PermissionDatabase> permissions;
 	private final JDA jda;
 	
 	public PermissionManagerImpl(JDA jda) throws IOException {
-		this.permissions = new ConcurrentHashMap<String, PermissionDatabase>(jda.getGuilds().size() * 4 / 3);
+		this.permissions = new ConcurrentFinalEntryMap<String, PermissionDatabase>(jda.getGuilds().size() * 4 / 3);
 		this.jda = jda;
 		try {
 			this.jda.getGuilds().forEach(guild -> {
@@ -150,7 +149,7 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean addGuild(String guildId) throws IOException {
-		return this.permissions.putIfAbsent(guildId, PermissionDatabaseFactory.load(guildId)) == null;
+		return this.permissions.put(guildId, PermissionDatabaseFactory.load(guildId)) == null;
 	}
 
 	@Override

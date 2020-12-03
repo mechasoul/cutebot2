@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
 import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.CommandSetFactory;
 import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
@@ -70,7 +69,7 @@ public class GuildMessageReceivedHandler {
 	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
-			ExecutorService executor) throws IOException {
+			ExecutorService executor, CommandSet<TextChannelCommand> commands) throws IOException {
 		this.jda = jda;
 		this.id = guild.getId();
 		this.prefs = prefs;
@@ -81,7 +80,7 @@ public class GuildMessageReceivedHandler {
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
 		this.database.load();
-		this.commands = CommandSetFactory.newDefaultTextChannelSet(this.prefs);
+		this.commands = commands;
 	}
 	
 	/*

@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.JDA;
 
 public class CommandSetFactory {
 
+	//TODO load user-defined commands from a file somewhere
 	public static CommandSet<TextChannelCommand> newDefaultTextChannelSet(GuildPreferences prefs) {
 		CommandSet<TextChannelCommand> set = new CommandSetImpl<TextChannelCommand>(2);
 		set.put("quote", new TextChannelQuoteCommand(prefs));
