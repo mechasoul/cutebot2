@@ -1,5 +1,7 @@
 package my.cute.bot.util;
 
+import net.dv8tion.jda.api.entities.User;
+
 public class StandardMessages {
 	
 	public static String unknownCommand(String givenCommand) {
@@ -33,6 +35,14 @@ public class StandardMessages {
 	
 	public static String wordfilterModified() {
 		return "wordfilter has been successfully modified";
+	}
+	
+	public static String invalidRole(User user, String givenRole) {
+		return user.getAsMention() + " error: '" + givenRole + "' is not a valid role for that command";
+	}
+	
+	public static String missingPermissionsToModifyRole(User user) {
+		return user.getAsMention() + " error: unable to modify role due to missing permissions. please contact your local administrator";
 	}
 	
 }

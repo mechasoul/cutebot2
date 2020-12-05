@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.preferences.GuildPreferences;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -53,8 +54,8 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	
 	private final GuildPreferences prefs;
 	
-	TextChannelQuoteCommand(GuildPreferences prefs) {
-		super("quote", PermissionLevel.USER, 0, 0);
+	TextChannelQuoteCommand(GuildPreferences prefs, JDA jda, String id) {
+		super("quote", PermissionLevel.USER, 0, 0, jda, id);
 		this.prefs = prefs;
 	}
 

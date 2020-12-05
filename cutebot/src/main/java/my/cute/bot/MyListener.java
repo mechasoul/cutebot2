@@ -210,6 +210,7 @@ public class MyListener extends ListenerAdapter {
 		}
 	}
 	
+	//TODO add stuff to this
 	@Override
 	public void onGuildLeave(GuildLeaveEvent event) {
 		logger.info(this + ": left guild " + event.getGuild());
@@ -306,7 +307,7 @@ public class MyListener extends ListenerAdapter {
 	private boolean registerGuild(Guild guild) throws IOException {
 		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
 		WordFilter filter = WordFilterFactory.load(guild.getId());
-		CommandSet<TextChannelCommand> commands = CommandSetFactory.newDefaultTextChannelSet(prefs);
+		CommandSet<TextChannelCommand> commands = CommandSetFactory.newDefaultTextChannelSet(prefs, this.jda, guild.getId());
 		this.allPrefs.put(guild.getId(), prefs);
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);

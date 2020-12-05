@@ -3,6 +3,8 @@ package my.cute.bot.commands;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.util.ConcurrentFinalEntryMap;
+import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -42,23 +44,38 @@ import net.dv8tion.jda.api.entities.Message;
  * should be the name of the command to define an alias for, and params should be the role name
  * in quotation marks, followed by a comma, and then the alias. aliases cannot contain spaces,
  * and only one can exist for a given role in a given command<br>
+ * <b>view</b>: get information about a defined command, or all defined commands. commandname 
+ * should be the name of the command to view defined roles for, and can be omitted to get 
+ * information about all commands. no params
  * <p>
  * all user-defined commands are case insensitive
  */
 final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
-	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRoleCommand.class);
 	final static String NAME = "role";
 	
-	PrivateChannelRoleCommand() {
+	private final ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> allCommands;
+	
+	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> commands) {
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+		this.allCommands = commands;
 	}
 
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
-		// TODO Auto-generated method stub
-
+		
+		//shouldnt be possible to have a valid guild without a commandset but check anyway
+		CommandSet<TextChannelCommand> commands = this.allCommands.get(targetGuild.getId());
+		if(commands == null) {
+			logger.warn(this + ": target guild '" + targetGuild + "' had no corresponding text "
+					+ "channel commandset?");
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
+			return;
+		}
+		
+		
+		
 	}
 
 	/*
@@ -85,4 +102,8 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
  * '!region single role, with comma and spaces' to toggle 'single role, with comma and spaces' role<br>
  * '!region SA' or '!region South America' to toggle 'South America' role
 	 */
+	@Override
+	public String toString() {
+		return "PrivateChannelRoleCommand";
+	}
 }

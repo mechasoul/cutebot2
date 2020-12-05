@@ -24,6 +24,8 @@ public final class PathUtils {
 	private static final String PERMISSIONS_FILE_NAME = "permissions.db";
 	private static final String DEFAULT_GUILDS_FILE_NAME = "defaultguilds.db";
 	private static final String WORD_FILTER_FILE_NAME = "wordfilter.ini";
+	private static final String COMMANDS_DIRECTORY_NAME = "~commands";
+	private static final String ROLE_COMMANDS_DIRECTORY_NAME = "~role";
 	
 	public static String getDatabaseParentPath() {
 		return DATABASE_PARENT_DIRECTORY;
@@ -73,6 +75,11 @@ public final class PathUtils {
 	
 	public static Path getWordFilterFile(String guildId) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + WORD_FILTER_FILE_NAME);
+	}
+	
+	public static Path getGeneratedRoleCommand(String guildId, String commandName) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + COMMANDS_DIRECTORY_NAME 
+				+ File.separator + ROLE_COMMANDS_DIRECTORY_NAME + File.separator + commandName + ".command");
 	}
 	
 	public static List<Path> listFilesNewestFirst(Path directory, Pattern regex) throws IOException {
