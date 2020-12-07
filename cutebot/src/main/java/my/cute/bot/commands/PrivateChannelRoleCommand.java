@@ -1,10 +1,14 @@
 package my.cute.bot.commands;
 
+import java.util.regex.Pattern;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.ConcurrentFinalEntryMap;
+import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -42,8 +46,7 @@ import net.dv8tion.jda.api.entities.Message;
  * from a command, use delete mode instead<br>
  * <b>alias</b>: define an alias for a given role in an existing multi-role command. commandname
  * should be the name of the command to define an alias for, and params should be the role name
- * in quotation marks, followed by a comma, and then the alias. aliases cannot contain spaces,
- * and only one can exist for a given role in a given command<br>
+ * in quotation marks, followed by a comma, and then the alias. aliases cannot contain spaces<br>
  * <b>view</b>: get information about a defined command, or all defined commands. commandname 
  * should be the name of the command to view defined roles for, and can be omitted to get 
  * information about all commands. no params
@@ -54,8 +57,10 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRoleCommand.class);
 	final static String NAME = "role";
+	private final static Pattern QUOTATION_MARKS = Pattern.compile("^\".*\"(?:\\s+|$)");
 	
 	private final ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> allCommands;
+	private final JDA jda;
 	
 	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> commands) {
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
@@ -74,7 +79,51 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 			return;
 		}
 		
-		
+		if(params[1].equals("create")) {
+			if(params.length >= 4) {
+				if(commands.contains(params[2])) {
+					//!role create commandname givenRoles
+					String givenRoles = MiscUtils.getWords(message, 4)[3];
+					if(QUOTATION_MARKS.matcher(givenRoles).matches()) {
+						givenRoles = extractQuotationMarks(givenRoles);
+						//test for an exact role, then comma-separated
+						
+					} else {
+						//no quotation marks. check for simple role provided as params[3]
+					}
+				}
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equals("delete")) {
+			if(params.length >= 3) {
+				
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equals("add")) {
+			if(params.length >= 4) {
+
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equals("remove")) {
+			if(params.length >= 4) {
+				
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equals("alias")) {
+			if(params.length >= 4) {
+
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equals("view")) {
+			
+		} else {
+			message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+		}
 		
 	}
 
@@ -105,5 +154,10 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	@Override
 	public String toString() {
 		return "PrivateChannelRoleCommand";
+	}
+	
+	private static String extractQuotationMarks(String string) {
+		string = string.split("\"", 2)[1];
+		return string.substring(0, string.lastIndexOf('"'));
 	}
 }

@@ -80,6 +80,10 @@ public class MiscUtils {
 		return WHITESPACE.split(message.trim());
 	}
 	
+	public static String[] getWords(Message message, int limit) {
+		return WHITESPACE.split(message.getContentRaw().trim(), limit);
+	}
+	
 	public static String getGuildString(Guild guild) {
 		return guild.getName() + " (id=" + guild.getId() + ")";
 	}

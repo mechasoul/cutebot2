@@ -1,13 +1,10 @@
 package my.cute.bot.commands;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import gnu.trove.map.TObjectLongMap;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -24,12 +21,11 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	
 	private final static Logger logger = LoggerFactory.getLogger(GeneratedTextChannelRoleCommand.class);
 
-	private final TObjectLongMap<String> roleNames;
-	private final Map<String, String> aliases;
-	GeneratedTextChannelRoleCommand(String name, TObjectLongMap<String> roleIds, JDA jda, String id) {
+	private final RoleCommandDatabase database;
+	
+	GeneratedTextChannelRoleCommand(String name, RoleCommandDatabase db, JDA jda, String id) {
 		super(name, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
-		this.roleNames = roleIds;
-		this.aliases = new ConcurrentHashMap<String, String>(5, 0.75f);
+		this.database = db;
 	}
 	
 	@Override
@@ -41,17 +37,17 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 		String targetRoleName="";
 		String specifiedRole = message.getContentRaw().trim().split("\\s+", 2)[1];
 		
-		if(this.roleNames.size() == 1) {
-			targetRoleId = this.roleNames.values(new long[1])[0];
-			targetRoleName = this.roleNames.keySet().toArray(new String[1])[0];
+		if(this.database.isSingleRole()) {
+			targetRoleId = this.database.getSingleRoleId();
+			targetRoleName = this.database.getSingleRoleName();
 		} else {
 			//try input as role name, then alias
 			targetRoleName = specifiedRole;
-			targetRoleId = this.roleNames.get(specifiedRole);
+			targetRoleId = this.database.getRoleId(specifiedRole);
 			if(targetRoleId == -1) {
 				//no role with that name. try alias
-				targetRoleName = this.aliases.get(specifiedRole);
-				targetRoleId = (targetRoleName == null ? -1 : this.roleNames.get(targetRoleName));
+				targetRoleName = this.database.getRoleNameByAlias(specifiedRole);
+				targetRoleId = this.database.getRoleIdByAlias(specifiedRole);
 			}
 		}
 		
@@ -70,7 +66,8 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 					//successfully updated the role in internal map. apply it
 					this.applyRole(guild, role, message);
 				} else {
-					this.removeRole(targetRoleName);
+					this.database.remove(targetRoleName);
+					//TODO delete command or something if no roles left in db after removal
 					message.getChannel().sendMessage(StandardMessages.invalidRole(message.getAuthor(), specifiedRole)).queue();
 				}
 			}
@@ -121,36 +118,11 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	Role updateRole(Guild guild, String roleName) {
 		List<Role> roles = guild.getRolesByName(roleName, false);
 		if(roles.size() >= 1) {
-			this.roleNames.put(roleName, roles.get(0).getIdLong());
+			this.database.update(roleName, roles.get(0).getIdLong());
 			return roles.get(0);
 		} else {
 			return null;
 		}
-	}
-	
-	Role updateRole(Guild guild, long roleId) {
-		Role role = guild.getRoleById(roleId);
-		if(role != null) {
-			this.roleNames.put(role.getName(), role.getIdLong());
-			return role;
-		} else {
-			return null;
-		}
-	}
-	
-	boolean updateAlias(String alias, String roleName) {
-		if(this.roleNames.containsKey(roleName)) {
-			this.aliases.put(alias, roleName);
-			return true;
-		} else {
-			return false;
-		}
-	}
-	
-	//TODO need to do something if no roles exist in command after this
-	void removeRole(String roleName) {
-		this.roleNames.retainEntries((name, id) -> !roleName.equals(name));
-		while (this.aliases.values().remove(roleName));
 	}
 	
 	@Override

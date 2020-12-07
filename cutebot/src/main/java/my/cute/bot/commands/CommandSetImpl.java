@@ -41,7 +41,7 @@ class CommandSetImpl<T extends Command> implements CommandSet<T> {
 	
 	@Override
 	public T put(String name, T command) {
-		return this.commandSet.put(name, command);
+		return this.commandSet.putIfAbsent(name, command);
 	}
 	
 	@Override

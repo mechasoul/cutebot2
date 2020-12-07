@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.CommandSetFactory;
+import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PermissionManagerImpl;
@@ -307,7 +307,7 @@ public class MyListener extends ListenerAdapter {
 	private boolean registerGuild(Guild guild) throws IOException {
 		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
 		WordFilter filter = WordFilterFactory.load(guild.getId());
-		CommandSet<TextChannelCommand> commands = CommandSetFactory.newDefaultTextChannelSet(prefs, this.jda, guild.getId());
+		CommandSet<TextChannelCommand> commands = CommandFactory.newDefaultTextChannelSet(prefs, this.jda, guild.getId());
 		this.allPrefs.put(guild.getId(), prefs);
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);

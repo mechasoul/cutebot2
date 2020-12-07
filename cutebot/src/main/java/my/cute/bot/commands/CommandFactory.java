@@ -8,7 +8,7 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.wordfilter.WordFilter;
 import net.dv8tion.jda.api.JDA;
 
-public class CommandSetFactory {
+public class CommandFactory {
 
 	//TODO load user-defined commands from a file somewhere
 	public static CommandSet<TextChannelCommand> newDefaultTextChannelSet(GuildPreferences prefs, JDA jda, String id) {

@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.MyListener;
 import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.CommandSetFactory;
+import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.DefaultGuildDatabase;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PrivateChannelCommand;
@@ -42,7 +42,7 @@ public class PrivateMessageReceivedHandler {
 		this.bot = bot;
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
-		this.commands = CommandSetFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, this.executor);
+		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, this.executor);
 		this.permissions = permissions;
 	}
 	
