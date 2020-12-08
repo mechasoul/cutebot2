@@ -9,10 +9,13 @@ import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Random;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.common.collect.ImmutableList;
 
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
@@ -31,6 +34,7 @@ public class MiscUtils {
 	private static final String NEW_LINE_TOKEN = "<_NL>";
 	private static final Random RAND = new Random();
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+	private final static Pattern QUOTATION_MARKS = Pattern.compile("^\".*\"(?:\\s+|$)");
 
 	public static String replaceNewLinesWithTokens(String line) {
 		/*
@@ -140,6 +144,71 @@ public class MiscUtils {
 		}
 	}
 	
+	/**
+	 * attempts to retrieve a role or roles matching the specified text from the given 
+	 * guild. first checks if the given text is surrounded by quotation marks - if so,
+	 * looks for a role matching exactly what's inside the quotation marks, then for
+	 * roles matching a comma-separated list inside the quotation marks. if the given
+	 * text is not surrounded by quotation marks, instead a check is made to see if 
+	 * the first word in the text is an id matching a role, and then a check is made
+	 * for a role whose name matches the first word in the text
+	 * @param guild the guild to check for roles
+	 * @param text text to check for roles. most common use case will be as parameters
+	 * for a command, with the previous parameters stripped. should be a role name or
+	 * comma-separated list of role names surrounded by quotation marks, or a role's id,
+	 * or the single-word name of a role
+	 * @return a possibly-empty immutable list of roles matching the given text in the
+	 * given guild
+	 */
+	public static ImmutableList<Role> parseRoles(final Guild guild, String text) {
+		if(QUOTATION_MARKS.matcher(text).matches()) {
+			text = extractQuotationMarks(text);
+			//test for an exact role, then comma-separated
+			Role singleRole = MiscUtils.getRoleByName(guild, text);
+			if(singleRole != null) {
+				return ImmutableList.of(singleRole);
+			} else {
+				//not exact role. try comma-separated list
+				return MiscUtils.getRolesFromCommaSeparatedList(guild, text);
+			}
+		} else {
+			//no quotation marks. simply check the first word in the given text
+			text = MiscUtils.getWords(text)[0];
+			//first check id, then role name
+			Role singleRole = MiscUtils.tryRoleById(guild, text);
+			if(singleRole != null) {
+				return ImmutableList.of(singleRole);
+			} else {
+				singleRole = MiscUtils.getRoleByName(guild, text);
+				if(singleRole != null) {
+					return ImmutableList.of(singleRole);
+				} else {
+					return ImmutableList.of();
+				}
+			}
+		}
+	}
+	
+	/**
+	 * see {@link #parseRole(Guild, String)}, but taking on some extra message parsing.
+	 * eg, message with content:
+	 * <p>
+	 * !role create region "North America,South America,Europe"
+	 * <p>
+	 * could call parseRole(guild, message, 3) to attempt to find roles matching the list.
+	 * or if you'd prefer, simply shorthand for <br>
+	 * parseRole(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore]
+	 * @param guild the guild to check for roles
+	 * @param message the message to strip roles from (probably a user-submitted command)
+	 * @param paramsToIgnore the number of words to ignore in the message until the roles
+	 * should begin
+	 * @return an immutable list of roles matching the text starting at the specified word,
+	 * in the given guild
+	 */
+	public static ImmutableList<Role> parseRoles(final Guild guild, final Message message, int paramsToIgnore) {
+		return parseRoles(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore]);
+	}
+	
 	public static Role getRoleByName(Guild guild, String name) {
 		List<Role> roles = guild.getRolesByName(name, true);
 		if(roles.size() > 1) {
@@ -152,6 +221,35 @@ public class MiscUtils {
 		} else if (roles.size() == 1) {
 			return roles.get(0);
 		} else {
+			return null;
+		}
+	}
+	
+	private static ImmutableList<Role> getRolesFromCommaSeparatedList(Guild guild, String listOfRoles) {
+		return Stream.of(listOfRoles.split(","))
+				.filter(name -> !name.isEmpty())
+				.map(name -> MiscUtils.getRoleByName(guild, name))
+				.filter(role -> role != null)
+				.collect(ImmutableList.toImmutableList());
+	}
+	
+	private static String extractQuotationMarks(String string) {
+		string = string.split("\"", 2)[1];
+		return string.substring(0, string.lastIndexOf('"'));
+	}
+	
+	/**
+	 * simple wrapper for Guild.getRoleById(String) that returns null instead of throwing
+	 * NumberFormatException when the given id can't be parsed by Long.parseLong(String)
+	 * @param guild the guild to try to retrieve a role from
+	 * @param id the id of the role to try to retrieve
+	 * @return the role with the given id in the given guild if it exists, or null if
+	 * either no such role exists or the given id can't be parsed by Long.parseLong(String)
+	 */
+	private static Role tryRoleById(Guild guild, String id) {
+		try {
+			return guild.getRoleById(id);
+		} catch (NumberFormatException e) {
 			return null;
 		}
 	}

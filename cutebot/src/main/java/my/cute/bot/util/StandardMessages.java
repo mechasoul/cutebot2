@@ -3,6 +3,7 @@ package my.cute.bot.util;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
@@ -57,6 +58,18 @@ public class StandardMessages {
 		return "error: no role command exists with the name '" + name + "'";
 	}
 	
+	/**
+	 * used when a user-provided role or list of roles returns no results
+	 * @param message the user's message, probably a command
+	 * @param paramsToIgnore the number of words (probably parameters) to 
+	 * ignore before the start of the role list
+	 * @return an error message indicating that no roles could be found
+	 * matching the user's text
+	 */
+	public static String failedToFindRoles(Message message, int paramsToIgnore) {
+		return "error: unable to find any role matching '" + MiscUtils.getWords(message, paramsToIgnore+1) + "'";
+	}
+	
 	public static String createdRoleCommand(String commandName, Role role) {
 		return "successfully created command '" + commandName + "' with role '"
 				+ role.getName() + "'";
@@ -65,7 +78,7 @@ public class StandardMessages {
 	public static String createdRoleCommand(String commandName, List<Role> roles) {
 		return "successfully created command '" + commandName + "' with "
 				+ (roles.size() > 1 ? "roles" : "role")
-				+ " '" + String.join(", ", roles.stream().map(role -> role.getName()).collect(Collectors.toList()))
+				+ " '" + roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
 				+ "'";
 	}
 	
@@ -75,8 +88,33 @@ public class StandardMessages {
 	}
 	
 	public static String addedRolesToCommand(String commandName, List<Role> roles) {
-		return "successfully added roles '" 
-				+ String.join(", ", roles.stream().map(role -> role.getName()).collect(Collectors.toList()))
-				+ "' to command '" + commandName + "'";
+		if(roles.size() == 1) {
+			return StandardMessages.addedRoleToCommand(commandName, roles.get(0));
+		} else {
+			return "successfully added roles '" 
+					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+					+ "' to command '" + commandName + "'";
+		}
+	}
+	
+	/**
+	 * return a message indicating that the given roles could not be added to
+	 * the given command
+	 * @param commandName the name of the command
+	 * @param roles nonempty list of roles that could not be added
+	 * @return an error message indicating that the given roles could not be 
+	 * added to the given command
+	 */
+	public static String failedToAddRolesToCommand(String commandName, List<Role> roles) {
+		if(roles.size() > 1) {
+			return "found roles '"
+					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+					+ "' but failed to add any to command '" + commandName + "' (already exist?)";
+		} else {
+			//1 element in roles (should be nonempty)
+			return "found role '" 
+					+ roles.get(0).getName()
+					+ "' but failed to add it to command '" + commandName + "' (already exists?)";
+		}
 	}
 }
