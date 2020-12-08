@@ -41,40 +41,41 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		GuildPreferences prefs = this.allPrefs.get(targetGuild.getId());
-		if(prefs != null) {
-			if (params[1].equals("off")) {
-				synchronized(prefs) {
-					prefs.setAutomaticResponseTime(0);
-					prefs.save();
-				}
-				message.getChannel().sendMessage("disabled automatic messages for server " 
-						+ MiscUtils.getGuildString(targetGuild)).queue();
-				
-			} else {
-				try {
-					int minutes = Integer.parseInt(params[1]);
-					if(minutes < 1 || minutes > 525600) {
-						message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
-						return;
-					}
-					synchronized(prefs) {
-						prefs.setAutomaticResponseTime(minutes);
-						prefs.save();
-					}
-					message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
-					+ " to " + params[1] + " min").queue();
-				} catch (NumberFormatException e) {
-					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
-				}
-			}
-		} else {
-			/*
-			 * should be impossible since any existing valid guild id should
-			 * have a prefs file? but i guess i'll keep this for now maybe it's
-			 * possible somehow that i cant think of
-			 */
+		
+		/*
+		 * should be impossible since any existing valid guild id should
+		 * have a prefs file? but i guess i'll keep this for now maybe it's
+		 * possible somehow that i cant think of
+		 */
+		if(prefs == null) {
 			logger.warn(this + ": couldn't find prefs for valid guild id '" + targetGuild + "'");
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
+			return;
+		}
+
+		if (params[1].equalsIgnoreCase("off")) {
+			synchronized(prefs) {
+				prefs.setAutomaticResponseTime(0);
+				prefs.save();
+			}
+			message.getChannel().sendMessage("disabled automatic messages for server " 
+					+ MiscUtils.getGuildString(targetGuild)).queue();
+		} else {
+			try {
+				int minutes = Integer.parseInt(params[1]);
+				if(minutes < 1 || minutes > 525600) {
+					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
+					return;
+				}
+				synchronized(prefs) {
+					prefs.setAutomaticResponseTime(minutes);
+					prefs.save();
+				}
+				message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
+				+ " to " + params[1] + " min").queue();
+			} catch (NumberFormatException e) {
+				message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
+			}
 		}
 	}
 	

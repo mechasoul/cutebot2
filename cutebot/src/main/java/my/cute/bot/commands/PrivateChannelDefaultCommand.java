@@ -40,7 +40,7 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 	@Override
 	public void execute(Message message, String[] params) {
 		try {
-			if(params[1].equals("view")) {
+			if(params[1].equalsIgnoreCase("view")) {
 				String defaultGuildId = this.defaultGuilds.getDefaultGuildId(message.getAuthor());
 				if(defaultGuildId == null) {
 					message.getChannel().sendMessage("you currently have no default server set").queue();

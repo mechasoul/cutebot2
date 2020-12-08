@@ -1,6 +1,9 @@
 package my.cute.bot.commands;
 
+import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,6 +14,7 @@ import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 
 /**
  * command for defining commands to allow users to add/remove roles to themselves. there are
@@ -46,7 +50,8 @@ import net.dv8tion.jda.api.entities.Message;
  * from a command, use delete mode instead<br>
  * <b>alias</b>: define an alias for a given role in an existing multi-role command. commandname
  * should be the name of the command to define an alias for, and params should be the role name
- * in quotation marks, followed by a comma, and then the alias. aliases cannot contain spaces<br>
+ * in quotation marks, followed by a comma, and then the alias. aliases cannot contain spaces, 
+ * and at most one alias can exist for a single role in a single command<br>
  * <b>view</b>: get information about a defined command, or all defined commands. commandname 
  * should be the name of the command to view defined roles for, and can be omitted to get 
  * information about all commands. no params
@@ -59,67 +64,149 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	final static String NAME = "role";
 	private final static Pattern QUOTATION_MARKS = Pattern.compile("^\".*\"(?:\\s+|$)");
 	
-	private final ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> allCommands;
+	private final ConcurrentFinalEntryMap<String, GuildCommandSet> allCommands;
 	private final JDA jda;
 	
-	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> commands) {
+	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, GuildCommandSet> commands, JDA jda) {
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allCommands = commands;
+		this.jda = jda;
 	}
 
+	//TODO case insensitivity 
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		
 		//shouldnt be possible to have a valid guild without a commandset but check anyway
-		CommandSet<TextChannelCommand> commands = this.allCommands.get(targetGuild.getId());
-		if(commands == null) {
-			logger.warn(this + ": target guild '" + targetGuild + "' had no corresponding text "
-					+ "channel commandset?");
+		GuildCommandSet commandSet = this.allCommands.get(targetGuild.getId());
+		if(commandSet == null) {
+			logger.warn(this + ": target guild '" + targetGuild + "' had no corresponding guild "
+					+ " commandset?");
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 			return;
 		}
 		
-		if(params[1].equals("create")) {
+		if(params[1].equalsIgnoreCase("create")) {
 			if(params.length >= 4) {
-				if(commands.contains(params[2])) {
+				if(!commandSet.contains(params[2].toLowerCase())) {
 					//!role create commandname givenRoles
 					String givenRoles = MiscUtils.getWords(message, 4)[3];
 					if(QUOTATION_MARKS.matcher(givenRoles).matches()) {
 						givenRoles = extractQuotationMarks(givenRoles);
 						//test for an exact role, then comma-separated
-						
+						Role singleRole = MiscUtils.getRoleByName(targetGuild, givenRoles);
+						if(singleRole != null) {
+							if(commandSet.createRoleCommand(params[2], singleRole)) {
+								message.getChannel().sendMessage(StandardMessages.createdRoleCommand(params[2], singleRole)).queue();
+							} else {
+								message.getChannel().sendMessage("failed to create command '" + params[2] + "' (max commands reached?)").queue();
+							}
+						} else {
+							//not exact role. check comma-separated list
+							List<Role> roles = this.getRolesFromCommaSeparatedList(targetGuild, givenRoles);
+							if(!roles.isEmpty()) {
+								if(commandSet.createRoleCommand(params[2], roles)) {
+									message.getChannel().sendMessage(StandardMessages.createdRoleCommand(params[2], roles)).queue();
+								}
+							} else {
+								message.getChannel().sendMessage("error: unable to find any role matching '" + givenRoles + "'").queue();
+							}
+						}
 					} else {
 						//no quotation marks. check for simple role provided as params[3]
+						Role singleRole = MiscUtils.getRoleByName(targetGuild, params[3]);
+						if(singleRole != null) {
+							if(commandSet.createRoleCommand(params[2], singleRole)) {
+								message.getChannel().sendMessage(StandardMessages.createdRoleCommand(params[2], singleRole)).queue();
+							} else {
+								message.getChannel().sendMessage("failed to create command '" + params[2] + "' (max commands reached?)").queue();
+							}
+						} else {
+							message.getChannel().sendMessage("error: unable to find any role matching '" + params[3] + "'").queue();
+						}
 					}
+				} else {
+					message.getChannel().sendMessage(StandardMessages.commandNameAlreadyExists(params[2])).queue();
 				}
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
-		} else if (params[1].equals("delete")) {
+		} else if (params[1].equalsIgnoreCase("delete")) {
 			if(params.length >= 3) {
+				if(commandSet.isRoleCommand(params[2])) {
+					commandSet.deleteRoleCommand(params[2]);
+					message.getChannel().sendMessage("successfully deleted command '" + params[2] + "'").queue();
+				} else {
+					message.getChannel().sendMessage(StandardMessages.invalidRoleCommand(params[2])).queue();
+				}
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equalsIgnoreCase("add")) {
+			if(params.length >= 4) {
+				if(commandSet.isRoleCommand(params[2])) {
+					//!role add commandname givenRoles
+					String givenRoles = MiscUtils.getWords(message, 4)[3];
+					if(QUOTATION_MARKS.matcher(givenRoles).matches()) {
+						givenRoles = extractQuotationMarks(givenRoles);
+						//test for an exact role, then comma-separated
+						Role singleRole = MiscUtils.getRoleByName(targetGuild, givenRoles);
+						if(singleRole != null) {
+							if(commandSet.getRoleCommandDatabase(params[2]).add(singleRole)) {
+								message.getChannel().sendMessage(StandardMessages.addedRoleToCommand(params[2], singleRole)).queue();
+							} else {
+								message.getChannel().sendMessage("failed to add role '" + singleRole.getName() 
+										+ "' to command '" + params[2] + "' (already exists?)").queue();
+							}
+						} else {
+							//not exact role. check comma-separated list
+							List<Role> foundRoles = this.getRolesFromCommaSeparatedList(targetGuild, givenRoles);
+							if(!foundRoles.isEmpty()) {
+								List<Role> addedRoles = commandSet.getRoleCommandDatabase(params[2]).add(foundRoles);
+								if(!addedRoles.isEmpty()) {
+									message.getChannel().sendMessage(StandardMessages.addedRolesToCommand(params[2], addedRoles)).queue();
+								} else {
+									message.getChannel().sendMessage("found roles '" 
+											+ foundRoles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+											+ "' but failed to add any to command '" + params[2] + "' (already exist?)").queue();
+								}
+							} else {
+								message.getChannel().sendMessage("error: unable to find any role matching '" + givenRoles + "'").queue();
+							}
+						}
+					} else {
+						//no quotation marks. check for simple role provided as params[3]
+						Role singleRole = MiscUtils.getRoleByName(targetGuild, params[3]);
+						if(singleRole != null) {
+							if(commandSet.getRoleCommandDatabase(params[2]).add(singleRole)) {
+								message.getChannel().sendMessage(StandardMessages.addedRoleToCommand(params[2], singleRole)).queue();
+							} else {
+								message.getChannel().sendMessage("failed to add role '" + singleRole.getName() 
+										+ "' to command '" + params[2] + "' (already exists?)").queue();
+							}
+						} else {
+							message.getChannel().sendMessage("error: unable to find any role matching '" + params[3] + "'").queue();
+						}
+					}
+				} else {
+					message.getChannel().sendMessage(StandardMessages.invalidRoleCommand(params[2])).queue();
+				}
+			} else {
+				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
+			}
+		} else if (params[1].equalsIgnoreCase("remove")) {
+			if(params.length >= 4) {
 				
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
-		} else if (params[1].equals("add")) {
+		} else if (params[1].equalsIgnoreCase("alias")) {
 			if(params.length >= 4) {
 
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
-		} else if (params[1].equals("remove")) {
-			if(params.length >= 4) {
-				
-			} else {
-				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
-			}
-		} else if (params[1].equals("alias")) {
-			if(params.length >= 4) {
-
-			} else {
-				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
-			}
-		} else if (params[1].equals("view")) {
+		} else if (params[1].equalsIgnoreCase("view")) {
 			
 		} else {
 			message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
@@ -154,6 +241,14 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	@Override
 	public String toString() {
 		return "PrivateChannelRoleCommand";
+	}
+	
+	private List<Role> getRolesFromCommaSeparatedList(Guild guild, String listOfRoles) {
+		return Stream.of(listOfRoles.split(","))
+				.filter(name -> !name.isEmpty())
+				.map(name -> MiscUtils.getRoleByName(guild, name))
+				.filter(role -> role != null)
+				.collect(Collectors.toList());
 	}
 	
 	private static String extractQuotationMarks(String string) {

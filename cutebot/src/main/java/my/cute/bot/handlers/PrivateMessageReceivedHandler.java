@@ -60,7 +60,7 @@ public class PrivateMessageReceivedHandler {
 		String[] params = MiscUtils.getWords(event.getMessage());
 		PrivateChannelCommand command = null;
 		if(params[0].startsWith("!")) {
-			String commandName = params[0].substring(1);
+			String commandName = params[0].substring(1).toLowerCase();
 			command = this.commands.get(commandName);
 		}
 		

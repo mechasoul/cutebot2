@@ -1,7 +1,15 @@
 package my.cute.bot.commands;
 
+import java.util.List;
+
+import com.google.common.collect.ImmutableList;
+
+import net.dv8tion.jda.api.entities.Role;
+
 /**
  * holds data for a user-generated role command
+ * <p>
+ * <b>note</b> all managed role names and aliases should be <b>case insensitive</b>
  */
 interface RoleCommandDatabase {
 
@@ -14,6 +22,15 @@ interface RoleCommandDatabase {
 	 * database was modified as a result of this call), false otherwise
 	 */
 	public boolean add(String roleName, long roleId);
+	
+	public boolean add(Role role);
+	
+	/**
+	 * adds the given roles to the database
+	 * @param roles the roles to add
+	 * @return an immutable list of all roles successfully added
+	 */
+	public ImmutableList<Role> add(List<Role> roles);
 	
 	/**
 	 * updates a role already existing in the database with a new role id. does
@@ -36,7 +53,7 @@ interface RoleCommandDatabase {
 	
 	/**
 	 * adds an alias to the database. aliases can be used as shorthand for
-	 * a long role name
+	 * a long role name. only one alias can exist for a given role
 	 * @param alias the alias to use for the given role
 	 * @param roleName the name of the role being given an alias
 	 * @return ?

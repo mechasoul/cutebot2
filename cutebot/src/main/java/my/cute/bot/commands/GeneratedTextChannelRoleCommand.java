@@ -5,6 +5,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
@@ -116,13 +117,11 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	}
 	
 	Role updateRole(Guild guild, String roleName) {
-		List<Role> roles = guild.getRolesByName(roleName, false);
-		if(roles.size() >= 1) {
-			this.database.update(roleName, roles.get(0).getIdLong());
-			return roles.get(0);
-		} else {
-			return null;
+		Role role = MiscUtils.getRoleByName(guild, roleName);
+		if(role != null) {
+			this.database.update(roleName, role.getIdLong());
 		}
+		return role;
 	}
 	
 	@Override

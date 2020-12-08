@@ -96,7 +96,7 @@ public class GuildMessageReceivedHandler {
 			String firstWord = params[0];
 			if(firstWord.startsWith(this.prefs.getPrefix())) {
 				//first word starts with designated command prefix. check if it's a command
-				String commandName = firstWord.substring(this.prefs.getPrefix().length());
+				String commandName = firstWord.substring(this.prefs.getPrefix().length()).toLowerCase();
 				if(this.commands.execute(commandName, event.getMessage(), params)) {
 					//don't process commands into database
 					return;

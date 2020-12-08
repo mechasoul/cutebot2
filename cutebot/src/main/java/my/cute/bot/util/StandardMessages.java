@@ -1,5 +1,9 @@
 package my.cute.bot.util;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 
 public class StandardMessages {
@@ -45,4 +49,34 @@ public class StandardMessages {
 		return user.getAsMention() + " error: unable to modify role due to missing permissions. please contact your local administrator";
 	}
 	
+	public static String commandNameAlreadyExists(String name) {
+		return "error: a command already exists with the name '" + name + "'";
+	}
+	
+	public static String invalidRoleCommand(String name) {
+		return "error: no role command exists with the name '" + name + "'";
+	}
+	
+	public static String createdRoleCommand(String commandName, Role role) {
+		return "successfully created command '" + commandName + "' with role '"
+				+ role.getName() + "'";
+	}
+	
+	public static String createdRoleCommand(String commandName, List<Role> roles) {
+		return "successfully created command '" + commandName + "' with "
+				+ (roles.size() > 1 ? "roles" : "role")
+				+ " '" + String.join(", ", roles.stream().map(role -> role.getName()).collect(Collectors.toList()))
+				+ "'";
+	}
+	
+	public static String addedRoleToCommand(String commandName, Role role) {
+		return "successfully added role '" + role.getName() + "' to command '"
+				+ commandName + "'";
+	}
+	
+	public static String addedRolesToCommand(String commandName, List<Role> roles) {
+		return "successfully added roles '" 
+				+ String.join(", ", roles.stream().map(role -> role.getName()).collect(Collectors.toList()))
+				+ "' to command '" + commandName + "'";
+	}
 }

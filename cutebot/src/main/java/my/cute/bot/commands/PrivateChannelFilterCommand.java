@@ -74,7 +74,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		}
 		
 		try {
-			if(params[1].equals("add")) {
+			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {
 					if(filter.add(params[2].split(","))) {
 						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
@@ -86,7 +86,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("remove")) {
+			} else if (params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 3) {
 					if(filter.remove(params[2].split(","))) {
 						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
@@ -97,13 +97,13 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("clear")) {
+			} else if (params[1].equalsIgnoreCase("clear")) {
 				filter.clear();
 				message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
-			} else if (params[1].equals("set")) {
+			} else if (params[1].equalsIgnoreCase("set")) {
 				if(params.length >= 3) {
 					if(filter.getType() == WordFilter.Type.REGEX) {
-						//TODO regex validation here
+						//TODO set regex + validation here
 					} else {
 						filter.set(params[2]);
 						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
@@ -111,12 +111,12 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("regex")) {
+			} else if (params[1].equalsIgnoreCase("regex")) {
 				if(params.length >= 3) {
-					if(params[2].equals("on")) {
+					if(params[2].equalsIgnoreCase("on")) {
 						filter.setType(WordFilter.Type.REGEX);
 						message.getChannel().sendMessage("wordfilter has been set to regex mode. set a regex with !filter set <regex>").queue();
-					} else if (params[2].equals("off")) {
+					} else if (params[2].equalsIgnoreCase("off")) {
 						filter.setType(WordFilter.Type.BASIC);
 						message.getChannel().sendMessage("wordfilter set to default mode").queue();
 					} else {
@@ -125,7 +125,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("action")) {
+			} else if (params[1].equalsIgnoreCase("action")) {
 				if(params.length >= 3) {
 					if(ACTION_FLAGS.matcher(params[2]).matches()) {
 						filter.setActions(FilterResponseAction.numbersToActions(params[2]));
@@ -136,8 +136,9 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("role")) {
+			} else if (params[1].equalsIgnoreCase("role")) {
 				if(params.length >= 3) {
+					//TODO option to provide role name instead of id to mesh with !role command?
 					Role newRole = targetGuild.getRoleById(params[2]);
 					if(newRole != null) {
 						filter.setRoleId(params[2]);
@@ -154,7 +155,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if (params[1].equals("view")) {
+			} else if (params[1].equalsIgnoreCase("view")) {
 				MiscUtils.sendMessages(message.getChannel(), this.getFormattedWordfilterMessages(filter, targetGuild));
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
@@ -181,8 +182,8 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		}
 		builder.append(System.lineSeparator());
 		builder.append("actions taken when filter is triggered: " );
-		builder.append(String.join(", ", filter.getActions().stream().map(action 
-				-> FilterResponseAction.toDescription(action)).collect(Collectors.toList())));
+		builder.append(filter.getActions().stream().map(action 
+				-> FilterResponseAction.toDescription(action)).collect(Collectors.joining(", ")));
 		if(filter.getActions().contains(FilterResponseAction.ROLE)) {
 			builder.append(System.lineSeparator());
 			builder.append("role to apply when filter is triggered: " );

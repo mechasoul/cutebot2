@@ -19,6 +19,7 @@ import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.utils.cache.CacheView;
@@ -136,6 +137,22 @@ public class MiscUtils {
 		} else {
 			previous.queue(success -> sendMessages(channel, channel.sendMessage(message), messages),
 						failure -> channel.sendMessage((messages.size() + 1) + " message(s) not sent because something went wrong").queue());
+		}
+	}
+	
+	public static Role getRoleByName(Guild guild, String name) {
+		List<Role> roles = guild.getRolesByName(name, true);
+		if(roles.size() > 1) {
+			//more than one matching role. check for one that matches case sensitive
+			for(Role role : roles) {
+				if(role.getName().equals(name)) return role;
+			}
+			//otherwise return any
+			return roles.get(0);
+		} else if (roles.size() == 1) {
+			return roles.get(0);
+		} else {
+			return null;
 		}
 	}
 	

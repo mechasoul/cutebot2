@@ -58,12 +58,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		try {
-			if(params[1].equals("add")) {
+			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {
 					try {
 						//ensure given id is a member in target guild
 						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
-						//this is fine if ugly
+						//this is fine, if ugly
 						targetGuild.retrieveMemberById(params[2], false).queue(member ->
 						{
 							try {
@@ -90,12 +90,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if(params[1].equals("remove")) {
+			} else if(params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 3) {
 					try {
 						//ensure given id is a member in target guild
 						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
-						//this is fine if ugly
+						//this is fine, if ugly
 						targetGuild.retrieveMemberById(params[2], false).queue(member -> 
 						{
 							try {
@@ -126,7 +126,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
-			} else if(params[1].equals("view")) {
+			} else if(params[1].equalsIgnoreCase("view")) {
 				MiscUtils.sendMessages(message.getChannel(), this.getFormattedAdminListMessages(targetGuild));
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
@@ -142,7 +142,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 		builder.append("admin list for server " + MiscUtils.getGuildString(targetGuild));
 		builder.append(System.lineSeparator());
 		builder.append(System.lineSeparator());
-		builder.append(String.join(System.lineSeparator(), this.allPermissions.getAdmins(targetGuild.getId()).stream().map(userId ->
+		builder.append(this.allPermissions.getAdmins(targetGuild.getId()).stream().map(userId ->
 		{
 			User user = this.jda.getUserById(userId);
 			if(user != null) {
@@ -150,7 +150,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			} else {
 				return "unknown user id " + userId;
 			}
-		}).collect(Collectors.toList())));
+		}).collect(Collectors.joining(System.lineSeparator())));
 		return builder.buildAll();
 	}
 	
