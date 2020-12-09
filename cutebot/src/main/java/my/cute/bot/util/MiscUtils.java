@@ -210,6 +210,7 @@ public class MiscUtils {
 	}
 	
 	public static Role getRoleByName(Guild guild, String name) {
+		if(name.isBlank()) return null;
 		List<Role> roles = guild.getRolesByName(name, true);
 		if(roles.size() > 1) {
 			//more than one matching role. check for one that matches case sensitive
@@ -233,7 +234,7 @@ public class MiscUtils {
 				.collect(ImmutableList.toImmutableList());
 	}
 	
-	private static String extractQuotationMarks(String string) {
+	public static String extractQuotationMarks(String string) {
 		string = string.split("\"", 2)[1];
 		return string.substring(0, string.lastIndexOf('"'));
 	}

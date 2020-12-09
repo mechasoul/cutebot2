@@ -256,7 +256,7 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	//TODO add try/catch with admin notification to other actions (ban, etc)
+	//TODO add try/catch with admin notification for missing permissions to other actions (ban, etc)
 	private void applyWordFilterActions(final Message message, final String filteredWord) {
 		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
 		if(actions.contains(FilterResponseAction.BAN)) {
@@ -292,7 +292,7 @@ public class GuildMessageReceivedHandler {
 				message.getGuild().addRoleToMember(message.getAuthor().getId(), 
 						message.getGuild().getRoleById(this.wordFilter.getRoleId())).queue();
 			} catch (IllegalArgumentException | InsufficientPermissionException | HierarchyException e) {
-				//exception thrown from addRoleToMember, indicates some issue with stored role id
+				//exception thrown from addRoleToMember, illegalargument indicates some issue with stored role id
 				//TODO notify cutebot admin of relevant server
 			}
 		}

@@ -1,12 +1,20 @@
 package my.cute.bot.commands;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 
 import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;
+import com.google.gson.reflect.TypeToken;
 
 import gnu.trove.map.TObjectLongMap;
 import gnu.trove.map.hash.TObjectLongHashMap;
+import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.entities.Role;
 
 class RoleCommandDatabaseImpl implements RoleCommandDatabase {
@@ -17,13 +25,26 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	private final String guildId;
 	private final TObjectLongMap<String> roleNames;
 	private final BiMap<String, String> aliases;
+	private final Path path;
 	
-	RoleCommandDatabaseImpl(String name, String guildId, TObjectLongMap<String> roles, BiMap<String, String> aliases) {
-		this.commandName = name;
+	RoleCommandDatabaseImpl(String guildId, String name, TObjectLongMap<String> roles, BiMap<String, String> aliases) throws IOException {
 		this.guildId = guildId;
-		this.roleNames = new TObjectLongHashMap<>(roles.size() * 4 / 3, 0.75f, -1);
+		this.commandName = name;
+		this.roleNames = new TObjectLongHashMap<>((roles.size()+1) * 4 / 3, 0.75f, -1);
 		this.roleNames.putAll(roles);
-		this.aliases = aliases;
+		this.aliases = HashBiMap.create(aliases.size()+1);
+		this.aliases.putAll(aliases);
+		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
+		Files.createDirectories(this.path.getParent());
+	}
+	
+	RoleCommandDatabaseImpl(String guildId, String name) throws IOException {
+		this.guildId = guildId;
+		this.commandName = name;
+		this.roleNames = new TObjectLongHashMap<>(3, 0.75f, -1);
+		this.aliases = HashBiMap.create(3);
+		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
+		Files.createDirectories(this.path.getParent());
 	}
 	
 	
@@ -67,16 +88,29 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		this.aliases.inverse().remove(roleName);
 		return existingRole;
 	}
+	
+	@Override
+	public synchronized boolean remove(Role role) {
+		return this.remove(role.getName());
+	}
+	
+	@Override
+	public ImmutableList<Role> remove(List<Role> roles) {
+		ImmutableList.Builder<Role> removedRoles = ImmutableList.builderWithExpectedSize(roles.size());
+		roles.forEach(role -> {
+			if(this.remove(role)) removedRoles.add(role);
+		});
+		return removedRoles.build();
+	}
 
 	@Override
-	public boolean addAlias(String alias, String roleName) {
-		roleName = roleName.toLowerCase();
+	public boolean addAlias(String alias, Role role) {
 		alias = alias.toLowerCase();
 		
-		if(!this.roleNames.containsKey(roleName)) {
+		if(!this.roleNames.containsKey(role.getName().toLowerCase())) {
 			return false;
 		} else {
-			this.aliases.forcePut(alias, roleName);
+			this.aliases.forcePut(alias, role.getName().toLowerCase());
 			return true;
 		}
 	}
@@ -144,9 +178,13 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	@Override
-	public synchronized void save() {
-		// TODO Auto-generated method stub
-
+	public synchronized void save() throws IOException {
+		//TODO call this when modifying db by any method
+		try (BufferedWriter writer = Files.newBufferedWriter(this.path, StandardCharsets.UTF_8)) {
+			RoleCommandDatabaseFactory.GSON.toJson(this.roleNames, new TypeToken<TObjectLongMap<String>>(){}.getType(), writer);
+			writer.newLine();
+			RoleCommandDatabaseFactory.GSON.toJson(this.aliases, new TypeToken<BiMap<String, String>>(){}.getType(), writer);
+		}
 	}
 
 	@Override
@@ -154,4 +192,5 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		// TODO Auto-generated method stub
 
 	}
+
 }

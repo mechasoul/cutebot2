@@ -138,8 +138,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if (params[1].equalsIgnoreCase("role")) {
 				if(params.length >= 3) {
-					//TODO option to provide role name instead of id to mesh with !role command?
-					//also this throws numberformatexception
+					//TODO change this to use MiscUtils.parseRole, require a single role
 					Role newRole = targetGuild.getRoleById(params[2]);
 					if(newRole != null) {
 						filter.setRoleId(params[2]);

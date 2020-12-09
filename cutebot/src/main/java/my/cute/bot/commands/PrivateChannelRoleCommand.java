@@ -1,6 +1,7 @@
 package my.cute.bot.commands;
 
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,6 +15,7 @@ import my.cute.bot.util.ConcurrentFinalEntryMap;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
@@ -64,15 +66,13 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRoleCommand.class);
 	final static String NAME = "role";
-	private final static Pattern QUOTATION_MARKS = Pattern.compile("^\".*\"(?:\\s+|$)");
+	private final static Pattern ALIAS = Pattern.compile("^\".*\",\\w+(?:\\s+|$)");
 	
 	private final ConcurrentFinalEntryMap<String, GuildCommandSet> allCommands;
-	private final JDA jda;
 	
 	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, GuildCommandSet> commands, JDA jda) {
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allCommands = commands;
-		this.jda = jda;
 	}
 
 	//TODO case insensitivity 
@@ -142,13 +142,54 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 			}
 		} else if (params[1].equalsIgnoreCase("remove")) {
 			if(params.length >= 4) {
-				
+				if(commandSet.isRoleCommand(params[2])) {
+					//!role remove commandName givenRoles
+					ImmutableList<Role> givenRoles = MiscUtils.parseRoles(targetGuild, message, 3);
+					if(givenRoles.size() >= 1) {
+						List<Role> removedRoles = commandSet.getRoleCommandDatabase(params[2]).remove(givenRoles);
+						if(!removedRoles.isEmpty()) {
+							message.getChannel().sendMessage(StandardMessages.removedRolesFromCommand(params[2], removedRoles)).queue();
+						} else {
+							message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+						}
+					} else {
+						message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+					}
+				} else {
+					message.getChannel().sendMessage(StandardMessages.invalidRoleCommand(params[2])).queue();
+				}
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
 		} else if (params[1].equalsIgnoreCase("alias")) {
 			if(params.length >= 4) {
-
+				if(commandSet.isRoleCommand(params[2])) {
+					//!role alias commandName "<role name>",<alias>
+					//extract the "<role name>",<alias> part
+					Matcher matcher = ALIAS.matcher(MiscUtils.getWords(message, 4)[3]);
+					if(matcher.matches()) {
+						String aliasText = matcher.group();
+						String roleName = MiscUtils.extractQuotationMarks(aliasText.substring(0, aliasText.lastIndexOf(',')));
+						aliasText = aliasText.substring(aliasText.lastIndexOf(',') + 1);
+						Role role = MiscUtils.getRoleByName(targetGuild, roleName);
+						if(role != null) {
+							if(commandSet.getRoleCommandDatabase(params[2]).addAlias(aliasText, role)) {
+								message.getChannel().sendMessage("successfully added alias '" + aliasText + "' for the role '"
+										+ role.getName() + "'").queue();
+							} else {
+								message.getChannel().sendMessage("failed to add alias '" + aliasText + "' for the role '"
+										+ role.getName() + "' (role not added to command?)").queue();
+							}
+						} else {
+							message.getChannel().sendMessage("error: unable to find any role matching '" 
+									+ roleName + "'").queue();
+						}
+					} else {
+						message.getChannel().sendMessage("error: unable to parse role name and alias").queue();
+					}
+				} else {
+					message.getChannel().sendMessage(StandardMessages.invalidRoleCommand(params[2])).queue();
+				}
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
@@ -157,7 +198,14 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 		} else {
 			message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 		}
-		
+	}
+	
+	private List<Message> getRoleCommandsAsMessages(Guild guild, GuildCommandSet commandSet) {
+		MessageBuilder mb = new MessageBuilder();
+		mb.append("current role commands for server " + MiscUtils.getGuildString(guild));
+		mb.append(System.lineSeparator());
+		mb.append(System.lineSeparator());
+		commandSet.getRoleCommands().for
 	}
 
 	/*

@@ -58,7 +58,7 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			writer.append(GSON.toJson(this));
 		} catch (IOException e) {
-			logger.warn("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed! ex: " + e.getMessage(), e);
+			logger.warn("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed!", e);
 		}
 	}
 	

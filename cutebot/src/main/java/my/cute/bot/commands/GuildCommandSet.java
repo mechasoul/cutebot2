@@ -3,6 +3,8 @@ package my.cute.bot.commands;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableList;
+
 import gnu.trove.map.TObjectLongMap;
 import net.dv8tion.jda.api.entities.Role;
 
@@ -41,5 +43,7 @@ public interface GuildCommandSet extends CommandSet<TextChannelCommand> {
 	public boolean isRoleCommand(String name);
 	
 	public RoleCommandDatabase getRoleCommandDatabase(String name);
+	
+	public ImmutableList<Role> getRoleCommands();
 	
 }

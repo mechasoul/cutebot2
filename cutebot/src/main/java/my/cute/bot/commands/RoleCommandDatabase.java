@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import java.io.IOException;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
@@ -51,14 +52,20 @@ interface RoleCommandDatabase {
 	 */
 	public boolean remove(String roleName);
 	
+	public boolean remove(Role role);
+	
+	public ImmutableList<Role> remove(List<Role> roles);
+	
 	/**
 	 * adds an alias to the database. aliases can be used as shorthand for
 	 * a long role name. only one alias can exist for a given role
 	 * @param alias the alias to use for the given role
-	 * @param roleName the name of the role being given an alias
-	 * @return ?
+	 * @param role the role being given an alias
+	 * @return true if the alias was successfully added for the given role
+	 * (ie, the database was modified as a result of this call), false
+	 * otherwise
 	 */
-	public boolean addAlias(String alias, String roleName);
+	public boolean addAlias(String alias, Role role);
 	
 	/**
 	 * removes an alias for a role from the database for this command
@@ -129,8 +136,9 @@ interface RoleCommandDatabase {
 	
 	/**
 	 * saves all data to disk
+	 * @throws IOException 
 	 */
-	public void save();
+	public void save() throws IOException;
 	
 	/**
 	 * deletes all data from disk and cleans up any necessary resources for gc

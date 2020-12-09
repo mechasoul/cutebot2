@@ -97,6 +97,21 @@ public class StandardMessages {
 		}
 	}
 	
+	public static String removedRoleFromCommand(String commandName, Role role) {
+		return "successfully removed role '" + role.getName() + "' from command '"
+				+ commandName + "'";
+	}
+	
+	public static String removedRolesFromCommand(String commandName, List<Role> roles) {
+		if(roles.size() == 1) {
+			return StandardMessages.removedRoleFromCommand(commandName, roles.get(0));
+		} else {
+			return "successfully removed roles '" 
+					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+					+ "' from command '" + commandName + "'";
+		}
+	}
+	
 	/**
 	 * return a message indicating that the given roles could not be added to
 	 * the given command
