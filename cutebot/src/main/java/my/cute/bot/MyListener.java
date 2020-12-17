@@ -307,7 +307,7 @@ public class MyListener extends ListenerAdapter {
 	private boolean registerGuild(Guild guild) throws IOException {
 		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
 		WordFilter filter = WordFilterFactory.load(guild.getId());
-		CommandSet<TextChannelCommand> commands = CommandFactory.newDefaultTextChannelSet(prefs, this.jda, guild.getId());
+		CommandSet<TextChannelCommand> commands = CommandFactory.newDefaultTextChannelSet(this.jda, guild.getId(), prefs);
 		this.allPrefs.put(guild.getId(), prefs);
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);

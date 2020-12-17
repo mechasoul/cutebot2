@@ -54,7 +54,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	
 	private final GuildPreferences prefs;
 	
-	TextChannelQuoteCommand(GuildPreferences prefs, JDA jda, String id) {
+	TextChannelQuoteCommand(JDA jda, String id, GuildPreferences prefs) {
 		super("quote", PermissionLevel.USER, 0, 0, jda, id);
 		this.prefs = prefs;
 	}

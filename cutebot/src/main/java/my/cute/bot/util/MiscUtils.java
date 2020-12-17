@@ -234,6 +234,10 @@ public class MiscUtils {
 				.collect(ImmutableList.toImmutableList());
 	}
 	
+	public static boolean hasQuotationMarks(String input) {
+		return QUOTATION_MARKS.matcher(input).matches();
+	}
+	
 	public static String extractQuotationMarks(String string) {
 		string = string.split("\"", 2)[1];
 		return string.substring(0, string.lastIndexOf('"'));

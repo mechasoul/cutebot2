@@ -30,6 +30,10 @@ public class RoleCommandDatabaseFactory {
 
 	public static RoleCommandDatabase load(String guildId, String commandName) throws IOException {
 		Path path = PathUtils.getGeneratedRoleCommandDatabase(guildId, commandName);
+		return load(guildId, commandName, path);
+	}
+	
+	public static RoleCommandDatabase load(String guildId, String commandName, Path path) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
 			TObjectLongMap<String> roles = GSON.fromJson(reader.readLine(), new TypeToken<TObjectLongMap<String>>(){}.getType());
 			BiMap<String, String> aliases = GSON.fromJson(reader.readLine(), new TypeToken<BiMap<String, String>>(){}.getType());

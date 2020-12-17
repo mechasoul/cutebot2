@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
 import my.cute.bot.commands.CommandSet;
+import my.cute.bot.commands.GuildCommandSet;
 import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
@@ -63,13 +64,13 @@ public class GuildMessageReceivedHandler {
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final WordFilter wordFilter;
-	private final CommandSet<TextChannelCommand> commands;
+	private final GuildCommandSet commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;;
 	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
-			ExecutorService executor, CommandSet<TextChannelCommand> commands) throws IOException {
+			ExecutorService executor, GuildCommandSet commands) throws IOException {
 		this.jda = jda;
 		this.id = guild.getId();
 		this.prefs = prefs;
@@ -293,6 +294,7 @@ public class GuildMessageReceivedHandler {
 						message.getGuild().getRoleById(this.wordFilter.getRoleId())).queue();
 			} catch (IllegalArgumentException | InsufficientPermissionException | HierarchyException e) {
 				//exception thrown from addRoleToMember, illegalargument indicates some issue with stored role id
+				//others are missing permission
 				//TODO notify cutebot admin of relevant server
 			}
 		}

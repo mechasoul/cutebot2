@@ -56,6 +56,8 @@ interface RoleCommandDatabase {
 	
 	public ImmutableList<Role> remove(List<Role> roles);
 	
+	public ImmutableList<String> removeByName(String... roleNames);
+	
 	/**
 	 * adds an alias to the database. aliases can be used as shorthand for
 	 * a long role name. only one alias can exist for a given role
@@ -133,6 +135,20 @@ interface RoleCommandDatabase {
 	 * @return the id of the guild this database's command is used in
 	 */
 	public String getId();
+	
+	public ImmutableList<String> getRoleNames();
+	
+	public long[] getRoleIds();
+	
+	/**
+	 * get a formatted human-readable string representing the command and its roles. intended
+	 * for use with functions that eg give a summary of all available role commands, and 
+	 * differs from toString() in that this provides nice human-readable information rather 
+	 * than developer-focused debug information
+	 * @return the nicely formatted human readable string representation of this command and 
+	 * its roles and their aliases
+	 */
+	public String getFormattedString();
 	
 	/**
 	 * saves all data to disk

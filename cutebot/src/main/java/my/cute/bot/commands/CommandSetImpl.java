@@ -3,15 +3,20 @@ package my.cute.bot.commands;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import net.dv8tion.jda.api.entities.Message;
 
 class CommandSetImpl<T extends Command> implements CommandSet<T> {
 
-	private final ConcurrentHashMap<String, T> commandSet;
+	protected final ConcurrentMap<String, T> commandSet;
 	
 	public CommandSetImpl(int capacity) {
 		this.commandSet = new ConcurrentHashMap<>(capacity);
+	}
+	
+	public CommandSetImpl() {
+		this.commandSet = new ConcurrentHashMap<>();
 	}
 	
 	@Override

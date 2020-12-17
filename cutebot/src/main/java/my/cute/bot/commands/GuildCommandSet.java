@@ -44,6 +44,6 @@ public interface GuildCommandSet extends CommandSet<TextChannelCommand> {
 	
 	public RoleCommandDatabase getRoleCommandDatabase(String name);
 	
-	public ImmutableList<Role> getRoleCommands();
+	public ImmutableList<RoleCommandDatabase> getRoleCommandDatabases();
 	
 }

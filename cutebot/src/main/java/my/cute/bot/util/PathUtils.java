@@ -77,6 +77,15 @@ public final class PathUtils {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + WORD_FILTER_FILE_NAME);
 	}
 	
+	public static Path getCommandsDirectory(String guildId) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + COMMANDS_DIRECTORY_NAME);
+	}
+	
+	public static Path getGeneratedRoleCommandsDirectory(String guildId) {
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + COMMANDS_DIRECTORY_NAME
+				+ File.separator + ROLE_COMMANDS_DIRECTORY_NAME);
+	}
+	
 	public static Path getGeneratedRoleCommandDatabase(String guildId, String commandName) {
 		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + guildId + File.separator + COMMANDS_DIRECTORY_NAME 
 				+ File.separator + ROLE_COMMANDS_DIRECTORY_NAME + File.separator + commandName + ".database");

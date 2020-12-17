@@ -6,6 +6,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -102,6 +104,15 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		});
 		return removedRoles.build();
 	}
+	
+	@Override
+	public ImmutableList<String> removeByName(String... roleNames) {
+		ImmutableList.Builder<String> removedRoleNames = ImmutableList.builderWithExpectedSize(roleNames.length);
+		Stream.of(roleNames).forEach(roleName -> {
+			if(this.remove(roleName)) removedRoleNames.add(roleName);
+		});
+		return removedRoleNames.build();
+	}
 
 	@Override
 	public boolean addAlias(String alias, Role role) {
@@ -175,6 +186,38 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	@Override
 	public String getId() {
 		return this.guildId;
+	}
+	
+	@Override
+	public ImmutableList<String> getRoleNames() {
+		return ImmutableList.copyOf(this.roleNames.keySet());
+	}
+	
+	@Override
+	public long[] getRoleIds() {
+		return this.roleNames.values();
+	}
+	
+	@Override
+	public String getFormattedString() {
+		//format: command name - 'role 1' (alias 1), 'role 2' (alias 2), ...
+		StringBuilder sb = new StringBuilder();
+		sb.append(this.getName());
+		sb.append(" - ");
+		sb.append(this.roleNames.keySet().stream().map(roleName -> {
+			StringBuilder role = new StringBuilder();
+			role.append("'");
+			role.append(roleName);
+			role.append("'");
+			String roleAlias = this.aliases.inverse().get(roleName);
+			if(roleAlias != null) {
+				role.append(" (");
+				role.append(roleAlias);
+				role.append(")");
+			}
+			return roleAlias.toString();
+		}).collect(Collectors.joining(", ")));
+		return sb.toString();
 	}
 
 	@Override

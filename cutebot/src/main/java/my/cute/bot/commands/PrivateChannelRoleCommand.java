@@ -1,10 +1,10 @@
 package my.cute.bot.commands;
 
 import java.util.List;
+import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +16,7 @@ import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
+import net.dv8tion.jda.api.MessageBuilder.SplitPolicy;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
@@ -67,6 +68,7 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRoleCommand.class);
 	final static String NAME = "role";
 	private final static Pattern ALIAS = Pattern.compile("^\".*\",\\w+(?:\\s+|$)");
+	private final static int MAX_COMMAND_NAME_LENGTH = 30;
 	
 	private final ConcurrentFinalEntryMap<String, GuildCommandSet> allCommands;
 	
@@ -91,16 +93,20 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 		if(params[1].equalsIgnoreCase("create")) {
 			if(params.length >= 4) {
 				if(!commandSet.contains(params[2].toLowerCase())) {
-					//!role create commandname givenRoles
-					ImmutableList<Role> givenRoles = MiscUtils.parseRoles(targetGuild, message, 3);
-					if(givenRoles.size() >= 1) {
-						if(commandSet.createRoleCommand(params[2], givenRoles)) {
-							message.getChannel().sendMessage(StandardMessages.createdRoleCommand(params[2], givenRoles)).queue();
-						} else {
-							message.getChannel().sendMessage("failed to create command '" + params[2] + "' (max commands reached?)").queue();
+					if(params[2].matches("[A-Za-z0-9]+") && params[2].length() <= MAX_COMMAND_NAME_LENGTH) {
+						//!role create commandname givenRoles
+						ImmutableList<Role> givenRoles = MiscUtils.parseRoles(targetGuild, message, 3);
+						if(givenRoles.size() >= 1) {
+							if(commandSet.createRoleCommand(params[2], givenRoles)) {
+								message.getChannel().sendMessage(StandardMessages.createdRoleCommand(params[2], givenRoles)).queue();
+							} else {
+								message.getChannel().sendMessage("failed to create command '" + params[2] + "' (max commands reached?)").queue();
+							}
+						} else  {
+							message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
 						}
-					} else  {
-						message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+					} else {
+						message.getChannel().sendMessage(StandardMessages.invalidCommandName(params[2], MAX_COMMAND_NAME_LENGTH)).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.commandNameAlreadyExists(params[2])).queue();
@@ -144,16 +150,30 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 			if(params.length >= 4) {
 				if(commandSet.isRoleCommand(params[2])) {
 					//!role remove commandName givenRoles
-					ImmutableList<Role> givenRoles = MiscUtils.parseRoles(targetGuild, message, 3);
-					if(givenRoles.size() >= 1) {
-						List<Role> removedRoles = commandSet.getRoleCommandDatabase(params[2]).remove(givenRoles);
-						if(!removedRoles.isEmpty()) {
-							message.getChannel().sendMessage(StandardMessages.removedRolesFromCommand(params[2], removedRoles)).queue();
+					//TODO do something if no roles exist in command after removal
+					String roleText = MiscUtils.getWords(message, 4)[3];
+					if(MiscUtils.hasQuotationMarks(roleText)) {
+						roleText = MiscUtils.extractQuotationMarks(roleText);
+						//check for single role in quotation marks
+						if(commandSet.getRoleCommandDatabase(params[2]).remove(roleText)) {
+							message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
+						} else {
+							//try comma-separated list
+							List<String> removedRoleNames = commandSet.getRoleCommandDatabase(params[2]).removeByName(roleText.split(",\\s*"));
+							if(!removedRoleNames.isEmpty()) {
+								message.getChannel().sendMessage(StandardMessages.removedRoleNamesFromCommand(params[2], removedRoleNames)).queue();
+							} else {
+								message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+							}
+						}
+					} else {
+						//attempt to remove single role
+						roleText = MiscUtils.getWords(roleText)[0];
+						if(commandSet.getRoleCommandDatabase(params[2]).remove(roleText)) {
+							message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
 						} else {
 							message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
 						}
-					} else {
-						message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidRoleCommand(params[2])).queue();
@@ -194,18 +214,23 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
 		} else if (params[1].equalsIgnoreCase("view")) {
-			
+			MiscUtils.sendMessages(message.getChannel(), this.getRoleCommandsAsMessages(targetGuild, commandSet));
 		} else {
 			message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 		}
 	}
 	
-	private List<Message> getRoleCommandsAsMessages(Guild guild, GuildCommandSet commandSet) {
+	private Queue<Message> getRoleCommandsAsMessages(Guild guild, GuildCommandSet commandSet) {
 		MessageBuilder mb = new MessageBuilder();
 		mb.append("current role commands for server " + MiscUtils.getGuildString(guild));
 		mb.append(System.lineSeparator());
 		mb.append(System.lineSeparator());
-		commandSet.getRoleCommands().for
+		mb.append("(format: `command name - 'role 1' (alias 1), 'role 2' (alias 2), ...`)");
+		mb.append(System.lineSeparator());
+		mb.append(commandSet.getRoleCommandDatabases().stream()
+				.map(db -> db.getFormattedString())
+				.collect(Collectors.joining(System.lineSeparator())));
+		return mb.buildAll(SplitPolicy.ANYWHERE);
 	}
 
 	/*

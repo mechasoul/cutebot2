@@ -54,6 +54,14 @@ public class StandardMessages {
 		return "error: a command already exists with the name '" + name + "'";
 	}
 	
+	public static String invalidCommandName(String name, int maxNameLength) {
+		if(name.length() > maxNameLength) {
+			return "error: command names cannot be longer than " + maxNameLength + " characters";
+		} else {
+			return "error: '" + name + "' is not a valid command name (command names must be alphanumeric)";
+		}
+	}
+	
 	public static String invalidRoleCommand(String name) {
 		return "error: no role command exists with the name '" + name + "'";
 	}
@@ -102,12 +110,27 @@ public class StandardMessages {
 				+ commandName + "'";
 	}
 	
+	public static String removedRoleFromCommand(String commandName, String roleName) {
+		return "successfully removed role '" + roleName + "' from command '"
+				+ commandName + "'";
+	}
+	
 	public static String removedRolesFromCommand(String commandName, List<Role> roles) {
 		if(roles.size() == 1) {
 			return StandardMessages.removedRoleFromCommand(commandName, roles.get(0));
 		} else {
 			return "successfully removed roles '" 
 					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+					+ "' from command '" + commandName + "'";
+		}
+	}
+	
+	public static String removedRoleNamesFromCommand(String commandName, List<String> roleNames) {
+		if(roleNames.size() == 1) {
+			return StandardMessages.removedRoleFromCommand(commandName, roleNames.get(0));
+		} else {
+			return "successfully removed roles '" 
+					+ String.join(", ", roleNames)
 					+ "' from command '" + commandName + "'";
 		}
 	}
@@ -132,4 +155,6 @@ public class StandardMessages {
 					+ "' but failed to add it to command '" + commandName + "' (already exists?)";
 		}
 	}
+
+	
 }
