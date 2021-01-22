@@ -21,7 +21,7 @@ import net.dv8tion.jda.api.entities.Role;
 
 class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	
-	private final static int MAX_ROLES = 30;
+	private final static int MAX_ROLES = 32;
 
 	private final String commandName;
 	private final String guildId;
@@ -29,7 +29,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	private final BiMap<String, String> aliases;
 	private final Path path;
 	
-	RoleCommandDatabaseImpl(String guildId, String name, TObjectLongMap<String> roles, BiMap<String, String> aliases) throws IOException {
+	RoleCommandDatabaseImpl(String guildId, String name, TObjectLongMap<String> roles, BiMap<String, String> aliases) {
 		this.guildId = guildId;
 		this.commandName = name;
 		this.roleNames = new TObjectLongHashMap<>((roles.size()+1) * 4 / 3, 0.75f, -1);
@@ -37,100 +37,139 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		this.aliases = HashBiMap.create(aliases.size()+1);
 		this.aliases.putAll(aliases);
 		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
-		Files.createDirectories(this.path.getParent());
 	}
 	
-	RoleCommandDatabaseImpl(String guildId, String name) throws IOException {
+	RoleCommandDatabaseImpl(String guildId, String name) {
 		this.guildId = guildId;
 		this.commandName = name;
 		this.roleNames = new TObjectLongHashMap<>(3, 0.75f, -1);
 		this.aliases = HashBiMap.create(3);
 		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
-		Files.createDirectories(this.path.getParent());
 	}
+	
+	//TODO add save() call to any methods that modify db (as specified in RoleCommandDatabase)
 	
 	
 	@Override
-	public synchronized boolean add(String roleName, long roleId) {
+	public synchronized boolean add(String roleName, long roleId) throws IOException {
 		roleName = roleName.toLowerCase();
 		if(this.roleNames.size() >= MAX_ROLES) return false;
 		
-		return this.roleNames.putIfAbsent(roleName, roleId) == -1;
+		boolean newRoleAdded = this.roleNames.putIfAbsent(roleName, roleId) == -1;
+		if(newRoleAdded) this.save();
+		return newRoleAdded;
 	}
 	
 	@Override
-	public synchronized boolean add(Role role) {
+	public synchronized boolean add(Role role) throws IOException {
 		return this.add(role.getName().toLowerCase(), role.getIdLong());
 	}
 
+	private synchronized boolean addWithoutSave(Role role) {
+		if(this.roleNames.size() >= MAX_ROLES) return false;
+		
+		return this.roleNames.putIfAbsent(role.getName().toLowerCase(), role.getIdLong()) == -1;
+	}
 
 	@Override
-	public synchronized ImmutableList<Role> add(List<Role> roles) {
-		ImmutableList.Builder<Role> addedRoles = ImmutableList.builderWithExpectedSize(roles.size());
+	public synchronized ImmutableList<Role> add(List<Role> roles) throws IOException {
+		ImmutableList.Builder<Role> addedRolesBuilder = ImmutableList.builderWithExpectedSize(roles.size());
 		roles.forEach(role -> {
-			if(this.add(role)) addedRoles.add(role);
+			if(this.addWithoutSave(role)) addedRolesBuilder.add(role);
 		});
-		return addedRoles.build();
+		ImmutableList<Role> addedRoles = addedRolesBuilder.build();
+		if(!addedRoles.isEmpty()) this.save();
+		return addedRoles;
 	}
 	
 	@Override
-	public synchronized boolean update(String roleName, long roleId) {
+	public synchronized boolean update(String roleName, long roleId) throws IOException {
 		roleName = roleName.toLowerCase();
 		
 		if(!this.roleNames.containsKey(roleName)) return false;
+		
 		this.roleNames.put(roleName, roleId);
+		this.save();
 		return true;
 	}
 
 	@Override
-	public synchronized boolean remove(String roleName) {
+	public synchronized boolean remove(String roleName) throws IOException {
 		roleName = roleName.toLowerCase();
 		
-		boolean existingRole = this.roleNames.remove(roleName) != -1;
-		this.aliases.inverse().remove(roleName);
-		return existingRole;
+		if(this.roleNames.remove(roleName) != -1) {
+			this.aliases.inverse().remove(roleName);
+			this.save();
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	private synchronized boolean removeWithoutSave(String roleName) {
+		roleName = roleName.toLowerCase();
+		
+		if(this.roleNames.remove(roleName) != -1) {
+			this.aliases.inverse().remove(roleName);
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	private synchronized boolean removeWithoutSave(Role role) {
+		return this.removeWithoutSave(role.getName());
 	}
 	
 	@Override
-	public synchronized boolean remove(Role role) {
+	public synchronized boolean remove(Role role) throws IOException {
 		return this.remove(role.getName());
 	}
 	
 	@Override
-	public ImmutableList<Role> remove(List<Role> roles) {
-		ImmutableList.Builder<Role> removedRoles = ImmutableList.builderWithExpectedSize(roles.size());
+	public ImmutableList<Role> remove(List<Role> roles) throws IOException {
+		ImmutableList.Builder<Role> removedRolesBuilder = ImmutableList.builderWithExpectedSize(roles.size());
 		roles.forEach(role -> {
-			if(this.remove(role)) removedRoles.add(role);
+			if(this.removeWithoutSave(role)) removedRolesBuilder.add(role);
 		});
-		return removedRoles.build();
+		
+		ImmutableList<Role> removedRoles = removedRolesBuilder.build();
+		if(!removedRoles.isEmpty()) this.save();
+		return removedRoles;
 	}
 	
 	@Override
-	public ImmutableList<String> removeByName(String... roleNames) {
-		ImmutableList.Builder<String> removedRoleNames = ImmutableList.builderWithExpectedSize(roleNames.length);
+	public ImmutableList<String> removeByName(String... roleNames) throws IOException {
+		ImmutableList.Builder<String> removedRoleNamesBuilder = ImmutableList.builderWithExpectedSize(roleNames.length);
 		Stream.of(roleNames).forEach(roleName -> {
-			if(this.remove(roleName)) removedRoleNames.add(roleName);
+			if(this.removeWithoutSave(roleName)) removedRoleNamesBuilder.add(roleName);
 		});
-		return removedRoleNames.build();
+		
+		ImmutableList<String> removedRoleNames = removedRoleNamesBuilder.build();
+		if(!removedRoleNames.isEmpty()) this.save();
+		return removedRoleNames;
 	}
 
 	@Override
-	public boolean addAlias(String alias, Role role) {
+	public boolean addAlias(String alias, Role role) throws IOException {
 		alias = alias.toLowerCase();
 		
 		if(!this.roleNames.containsKey(role.getName().toLowerCase())) {
 			return false;
 		} else {
 			this.aliases.forcePut(alias, role.getName().toLowerCase());
+			this.save();
 			return true;
 		}
 	}
 
 	@Override
-	public boolean removeAlias(String alias) {
+	public boolean removeAlias(String alias) throws IOException {
 		alias = alias.toLowerCase();
 		
-		return this.aliases.remove(alias) != null;
+		boolean successfullyRemoved = this.aliases.remove(alias) != null;
+		if(successfullyRemoved) this.save();
+		return successfullyRemoved;
 	}
 
 	@Override
@@ -222,7 +261,6 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 
 	@Override
 	public synchronized void save() throws IOException {
-		//TODO call this when modifying db by any method
 		try (BufferedWriter writer = Files.newBufferedWriter(this.path, StandardCharsets.UTF_8)) {
 			RoleCommandDatabaseFactory.GSON.toJson(this.roleNames, new TypeToken<TObjectLongMap<String>>(){}.getType(), writer);
 			writer.newLine();
@@ -231,9 +269,8 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	@Override
-	public void delete() {
-		// TODO Auto-generated method stub
-
+	public void delete() throws IOException {
+		Files.deleteIfExists(path);
 	}
 
 }

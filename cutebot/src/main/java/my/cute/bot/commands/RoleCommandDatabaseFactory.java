@@ -45,4 +45,8 @@ public class RoleCommandDatabaseFactory {
 		}
 	}
 	
+	public static RoleCommandDatabase create(String guildId, String commandName) {
+		return new RoleCommandDatabaseImpl(guildId, commandName);
+	}
+	
 }

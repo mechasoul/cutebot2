@@ -1,11 +1,10 @@
 package my.cute.bot.commands;
 
+import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import com.google.common.collect.ImmutableList;
 
-import gnu.trove.map.TObjectLongMap;
 import net.dv8tion.jda.api.entities.Role;
 
 /**
@@ -25,8 +24,9 @@ public interface GuildCommandSet extends CommandSet<TextChannelCommand> {
 	 * @return true if a new command was created (ie, the commandset was modified as
 	 * a result of this call), false otherwise (for example, if a command with that
 	 * name already exists)
+	 * @throws IOException 
 	 */
-	public boolean createRoleCommand(String name, List<Role> roles);
+	public boolean createRoleCommand(String name, List<Role> roles) throws IOException;
 	
 	/**
 	 * creates a new role command with the given name and single role
@@ -35,10 +35,11 @@ public interface GuildCommandSet extends CommandSet<TextChannelCommand> {
 	 * @return true if a new command was created (ie, the commandset was modified as
 	 * a result of this call), false otherwise (for example, if a command with that
 	 * name already exists)
+	 * @throws IOException 
 	 */
-	public boolean createRoleCommand(String name, Role role);
+	public boolean createRoleCommand(String name, Role role) throws IOException;
 	
-	public boolean deleteRoleCommand(String name);
+	public boolean deleteRoleCommand(String name) throws IOException;
 	
 	public boolean isRoleCommand(String name);
 	

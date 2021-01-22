@@ -2,23 +2,19 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 
 class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements GuildCommandSet {
 
+	private static final int MAX_ROLE_COMMANDS = 16; 
+	
 	private final JDA jda;
 	private final String id;
 	private final ConcurrentMap<String, RoleCommandDatabase> roleCommandDbs;
@@ -51,33 +47,44 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 //		}
 //	}
 
+	//TODO ?
+	
 	@Override
-	public boolean createRoleCommand(String name, List<Role> roles) {
-		return false;
+	public boolean createRoleCommand(String name, List<Role> roles) throws IOException {
+		if(this.roleCommandDbs.size() < MAX_ROLE_COMMANDS) {
+			RoleCommandDatabase db = RoleCommandDatabaseFactory.create(this.id, name);
+			boolean newCommandAdded = this.roleCommandDbs.putIfAbsent(name, db) == null;
+			db.add(roles);
+			return newCommandAdded;
+		} else {
+			return false;
+		}
 	}
 
 	@Override
-	public boolean createRoleCommand(String name, Role role) {
-		// TODO Auto-generated method stub
-		return false;
+	public boolean createRoleCommand(String name, Role role) throws IOException {
+		return this.createRoleCommand(name, List.of(role));
 	}
 
 	@Override
-	public boolean deleteRoleCommand(String name) {
-		// TODO Auto-generated method stub
-		return false;
+	public boolean deleteRoleCommand(String name) throws IOException {
+		RoleCommandDatabase db = this.roleCommandDbs.remove(name);
+		if(db != null) {
+			db.delete();
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	@Override
 	public boolean isRoleCommand(String name) {
-		// TODO Auto-generated method stub
-		return false;
+		return this.roleCommandDbs.containsKey(name);
 	}
 
 	@Override
 	public RoleCommandDatabase getRoleCommandDatabase(String name) {
-		// TODO Auto-generated method stub
-		return null;
+		return this.roleCommandDbs.get(name);
 	}
 
 	@Override

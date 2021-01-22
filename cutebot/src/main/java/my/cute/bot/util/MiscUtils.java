@@ -190,14 +190,14 @@ public class MiscUtils {
 	}
 	
 	/**
-	 * see {@link #parseRole(Guild, String)}, but taking on some extra message parsing.
+	 * see {@link #parseRoles(Guild, String)}, but taking on some extra message parsing.
 	 * eg, message with content:
 	 * <p>
 	 * !role create region "North America,South America,Europe"
 	 * <p>
 	 * could call parseRole(guild, message, 3) to attempt to find roles matching the list.
 	 * or if you'd prefer, simply shorthand for <br>
-	 * parseRole(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore]
+	 * parseRole(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore])
 	 * @param guild the guild to check for roles
 	 * @param message the message to strip roles from (probably a user-submitted command)
 	 * @param paramsToIgnore the number of words to ignore in the message until the roles

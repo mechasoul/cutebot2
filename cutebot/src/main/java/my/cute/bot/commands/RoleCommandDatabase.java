@@ -8,9 +8,16 @@ import com.google.common.collect.ImmutableList;
 import net.dv8tion.jda.api.entities.Role;
 
 /**
- * holds data for a user-generated role command
+ * holds data for a user-generated role command: which roles can be toggled via
+ * the command, and aliases for those roles.
  * <p>
  * <b>note</b> all managed role names and aliases should be <b>case insensitive</b>
+ * <p>
+ * <b>also note about i/o:</b> this class represents a database that is managed 
+ * without transactions; any modification to the database is followed immediately
+ * by an update to the saved database on disk. consequently, any methods that 
+ * modify the database will (likely) perform io and thus any code that uses this
+ * class should be ready to handle ioexception
  */
 interface RoleCommandDatabase {
 
@@ -21,17 +28,20 @@ interface RoleCommandDatabase {
 	 * @param roleId the id of the role to add
 	 * @return true if the role name and id were successfully added (ie, the 
 	 * database was modified as a result of this call), false otherwise
+	 * @throws IOException 
 	 */
-	public boolean add(String roleName, long roleId);
+	public boolean add(String roleName, long roleId) throws IOException;
 	
-	public boolean add(Role role);
+	public boolean add(Role role) throws IOException;
 	
 	/**
 	 * adds the given roles to the database
 	 * @param roles the roles to add
-	 * @return an immutable list of all roles successfully added
+	 * @return an immutable list of all roles successfully added (if no roles 
+	 * were successfully added, an empty list is returned)
+	 * @throws IOException 
 	 */
-	public ImmutableList<Role> add(List<Role> roles);
+	public ImmutableList<Role> add(List<Role> roles) throws IOException;
 	
 	/**
 	 * updates a role already existing in the database with a new role id. does
@@ -40,8 +50,9 @@ interface RoleCommandDatabase {
 	 * @param roleId the new id of the role
 	 * @return true if the role's id was successfully updated (ie, the database
 	 * was modified as a result of this call), false otherwise
+	 * @throws IOException 
 	 */
-	public boolean update(String roleName, long roleId);
+	public boolean update(String roleName, long roleId) throws IOException;
 	
 	/**
 	 * removes a role from the database for this command. should also remove
@@ -49,14 +60,15 @@ interface RoleCommandDatabase {
 	 * @param roleName the name of the role to remove
 	 * @return true if the role was successfully removed (ie, the database 
 	 * was modified as a result of this call), false otherwise
+	 * @throws IOException 
 	 */
-	public boolean remove(String roleName);
+	public boolean remove(String roleName) throws IOException;
 	
-	public boolean remove(Role role);
+	public boolean remove(Role role) throws IOException;
 	
-	public ImmutableList<Role> remove(List<Role> roles);
+	public ImmutableList<Role> remove(List<Role> roles) throws IOException;
 	
-	public ImmutableList<String> removeByName(String... roleNames);
+	public ImmutableList<String> removeByName(String... roleNames) throws IOException;
 	
 	/**
 	 * adds an alias to the database. aliases can be used as shorthand for
@@ -66,16 +78,18 @@ interface RoleCommandDatabase {
 	 * @return true if the alias was successfully added for the given role
 	 * (ie, the database was modified as a result of this call), false
 	 * otherwise
+	 * @throws IOException 
 	 */
-	public boolean addAlias(String alias, Role role);
+	public boolean addAlias(String alias, Role role) throws IOException;
 	
 	/**
 	 * removes an alias for a role from the database for this command
 	 * @param alias the alias to remove
 	 * @return true if the alias was successfully removed (ie, the database 
 	 * was modified as a result of this call), false otherwise
+	 * @throws IOException 
 	 */
-	public boolean removeAlias(String alias);
+	public boolean removeAlias(String alias) throws IOException;
 	
 	/**
 	 * checks if this database contains only a single role
@@ -159,6 +173,6 @@ interface RoleCommandDatabase {
 	/**
 	 * deletes all data from disk and cleans up any necessary resources for gc
 	 */
-	public void delete();
+	public void delete() throws IOException;
 	
 }
