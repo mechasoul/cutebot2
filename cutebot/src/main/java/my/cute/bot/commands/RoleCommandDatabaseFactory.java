@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,16 +16,16 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
-import gnu.trove.map.TObjectLongMap;
+import gnu.trove.set.hash.THashSet;
 import my.cute.bot.util.BiMapStringStringTypeAdapter;
 import my.cute.bot.util.PathUtils;
-import my.cute.bot.util.TStringLongMapTypeAdapter;
+import my.cute.bot.util.THashSetStringTypeAdapter;
 
 public class RoleCommandDatabaseFactory {
 	
 	private static final Logger logger = LoggerFactory.getLogger(RoleCommandDatabaseFactory.class);
 	static final Gson GSON = new GsonBuilder()
-			.registerTypeHierarchyAdapter(TObjectLongMap.class, new TStringLongMapTypeAdapter())
+			.registerTypeHierarchyAdapter(THashSet.class, new THashSetStringTypeAdapter())
 			.registerTypeHierarchyAdapter(BiMap.class, new BiMapStringStringTypeAdapter())
 			.create();
 
@@ -35,7 +36,7 @@ public class RoleCommandDatabaseFactory {
 	
 	public static RoleCommandDatabase load(String guildId, String commandName, Path path) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-			TObjectLongMap<String> roles = GSON.fromJson(reader.readLine(), new TypeToken<TObjectLongMap<String>>(){}.getType());
+			Set<String> roles = GSON.fromJson(reader.readLine(), new TypeToken<THashSet<String>>(){}.getType());
 			BiMap<String, String> aliases = GSON.fromJson(reader.readLine(), new TypeToken<BiMap<String, String>>(){}.getType());
 			return new RoleCommandDatabaseImpl(guildId, commandName, roles, aliases);
 		} catch (NoSuchFileException e) {

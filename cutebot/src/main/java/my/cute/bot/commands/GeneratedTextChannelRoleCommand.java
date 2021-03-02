@@ -1,5 +1,7 @@
 package my.cute.bot.commands;
 
+import java.io.IOException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,41 +34,36 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 		
 		//really shouldnt be possible for this to be null
 		Guild guild = this.jda.getGuildById(this.guildId);
-		long targetRoleId;
-		String targetRoleName="";
+		String targetRoleName=null;
 		String specifiedRole = message.getContentRaw().trim().split("\\s+", 2)[1];
 		
 		if(this.database.isSingleRole()) {
-			targetRoleId = this.database.getSingleRoleId();
 			targetRoleName = this.database.getSingleRoleName();
-		} else {
-			//try input as role name, then alias
+		} else if(this.database.contains(specifiedRole)) {
+			//multiple roles in db. first check input as role name
 			targetRoleName = specifiedRole;
-			targetRoleId = this.database.getRoleId(specifiedRole);
-			if(targetRoleId == -1) {
-				//no role with that name. try alias
-				targetRoleName = this.database.getRoleNameByAlias(specifiedRole);
-				targetRoleId = this.database.getRoleIdByAlias(specifiedRole);
-			}
+		} else {
+			//no role found with given name. check input as alias
+			targetRoleName = this.database.getRoleNameByAlias(specifiedRole);
 		}
 		
-		if(targetRoleId != -1) {
-			Role role = guild.getRoleById(targetRoleId);
+		if(targetRoleName != null) {
+			Role role = MiscUtils.getRoleByName(guild, targetRoleName);
 			if(role != null) {
 				this.applyRole(guild, role, message);
 			} else {
 				/*
-				 * role id that exists in command no longer exists in server
-				 * check to see if there's a different role with the same name,
-				 * and if not then remove the role
+				 * role name that exists in command no longer exists in server
+				 * remove role from command
 				 */
-				role = this.updateRole(guild, targetRoleName);
-				if(role != null) {
-					//successfully updated the role in internal map. apply it
-					this.applyRole(guild, role, message);
-				} else {
-					this.database.remove(targetRoleName);
+				
+				try {
+					this.database.remove(role);
 					//TODO delete command or something if no roles left in db after removal
+					message.getChannel().sendMessage(StandardMessages.invalidRole(message.getAuthor(), specifiedRole)).queue();
+				} catch (IOException e) {
+					//unknown error when trying to remove role
+					logger.warn(this + ": ioexception when trying to remove role '" + role + "'", e);
 					message.getChannel().sendMessage(StandardMessages.invalidRole(message.getAuthor(), specifiedRole)).queue();
 				}
 			}
@@ -112,14 +109,6 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 				context.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 			}
 		});
-	}
-	
-	Role updateRole(Guild guild, String roleName) {
-		Role role = MiscUtils.getRoleByName(guild, roleName);
-		if(role != null) {
-			this.database.update(roleName, role.getIdLong());
-		}
-		return role;
 	}
 	
 	@Override
