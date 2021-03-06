@@ -81,6 +81,12 @@ public class MiscUtils {
 		return WHITESPACE.split(message.getContentRaw().trim());
 	}
 	
+	/**
+	 * takes a string and extracts words from it. splits the given string on whitespace, with 
+	 * leading and trailing whitespace trimmed first
+	 * @param message the string to split into words
+	 * @return an array consisting of the individual words in the given string
+	 */
 	public static String[] getWords(String message) {
 		return WHITESPACE.split(message.trim());
 	}
@@ -209,6 +215,17 @@ public class MiscUtils {
 		return parseRoles(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore]);
 	}
 	
+	/**
+	 * returns a Role from the given guild with the given name. will first check for roles
+	 * that match the given name exactly, then case insensitive. if multiple roles exist 
+	 * with the given name, returns the oldest one (subject to sudden change if 
+	 * JDA changes its sorting). if no roles exist with the given name, returns null
+	 * @param guild the guild to check for a role 
+	 * @param name the name of the role to return (case insensitive)
+	 * @return a role with the given name in the given guild. if multiple roles exist with the
+	 * given name, returns the oldest (subject to change if JDA changes). if none exist with 
+	 * the given name, returns null
+	 */
 	public static Role getRoleByName(Guild guild, String name) {
 		if(name.isBlank()) return null;
 		List<Role> roles = guild.getRolesByName(name, true);
@@ -251,7 +268,7 @@ public class MiscUtils {
 	 * @return the role with the given id in the given guild if it exists, or null if
 	 * either no such role exists or the given id can't be parsed by Long.parseLong(String)
 	 */
-	private static Role tryRoleById(Guild guild, String id) {
+	public static Role tryRoleById(Guild guild, String id) {
 		try {
 			return guild.getRoleById(id);
 		} catch (NumberFormatException e) {

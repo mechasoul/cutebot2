@@ -52,6 +52,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	
 	@Override
 	public synchronized boolean add(String roleName, long roleId) throws IOException {
+		if(roleName.isBlank()) return false;
 		roleName = roleName.toLowerCase();
 		if(this.roleNames.size() >= MAX_ROLES) return false;
 		
@@ -66,7 +67,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	private synchronized boolean addWithoutSave(Role role) {
-		if(this.roleNames.size() >= MAX_ROLES) return false;
+		if(role.getName().isBlank() || this.roleNames.size() >= MAX_ROLES) return false;
 		
 		return this.roleNames.putIfAbsent(role.getName().toLowerCase(), role.getIdLong()) == -1;
 	}
@@ -95,6 +96,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 
 	@Override
 	public synchronized boolean remove(String roleName) throws IOException {
+		if(roleName.isBlank()) return false;
 		roleName = roleName.toLowerCase();
 		
 		if(this.roleNames.remove(roleName) != -1) {
@@ -107,6 +109,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 	
 	private synchronized boolean removeWithoutSave(String roleName) {
+		if(roleName.isBlank()) return false;
 		roleName = roleName.toLowerCase();
 		
 		if(this.roleNames.remove(roleName) != -1) {
@@ -152,6 +155,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 
 	@Override
 	public boolean addAlias(String alias, Role role) throws IOException {
+		if(alias.isBlank()) return false;
 		alias = alias.toLowerCase();
 		
 		if(!this.roleNames.containsKey(role.getName().toLowerCase())) {
