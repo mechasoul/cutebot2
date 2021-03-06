@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -14,8 +15,7 @@ import com.google.common.collect.HashBiMap;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.reflect.TypeToken;
 
-import gnu.trove.map.TObjectLongMap;
-import gnu.trove.map.hash.TObjectLongHashMap;
+import gnu.trove.set.hash.THashSet;
 import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.entities.Role;
 
@@ -25,15 +25,15 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 
 	private final String commandName;
 	private final String guildId;
-	private final TObjectLongMap<String> roleNames;
+	private final Set<String> roleNames;
 	private final BiMap<String, String> aliases;
 	private final Path path;
 	
-	RoleCommandDatabaseImpl(String guildId, String name, TObjectLongMap<String> roles, BiMap<String, String> aliases) {
+	RoleCommandDatabaseImpl(String guildId, String name, Set<String> roles, BiMap<String, String> aliases) {
 		this.guildId = guildId;
 		this.commandName = name;
-		this.roleNames = new TObjectLongHashMap<>((roles.size()+1) * 4 / 3, 0.75f, -1);
-		this.roleNames.putAll(roles);
+		this.roleNames = new THashSet<>((roles.size()+1) * 4 / 3, 0.75f);
+		this.roleNames.addAll(roles);
 		this.aliases = HashBiMap.create(aliases.size()+1);
 		this.aliases.putAll(aliases);
 		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
@@ -42,34 +42,38 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	RoleCommandDatabaseImpl(String guildId, String name) {
 		this.guildId = guildId;
 		this.commandName = name;
-		this.roleNames = new TObjectLongHashMap<>(3, 0.75f, -1);
+		this.roleNames = new THashSet<>(3, 0.75f);
 		this.aliases = HashBiMap.create(3);
 		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
 	}
 	
-	//TODO add save() call to any methods that modify db (as specified in RoleCommandDatabase)
+	/*
+	 * TODO remove all use of role id in this class - maintain a list of role names the command
+	 * manages and the alias<->rolename map, but shouldnt need id for anything. will have to 
+	 * change GeneratedTextChannelRoleCommand.execute()'s use of Guild.getRoleById() to 
+	 * Guild.getRolesByName(), but should be fine
+	 */
 	
 	
 	@Override
-	public synchronized boolean add(String roleName, long roleId) throws IOException {
-		if(roleName.isBlank()) return false;
+	public synchronized boolean add(String roleName) throws IOException {
+		if(roleName.isBlank() || this.roleNames.size() >= MAX_ROLES) return false;
 		roleName = roleName.toLowerCase();
-		if(this.roleNames.size() >= MAX_ROLES) return false;
 		
-		boolean newRoleAdded = this.roleNames.putIfAbsent(roleName, roleId) == -1;
+		boolean newRoleAdded = this.roleNames.add(roleName);
 		if(newRoleAdded) this.save();
 		return newRoleAdded;
 	}
 	
 	@Override
 	public synchronized boolean add(Role role) throws IOException {
-		return this.add(role.getName().toLowerCase(), role.getIdLong());
+		return this.add(role.getName().toLowerCase());
 	}
 
 	private synchronized boolean addWithoutSave(Role role) {
 		if(role.getName().isBlank() || this.roleNames.size() >= MAX_ROLES) return false;
 		
-		return this.roleNames.putIfAbsent(role.getName().toLowerCase(), role.getIdLong()) == -1;
+		return this.roleNames.add(role.getName().toLowerCase());
 	}
 
 	@Override
@@ -82,24 +86,13 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		if(!addedRoles.isEmpty()) this.save();
 		return addedRoles;
 	}
-	
-	@Override
-	public synchronized boolean update(String roleName, long roleId) throws IOException {
-		roleName = roleName.toLowerCase();
-		
-		if(!this.roleNames.containsKey(roleName)) return false;
-		
-		this.roleNames.put(roleName, roleId);
-		this.save();
-		return true;
-	}
 
 	@Override
 	public synchronized boolean remove(String roleName) throws IOException {
 		if(roleName.isBlank()) return false;
 		roleName = roleName.toLowerCase();
 		
-		if(this.roleNames.remove(roleName) != -1) {
+		if(this.roleNames.remove(roleName)) {
 			this.aliases.inverse().remove(roleName);
 			this.save();
 			return true;
@@ -112,7 +105,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		if(roleName.isBlank()) return false;
 		roleName = roleName.toLowerCase();
 		
-		if(this.roleNames.remove(roleName) != -1) {
+		if(this.roleNames.remove(roleName)) {
 			this.aliases.inverse().remove(roleName);
 			return true;
 		} else {
@@ -130,7 +123,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 	
 	@Override
-	public ImmutableList<Role> remove(List<Role> roles) throws IOException {
+	public synchronized ImmutableList<Role> remove(List<Role> roles) throws IOException {
 		ImmutableList.Builder<Role> removedRolesBuilder = ImmutableList.builderWithExpectedSize(roles.size());
 		roles.forEach(role -> {
 			if(this.removeWithoutSave(role)) removedRolesBuilder.add(role);
@@ -142,7 +135,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 	
 	@Override
-	public ImmutableList<String> removeByName(String... roleNames) throws IOException {
+	public synchronized ImmutableList<String> removeByName(String... roleNames) throws IOException {
 		ImmutableList.Builder<String> removedRoleNamesBuilder = ImmutableList.builderWithExpectedSize(roleNames.length);
 		Stream.of(roleNames).forEach(roleName -> {
 			if(this.removeWithoutSave(roleName)) removedRoleNamesBuilder.add(roleName);
@@ -154,11 +147,11 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	@Override
-	public boolean addAlias(String alias, Role role) throws IOException {
+	public synchronized boolean addAlias(String alias, Role role) throws IOException {
 		if(alias.isBlank()) return false;
 		alias = alias.toLowerCase();
 		
-		if(!this.roleNames.containsKey(role.getName().toLowerCase())) {
+		if(!this.roleNames.contains(role.getName().toLowerCase())) {
 			return false;
 		} else {
 			this.aliases.forcePut(alias, role.getName().toLowerCase());
@@ -168,7 +161,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	@Override
-	public boolean removeAlias(String alias) throws IOException {
+	public synchronized boolean removeAlias(String alias) throws IOException {
 		alias = alias.toLowerCase();
 		
 		boolean successfullyRemoved = this.aliases.remove(alias) != null;
@@ -184,41 +177,22 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	@Override
 	public synchronized String getSingleRoleName() {
 		if(this.isSingleRole()) {
-			return this.roleNames.keys(new String[1])[0];
+			return this.roleNames.toArray(new String[1])[0];
 		} else {
 			return null;
 		}
 	}
-
+	
 	@Override
-	public synchronized long getSingleRoleId() {
-		if(this.isSingleRole()) {
-			return this.roleNames.values()[0];
-		} else {
-			return -1;
-		}
+	public synchronized boolean contains(String roleName) {
+		return this.roleNames.contains(roleName);
 	}
 
 	@Override
-	public synchronized long getRoleId(String roleName) {
-		roleName = roleName.toLowerCase();
-		
-		return this.roleNames.get(roleName);
-	}
-
-	@Override
-	public String getRoleNameByAlias(String alias) {
+	public synchronized String getRoleNameByAlias(String alias) {
 		alias = alias.toLowerCase();
 		
 		return this.aliases.get(alias);
-	}
-	
-	@Override
-	public synchronized long getRoleIdByAlias(String alias) {
-		alias = alias.toLowerCase();
-		
-		String roleName = this.aliases.get(alias);
-		return (roleName == null ? -1 : this.roleNames.get(roleName));
 	}
 
 	@Override
@@ -232,22 +206,17 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 	
 	@Override
-	public ImmutableList<String> getRoleNames() {
-		return ImmutableList.copyOf(this.roleNames.keySet());
+	public synchronized ImmutableList<String> getRoleNames() {
+		return ImmutableList.copyOf(this.roleNames);
 	}
 	
 	@Override
-	public long[] getRoleIds() {
-		return this.roleNames.values();
-	}
-	
-	@Override
-	public String getFormattedString() {
+	public synchronized String getFormattedString() {
 		//format: command name - 'role 1' (alias 1), 'role 2' (alias 2), ...
 		StringBuilder sb = new StringBuilder();
 		sb.append(this.getName());
 		sb.append(" - ");
-		sb.append(this.roleNames.keySet().stream().map(roleName -> {
+		sb.append(this.roleNames.stream().map(roleName -> {
 			StringBuilder role = new StringBuilder();
 			role.append("'");
 			role.append(roleName);
@@ -266,7 +235,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	@Override
 	public synchronized void save() throws IOException {
 		try (BufferedWriter writer = Files.newBufferedWriter(this.path, StandardCharsets.UTF_8)) {
-			RoleCommandDatabaseFactory.GSON.toJson(this.roleNames, new TypeToken<TObjectLongMap<String>>(){}.getType(), writer);
+			RoleCommandDatabaseFactory.GSON.toJson(this.roleNames, new TypeToken<THashSet<String>>(){}.getType(), writer);
 			writer.newLine();
 			RoleCommandDatabaseFactory.GSON.toJson(this.aliases, new TypeToken<BiMap<String, String>>(){}.getType(), writer);
 		}

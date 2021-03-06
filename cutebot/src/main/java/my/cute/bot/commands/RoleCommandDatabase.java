@@ -25,12 +25,11 @@ interface RoleCommandDatabase {
 	 * adds a role to the database for this command. does nothing if the given 
 	 * role name already exists in the database
 	 * @param roleName the name of the role to add
-	 * @param roleId the id of the role to add
-	 * @return true if the role name and id were successfully added (ie, the 
+	 * @return true if the role name was successfully added (ie, the 
 	 * database was modified as a result of this call), false otherwise
 	 * @throws IOException 
 	 */
-	public boolean add(String roleName, long roleId) throws IOException;
+	public boolean add(String roleName) throws IOException;
 	
 	public boolean add(Role role) throws IOException;
 	
@@ -42,17 +41,6 @@ interface RoleCommandDatabase {
 	 * @throws IOException 
 	 */
 	public ImmutableList<Role> add(List<Role> roles) throws IOException;
-	
-	/**
-	 * updates a role already existing in the database with a new role id. does
-	 * nothing if the given role name does not exist in the database already
-	 * @param roleName the name of the role to update
-	 * @param roleId the new id of the role
-	 * @return true if the role's id was successfully updated (ie, the database
-	 * was modified as a result of this call), false otherwise
-	 * @throws IOException 
-	 */
-	public boolean update(String roleName, long roleId) throws IOException;
 	
 	/**
 	 * removes a role from the database for this command. should also remove
@@ -106,20 +94,11 @@ interface RoleCommandDatabase {
 	public String getSingleRoleName();
 	
 	/**
-	 * used as shorthand for a single-role database to obtain the id of 
-	 * the role it contains
-	 * @return the id of the role in the database, or -1 if more than one
-	 * role exists
+	 * returns true if the database contains the given role name
+	 * @param roleName the name of the role to check
+	 * @return true if the given name exists in the database, false otherwise
 	 */
-	public long getSingleRoleId();
-	
-	/**
-	 * obtains the id in the database for the given role name
-	 * @param roleName the name of the role
-	 * @return the id of the given role, or -1 if no role exists in the database
-	 * with that name
-	 */
-	public long getRoleId(String roleName);
+	public boolean contains(String roleName);
 	
 	/**
 	 * obtains the name of the role that the given alias is mapped to in the database
@@ -128,14 +107,6 @@ interface RoleCommandDatabase {
 	 * given alias doesn't exist in the database
 	 */
 	public String getRoleNameByAlias(String alias);
-	
-	/**
-	 * obtains the id of the role that the given alias corresponds to
-	 * @param alias the alias to fetch the role id for
-	 * @return the id of the role with the name that the given alias maps to, or -1 if
-	 * the alias doesn't map to a role in the database
-	 */
-	public long getRoleIdByAlias(String alias);
 	
 	/**
 	 * gets the name of the command this database is used for
@@ -151,8 +122,6 @@ interface RoleCommandDatabase {
 	public String getId();
 	
 	public ImmutableList<String> getRoleNames();
-	
-	public long[] getRoleIds();
 	
 	/**
 	 * get a formatted human-readable string representing the command and its roles. intended
