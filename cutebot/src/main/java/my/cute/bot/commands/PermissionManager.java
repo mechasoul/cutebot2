@@ -7,31 +7,48 @@ import com.google.common.collect.ImmutableSet;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
+/**
+ * top-level permissions management for cutebot commands. a single instance
+ * of cutebot will hold a bunch of permissions for different users across
+ * different guilds, so an instance of this class should be used to
+ * manage all of that
+ * <p>
+ * note that any PermissionManager methods that modify permissions can throw
+ * IOException if one occurs while trying to modify permissions on disk.
+ * not sure if it's correct to declare IOException in all these methods since
+ * it seems like more of an implementation thing? see PermissionDatabase for 
+ * more on that because i already wrote it all there<br>
+ * i guess its either this or have a save() that throws IOException or 
+ * something
+ */
 public interface PermissionManager {
-
-	/*
-	 * top-level permissions management for cutebot commands
-	 * an instance of this class should be used for all permissions checking
-	 * not sure if it's correct to declare IOException in all these methods
-	 * see PermissionDatabase for more on that because i already wrote it all
-	 * there
-	 * i guess its either this or have a save() that throws IOException or 
-	 * something
-	 */
 	
-	/*
-	 * gives the specified user id the specified permission level, globally
-	 * after calling this, hasPermission(userId, permission) should return true
-	 * returns true if a permission level was newly added for a user as a result
+	/**
+	 * gives the specified user id the specified permission level, globally. 
+	 * after calling this, calling {@link #hasPermission(String, PermissionLevel)}
+	 * with (userId, permission) should return true
+	 * @param userId the user id to change permissions for
+	 * @param permission the permission level to grant that user
+	 * @return true if a permission level was newly added for a user as a result
 	 * of this call, and false otherwise (eg userId invalid, they already have
 	 * the given permission, etc)
+	 * @throws IOException
 	 */
 	public boolean add(String userId, PermissionLevel permission) throws IOException;
 	
 	public boolean add(User user, PermissionLevel permission) throws IOException;
 	
-	/*
-	 * same as above, but gives per-guild permissions
+	/**
+	 * same as {@link #add(String, PermissionLevel)}, but gives per-guild permissions.
+	 * after calling this, calling {@link #hasPermission(String, String, PermissionLevel)} 
+	 * with (userId, guildId, permission) should return true
+	 * @param userId the user id to change permissions for
+	 * @param guildId the guild id to change permissions for that user in
+	 * @param permission the permission level to grant that user
+	 * @return true if a permission level was newly added for a user as a result
+	 * of this call, and false otherwise (eg userId invalid, they already have
+	 * the given permission, etc)
+	 * @throws IOException
 	 */
 	public boolean add(String userId, String guildId, PermissionLevel permission) throws IOException;
 	

@@ -3,6 +3,8 @@ package my.cute.bot.util;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import my.cute.bot.preferences.wordfilter.WordFilter;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
@@ -40,6 +42,46 @@ public class StandardMessages {
 	
 	public static String wordfilterModified() {
 		return "wordfilter has been successfully modified";
+	}
+	
+	public static String wordfilterStrike(Guild guild, WordFilter.Type type) {
+		String guildString = MiscUtils.getGuildString(guild);
+		StringBuilder sb = new StringBuilder();
+		sb.append("dear valued user,");
+		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
+		sb.append("the wordfilter for server '");
+		sb.append(guildString);
+		sb.append("' was found to be prohibitively slow, and so ");
+		if(type == WordFilter.Type.BASIC) 
+			sb.append("it has been cleared. ");
+		else /* type == WordFilter.Type.REGEX */ 
+			sb.append("the custom regex has been cleared. ");
+		sb.append("if this happens again, the wordfilter may be permanently disabled. ");
+		sb.append("you are receiving this message because you have authority to modify the wordfilter ");
+		sb.append("for server '");
+		sb.append(guildString);
+		sb.append("'. if you don't know what any of this means or don't care, then ignore it or ");
+		sb.append("contact someone who does or something");
+		sb.append(MiscUtils.getSignature());
+		return sb.toString();
+	}
+	
+	public static String wordfilterDisabled(Guild guild) {
+		String guildString = MiscUtils.getGuildString(guild);
+		StringBuilder sb = new StringBuilder();
+		sb.append("dear valued user,");
+		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
+		sb.append("the wordfilter for server '");
+		sb.append(guildString);
+		sb.append("' has repeatedly been found to be prohibitively slow, and so ");
+		sb.append("it has been permanently disabled. ");
+		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
+		sb.append("*with great power comes great responsibility* - canadian prime minister william lyon mackenzie king");
+		sb.append(MiscUtils.getSignature());
+		return sb.toString();
 	}
 	
 	public static String invalidRole(User user, String givenRole) {

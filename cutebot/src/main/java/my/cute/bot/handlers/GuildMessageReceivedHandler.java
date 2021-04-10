@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -12,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
 import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.GuildCommandSet;
 import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
@@ -21,6 +21,7 @@ import my.cute.bot.preferences.wordfilter.FilterResponseAction;
 import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.WordfilterTimeoutException;
 import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
@@ -64,13 +65,13 @@ public class GuildMessageReceivedHandler {
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final WordFilter wordFilter;
-	private final GuildCommandSet commands;
+	private final CommandSet<TextChannelCommand> commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;;
 	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
-			ExecutorService executor, GuildCommandSet commands) throws IOException {
+			ExecutorService executor, CommandSet<TextChannelCommand> commands) throws IOException {
 		this.jda = jda;
 		this.id = guild.getId();
 		this.prefs = prefs;
@@ -87,7 +88,7 @@ public class GuildMessageReceivedHandler {
 	/*
 	 * TODO this is a really big method can maybe separate it into pieces or whatever
 	 */
-	public void handle(GuildMessageReceivedEvent event) throws IOException {
+	public void handle(GuildMessageReceivedEvent event) throws IOException, WordfilterTimeoutException {
 		
 		String content = event.getMessage().getContentRaw();
 		
@@ -105,9 +106,15 @@ public class GuildMessageReceivedHandler {
 			}
 		}
 		
-		if(this.handleWordFilter(event.getMessage())) {
-			//wordfilter found a match
-			if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
+		try {
+			if(this.handleWordFilter(event.getMessage())) {
+				//wordfilter found a match
+				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
+			}
+		} catch (TimeoutException e) {
+			//problem with wordfilter
+			WordFilter.Type type = this.wordFilter.handleTimeout(event.getMessage().getContentRaw());
+			throw new WordfilterTimeoutException(e, type);
 		}
 		
 		//don't process messages / send automatic messages in non-discussion channels
@@ -247,8 +254,9 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	private boolean handleWordFilter(Message message) {
-		String filteredWord = this.wordFilter.check(message.getContentRaw());
+	private boolean handleWordFilter(Message message) throws TimeoutException {
+		String filteredWord;
+		filteredWord = this.wordFilter.check(message.getContentRaw());
 		if(filteredWord != null) {
 			this.applyWordFilterActions(message, filteredWord);
 			return true;

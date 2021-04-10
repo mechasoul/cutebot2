@@ -25,6 +25,9 @@ import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.preferences.wordfilter.WordFilterFactory;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.ConcurrentFinalEntryMap;
+import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.StandardMessages;
+import my.cute.bot.util.WordfilterTimeoutException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
@@ -109,27 +112,12 @@ public class MyListener extends ListenerAdapter {
 		this.allPrefs = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.allFilters = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.guildCommands = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
-		this.permissions = new PermissionManagerImpl(this.jda);
+		this.permissions = new PermissionManagerImpl(this.jda.getGuilds().size() * 4 / 3);
 		this.guildMessageHandlers = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
-		try {
-			this.jda.getGuilds().forEach(guild -> {
-				try {
-					this.registerGuild(guild);
-					guild.retrieveOwner(false).queue(owner -> {
-						try {
-							this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
-						} catch (IOException e) {
-							throw new UncheckedIOException(e);
-						}
-					});
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
-		} catch (UncheckedIOException e) {
-			throw e.getCause();
+		for(Guild guild : this.jda.getGuilds()) {
+			this.registerGuild(guild);
 		}
 		
 		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters, this.permissions);
@@ -173,9 +161,13 @@ public class MyListener extends ListenerAdapter {
 		
 		try {
 			this.guildMessageHandlers.get(event.getGuild().getId()).handle(event);
+		} catch (WordfilterTimeoutException e) {
+			this.handleWordfilterTimeout(event.getGuild(), e);
 		} catch (IOException e) {
 			//an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
 			//also assume the details have been logged from wherever the problem started
+			//TODO change that to log here instead probably? shouldnt log rethrow i think, should log
+			//where its actually handled
 			this.shutdown();
 		}
 	}
@@ -305,6 +297,8 @@ public class MyListener extends ListenerAdapter {
 	 * disk
 	 */
 	private boolean registerGuild(Guild guild) throws IOException {
+		if(this.guildMessageHandlers.containsKey(guild.getId())) return false;
+		
 		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
 		WordFilter filter = WordFilterFactory.load(guild.getId());
 		CommandSet<TextChannelCommand> commands = CommandFactory.newDefaultTextChannelSet(this.jda, guild.getId(), prefs);
@@ -312,6 +306,13 @@ public class MyListener extends ListenerAdapter {
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);
 		this.permissions.addGuild(guild);
+		/*
+		 * TODO
+		 * move this owner->Admin check to PermissionDatabaseFactory or PermissionManager.addGuild()?
+		 * so that if the permissions file is empty, owner gets added as admin
+		 * change permissionMaintenance() above to function the same way; if permissions empty, add owner
+		 * & also try to prevent last person with admin permissions from being removed as admin via command
+		 */
 		try {
 			guild.retrieveOwner(false).queue(owner -> {
 				try {
@@ -324,6 +325,36 @@ public class MyListener extends ListenerAdapter {
 			throw e.getCause();
 		}
 		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, this.jda, prefs, filter, this.taskScheduler, commands)) == null;
+	}
+	
+	/**
+	 * top-level handling for when a guild's wordfilter exceeds the set max execution time. 
+	 * this is likely going to be caused by someone deliberately setting a problematic 
+	 * explicit regex filter, rather than normal use. when this occurs, a strike is recorded
+	 * against the wordfilter in question. if the number of strikes reaches the set limit 
+	 * (as determined by {@link#WordFilter.getStrikesToDisable()}), the wordfilter is
+	 * disabled. in any case, a message is sent (or attempted to be sent) to all users with
+	 * cutebot admin permissions in the relevant guild
+	 * @param guild the guild that had a WordfilterTimeoutException occur
+	 * @param e the exception that was thrown
+	 */
+	private void handleWordfilterTimeout(Guild guild, WordfilterTimeoutException e) {
+		WordFilter filter = this.allFilters.get(guild.getId());
+		//shouldnt happen
+		if(filter == null) throw new AssertionError("guild '" + MiscUtils.getGuildString(guild) + "' threw a "
+				+ "WordfilterTimeoutException, but couldn't find wordfilter with that id?", e);
+		
+		filter.addStrike();
+		String message;
+		if(filter.getStrikes() >= WordFilter.getStrikesToDisable()) {
+			filter.setEnabled(false);
+			message = StandardMessages.wordfilterDisabled(guild);
+		} else {
+			message = StandardMessages.wordfilterStrike(guild, e.getType());
+		}
+		this.permissions.getAdmins(guild.getId()).forEach(id -> {
+			this.jda.openPrivateChannelById(id).flatMap(channel -> channel.sendMessage(message)).queue();
+		});
 	}
 	
 	public String getGuildString(String id) {

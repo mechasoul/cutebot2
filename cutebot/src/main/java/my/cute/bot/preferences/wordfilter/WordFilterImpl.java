@@ -9,6 +9,10 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -26,6 +30,8 @@ public class WordFilterImpl implements WordFilter {
 	private Set<String> filteredWords;
 	private Pattern compiledFilter;
 	private EnumSet<FilterResponseAction> responseActions;
+	private boolean enabled;
+	private int strikes;
 	
 	WordFilterImpl(String id, Path path) {
 		this.id = id;
@@ -35,9 +41,12 @@ public class WordFilterImpl implements WordFilter {
 		this.filteredWords = new HashSet<String>(3);
 		this.compiledFilter = null;
 		this.responseActions = FilterResponseAction.DEFAULT;
+		this.enabled = true;
+		this.strikes = 0;
 	}
 	
-	WordFilterImpl(String id, Path path, WordFilter.Type type, String roleId, String[] words, String pattern, EnumSet<FilterResponseAction> actions) {
+	WordFilterImpl(String id, Path path, WordFilter.Type type, String roleId, String[] words,
+			String pattern, EnumSet<FilterResponseAction> actions, boolean enabled, int strikes) {
 		this.id = id;
 		this.path = path;
 		this.mode = type;
@@ -48,16 +57,27 @@ public class WordFilterImpl implements WordFilter {
 		}
 		this.compiledFilter = pattern.equals(EMPTY_COMPILED_FILTER_TOKEN) ? null : Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
 		this.responseActions = actions;
+		this.enabled = enabled;
+		this.strikes = strikes;
 	}
 	
 	@Override
-	public synchronized String check(String input) {
-		if(this.compiledFilter == null) return null;
+	public synchronized String check(String input) throws TimeoutException {
+		if(this.compiledFilter == null || !this.isEnabled()) return null;
 		Matcher m = this.compiledFilter.matcher(input);
-		if(m.find()) {
-			return m.group();
-		}
-		return null;
+		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+			if(m.find()) {
+				return m.group();
+			} else {
+				return null;
+			}
+		});
+		try {
+			return future.get(1, TimeUnit.SECONDS);
+		} catch (InterruptedException | ExecutionException e) {
+			//i think these shouldn't happen?
+			throw new AssertionError(e);
+		} 
 	}
 
 	@Override
@@ -131,6 +151,25 @@ public class WordFilterImpl implements WordFilter {
 			return this.compiledFilter.pattern();
 		}
 	}
+	
+	/**
+	 * if current mode is REGEX, switch back to BASIC
+	 * if current mode is BASIC, clear the filter
+	 * @throws IOException 
+	 */
+	@Override
+	public WordFilter.Type handleTimeout(String input) throws IOException {
+		WordFilter.Type type;
+		if(this.getType() == WordFilter.Type.REGEX) {
+			type = WordFilter.Type.REGEX;
+			this.setType(WordFilter.Type.BASIC);
+		} else /* this.getType() == WordFilter.Type.BASIC */ {
+			type = WordFilter.Type.BASIC;
+			this.clear();
+		}
+		this.save();
+		return type;
+	}
 
 	@Override
 	public synchronized void setActions(EnumSet<FilterResponseAction> actions) throws IOException {
@@ -161,6 +200,31 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public WordFilter.Type getType() {
 		return this.mode;
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return this.enabled;
+	}
+	
+	@Override
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
+	
+	@Override
+	public void addStrike() {
+		if(this.strikes < WordFilter.getStrikesToDisable()) strikes++;
+	}
+
+	@Override
+	public int getStrikes() {
+		return this.strikes;
+	}
+
+	@Override
+	public void resetStrikes() {
+		this.strikes = 0;
 	}
 	
 	@Override
@@ -205,6 +269,10 @@ public class WordFilterImpl implements WordFilter {
 			writer.append(this.compiledFilter == null ? EMPTY_COMPILED_FILTER_TOKEN : this.compiledFilter.pattern());
 			writer.newLine();
 			writer.append(this.responseActions.stream().map(action -> action.name()).collect(Collectors.joining(", ")));
+			writer.newLine();
+			writer.append(""+this.enabled);
+			writer.newLine();
+			writer.append(""+this.strikes);
 		}
 	}
 

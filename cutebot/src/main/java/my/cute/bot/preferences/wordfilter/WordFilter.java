@@ -2,6 +2,7 @@ package my.cute.bot.preferences.wordfilter;
 
 import java.io.IOException;
 import java.util.EnumSet;
+import java.util.concurrent.TimeoutException;
 
 /**
  * for managing a filter of banned words, including modifying the filter,
@@ -17,9 +18,11 @@ public interface WordFilter {
 	 * checks a given string against the wordfilter
 	 * 
 	 * @return the string if a match was found, or returns null
-	 * 		if no match was found
+	 * 		if no match was found or if the wordfilter is disabled
+	 * 		(see {@link#isEnabled()})
+	 * @throws TimeoutException if a timeout occurs while matching
 	 */
-	public String check(String input);
+	public String check(String input) throws TimeoutException;
 	
 	/**
 	 * adds words to the wordfilter. every word added will trigger the
@@ -64,6 +67,15 @@ public interface WordFilter {
 	public String get();
 	
 	/**
+	 * should be called whenever a timeout occurs during check(String). does any
+	 * necessary tasks to fix the (presumably dangerous) filter
+	 * @param input the string that triggered a timeout
+	 * @return the type of the wordfilter when the timeout occurred 
+	 * @throws IOException 
+	 */
+	public WordFilter.Type handleTimeout(String input) throws IOException;
+	
+	/**
 	 * sets the action to take when a user triggers the wordfilter
 	 * @param actions the set of actions to take when a user triggers the wordfilter
 	 * @throws IOException 
@@ -85,6 +97,48 @@ public interface WordFilter {
 	public WordFilter.Type getType();
 	
 	void setType(Type type) throws IOException;
+	
+	/**
+	 * check whether or not the wordfilter is enabled. if the wordfilter is disabled,
+	 * check() should never return a match
+	 * @return true if the wordfilter is enabled, false if disabled
+	 */
+	public boolean isEnabled();
+	
+	/**
+	 * sets whether the wordfilter is enabled or disabled (if the wordfilter is 
+	 * disabled, check() should never return a match)
+	 * @param enabled true to enable the wordfilter, false to disable it
+	 */
+	public void setEnabled(boolean enabled);
+	
+	/**
+	 * since this class has methods for users to enter arbitrary regex, there's 
+	 * room for users to really mess things up. this method, along with 
+	 * {@link#getStrikes()} and {@link#resetStrikes()}, are a framework for 
+	 * tracking when that happens, in case we want to disable some functionality
+	 * if users are creating problems too frequently
+	 * <p>
+	 * this method should add a single instance of a strike to the filter
+	 */
+	public void addStrike();
+	
+	/**
+	 * this method can be used to get the current number of strikes on this filter.
+	 * see {@link#addStrike()} for explanation on strikes
+	 * @return the number of strikes recorded on this filter
+	 */
+	public int getStrikes();
+	
+	/**
+	 * used to reset the current number of strikes. see {@link#addStrike()} for more
+	 * on strikes
+	 */
+	public void resetStrikes();
+	
+	public static int getStrikesToDisable() {
+		return 3;
+	}
 	
 	/**
 	 * sets the wordfilter role id. one option for a FilterResponseAction is to apply

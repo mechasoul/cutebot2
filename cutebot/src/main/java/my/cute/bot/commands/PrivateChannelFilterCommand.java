@@ -39,7 +39,10 @@ import net.dv8tion.jda.api.entities.Role;
  * remove will no longer have any effect and the set list of words will be ignored. instead, 
  * an explicit regex filter can be set via "set" mode, for more advanced filter use<br>
  * <b>action</b>: args should be a single word consisting only of numbers - each number indicates a
- * filter response action to use TODO put mapping here<br>
+ * filter response action to use. valid numbers are 1: don't process the message, 2: send a message
+ * in the guild indicating that the wordfilter was triggered, 3: send a private message indicating
+ * that the wordfilter was triggered, 4: delete the message, 5: apply the specified role to the user,
+ * 6: kick the user, 7: ban the user<br>
  * <b>role</b>: args should be the id of the role to apply to users who trigger the filter<br>
  * <b>view</b>: no args. view the current filter (the word list if in basic mode, the regex
  * if in regex mode) and the current filter response actions
@@ -57,7 +60,8 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		/*
 		 * practically speaking the max params is like, 3, but if arbitrary regex is allowed
 		 * then someone should be able to use a regex with whatever amount of spaces they
-		 * want, so we do this. TODO can i still get the targetguild if i do that?
+		 * want, so we do this. targetguild can still be obtained if its provided as the 
+		 * last parameter or if a default guild is set
 		 */
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allFilters = filters;

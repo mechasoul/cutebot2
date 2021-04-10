@@ -16,12 +16,18 @@ import com.google.common.base.Stopwatch;
 public class RegexValidator {
 
 	//in ms
-	private static final long TIMEOUT_THRESHOLD = 300;
+	private static final long TIMEOUT_THRESHOLD = 10;
 	
 	//return true if no line in the test lines takes at least TIMEOUT_THRESHOLD time
 	//return false if at least one line does
 	//TODO need a way to abort test immediately if it's running too long (thread timeout?)
 	public static boolean regexTimeoutTest(Pattern pattern) throws IOException {
+		
+		//warmup
+		try (Stream<String> lines = Files.lines(Paths.get("./testinput.txt"), StandardCharsets.UTF_8).limit(10)) {
+			lines.forEach(line -> pattern.matcher(line).find());
+		}
+		
 		Stopwatch stopwatch = Stopwatch.createUnstarted();
 		try (Stream<String> lines = Files.lines(Paths.get("./testinput.txt"), StandardCharsets.UTF_8)) {
 			LongStream times = lines.mapToLong(line -> {

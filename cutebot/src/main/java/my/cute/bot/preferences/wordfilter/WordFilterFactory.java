@@ -28,11 +28,12 @@ public class WordFilterFactory {
 				String pattern = reader.readLine();
 				EnumSet<FilterResponseAction> actions = EnumSet.copyOf(Arrays.stream(reader.readLine().split(","))
 						.map(responseName -> FilterResponseAction.valueOf(responseName)).collect(Collectors.toList()));
-				return new WordFilterImpl(id, path, filterType, roleId, words, pattern, actions);
+				boolean enabled = Boolean.parseBoolean(reader.readLine());
+				int strikes = Integer.parseInt(reader.readLine());
+				return new WordFilterImpl(id, path, filterType, roleId, words, pattern, actions, enabled, strikes);
 			} catch (IOException e) {
 				/*
-				 * maybe shouldnt swallow this
-				 * but if something is really wrong im sure itll appear in a more fatal spot somewhere else
+				 * TODO maybe shouldnt swallow this?
 				 */
 				logger.warn("WordFilterFactory: IOException thrown when trying to load wordfilter for id '" + id
 						+ "', loading default wordfilter instead", e);
