@@ -9,18 +9,18 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
+import my.cute.bot.util.MiscUtils;
+
 public class WordFilterImpl implements WordFilter {
 
 	private static final int MAX_FILTERED_WORDS = 60;
+	private static final int MAX_WORD_LENGTH = 32;
 	private static final String EMPTY_COMPILED_FILTER_TOKEN = "[null]";
 	
 	private final String id;
@@ -64,20 +64,7 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public synchronized String check(String input) throws TimeoutException {
 		if(this.compiledFilter == null || !this.isEnabled()) return null;
-		Matcher m = this.compiledFilter.matcher(input);
-		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-			if(m.find()) {
-				return m.group();
-			} else {
-				return null;
-			}
-		});
-		try {
-			return future.get(1, TimeUnit.SECONDS);
-		} catch (InterruptedException | ExecutionException e) {
-			//i think these shouldn't happen?
-			throw new AssertionError(e);
-		} 
+		return MiscUtils.findMatchWithTimeout(this.compiledFilter, input, 1, TimeUnit.SECONDS);
 	}
 
 	@Override
@@ -87,7 +74,7 @@ public class WordFilterImpl implements WordFilter {
 		if(initialNumFilteredWords >= MAX_FILTERED_WORDS) return false;
 		for(String word : words) {
 			if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
-			this.filteredWords.add(word);
+			if(word.length() <= MAX_WORD_LENGTH) this.filteredWords.add(word);
 		}
 		boolean filterChanged = this.filteredWords.size() > initialNumFilteredWords;
 		if (filterChanged) {
@@ -134,7 +121,7 @@ public class WordFilterImpl implements WordFilter {
 			this.filteredWords.clear();
 			for(String word : words.split(",")) {
 				if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
-				this.filteredWords.add(word);
+				if(word.length() <= MAX_WORD_LENGTH) this.filteredWords.add(word);
 			}
 			this.updateCompiledFilter();
 		} else /* this.mode == WordFilter.Type.REGEX */ {

@@ -44,6 +44,10 @@ public class StandardMessages {
 		return "wordfilter has been successfully modified";
 	}
 	
+	public static String failedToFindWordfilterWords() {
+		return "invalid syntax. make sure your word list is surrounded by quotation marks";
+	}
+	
 	public static String wordfilterStrike(Guild guild, WordFilter.Type type) {
 		String guildString = MiscUtils.getGuildString(guild);
 		StringBuilder sb = new StringBuilder();

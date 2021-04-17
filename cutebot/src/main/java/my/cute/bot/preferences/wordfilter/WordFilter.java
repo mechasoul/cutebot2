@@ -53,7 +53,13 @@ public interface WordFilter {
 	
 	/**
 	 * sets the wordfilter to filter only the words given. the exact syntax of the 
-	 * given string is p to implementation
+	 * given string is up to implementation
+	 * <p>
+	 * for us, assume the given String is a comma-separated list of words, or an 
+	 * explicit regex string (depends on mode)
+	 * <p>
+	 * note no validation on the given String is performed, so do
+	 * that before calling this if allowing explicit regex
 	 * @param words the words to filter
 	 * @throws IOException 
 	 */
@@ -61,7 +67,12 @@ public interface WordFilter {
 	
 	/**
 	 * gets a string representation of the filtered words - eg a comma-separated
-	 * list or similar
+	 * list or similar. the result should work with set(String), eg, the following
+	 * sequence should be valid and result in absolutely no change to the filter:
+	 * <p><pre>
+	 * WordFilter filter = getSomeFilter();
+	 * String stringRepresentation = filter.get();
+	 * filter.set(stringRepresentation);</pre>
 	 * @return the string representation of the filtered words
 	 */
 	public String get();

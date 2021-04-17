@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Queue;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -12,12 +13,19 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.preferences.wordfilter.FilterResponseAction;
 import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.RegexValidator;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 
+/*
+ * TODO change basically everything to require quotation marks
+ * add, remove, set should require quotation marks and logic should work by
+ * MiscUtils.hasQuotationMarks, MiscUtils.extractQuotationMarks
+ * this allows spaces in filtered terms
+ */
 /**
  * for managing a server's wordfilter, an object that can be configured to perform
  * some collection of actions when a user says any of a collection of flagged phrases
@@ -80,23 +88,33 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		try {
 			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {
-					if(filter.add(params[2].split(","))) {
-						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+					String[] wordsToAdd = MiscUtils.parseWordsToFilter(message.getContentRaw());
+					if(wordsToAdd.length != 0) {
+						if(filter.add(wordsToAdd)) {
+							message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+						} else {
+							message.getChannel().sendMessage("wordfilter was not changed! check your parameters "
+									+ "(wordfilter at capacity? trying to add words already present? "
+									+ "words too long? mode set to regex?)").queue();
+						}
 					} else {
-						message.getChannel().sendMessage("wordfilter was not changed! check your parameters "
-								+ "(wordfilter at capacity? trying to add words already present? "
-								+ "mode set to regex?)").queue();
+						message.getChannel().sendMessage(StandardMessages.failedToFindWordfilterWords()).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
 			} else if (params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 3) {
-					if(filter.remove(params[2].split(","))) {
-						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+					String[] wordsToRemove = MiscUtils.parseWordsToFilter(message.getContentRaw());
+					if(wordsToRemove.length != 0) {
+						if(filter.remove(wordsToRemove)) {
+							message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+						} else {
+							message.getChannel().sendMessage("wordfilter was not changed! check your parameters "
+									+ "(trying to remove words that aren't part of the filter? mode set to regex?)").queue();
+						}
 					} else {
-						message.getChannel().sendMessage("wordfilter was not changed! check your parameters "
-								+ "(trying to remove words that aren't part of the filter? mode set to regex?)").queue();
+						message.getChannel().sendMessage(StandardMessages.failedToFindWordfilterWords()).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
@@ -106,11 +124,28 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
 			} else if (params[1].equalsIgnoreCase("set")) {
 				if(params.length >= 3) {
-					if(filter.getType() == WordFilter.Type.REGEX) {
-						//TODO set regex + validation here
+					String filterString = MiscUtils.extractQuotationMarks(message.getContentRaw());
+					if(filterString != null) {
+						String previousFilter = filter.get();
+						try {
+							filter.set(filterString);
+							if(filter.getType() == WordFilter.Type.REGEX) {
+								if(RegexValidator.regexTimeoutTest(Pattern.compile(filterString, Pattern.CASE_INSENSITIVE))) {
+									//validation success
+									message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+								} else {
+									//validation fail. restore previous filter
+									filter.set(previousFilter);
+									message.getChannel().sendMessage("error: your supplied regex was too slow. your previous wordfilter has been restored").queue();
+								}
+							} else /* filter.getType() == WordFilter.Type.BASIC */ {
+								message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+							}
+						} catch (PatternSyntaxException e) {
+							message.getChannel().sendMessage("invalid regex. wordfilter was not modified").queue();
+						}
 					} else {
-						filter.set(params[2]);
-						message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+						message.getChannel().sendMessage(StandardMessages.failedToFindWordfilterWords()).queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();

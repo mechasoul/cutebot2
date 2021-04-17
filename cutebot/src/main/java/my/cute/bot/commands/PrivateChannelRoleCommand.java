@@ -166,8 +166,9 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 						//!role remove commandName givenRoles
 						//TODO do something if no roles exist in command after removal
 						String roleText = MiscUtils.getWords(message, 4)[3];
-						if(MiscUtils.hasQuotationMarks(roleText)) {
-							roleText = MiscUtils.extractQuotationMarks(roleText);
+						String extractedText = MiscUtils.extractQuotationMarks(roleText);
+						if(extractedText != null) {
+							roleText = extractedText;
 							//check for single role in quotation marks
 							if(commandSet.getRoleCommandDatabase(params[2]).remove(roleText)) {
 								message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
@@ -204,10 +205,10 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 						//!role alias commandName "<role name>",<alias>
 						//extract the "<role name>",<alias> part
 						Matcher matcher = ALIAS.matcher(MiscUtils.getWords(message, 4)[3]);
-						if(matcher.matches()) {
+						if(matcher.find()) {
 							String aliasText = matcher.group();
 							String roleName = MiscUtils.extractQuotationMarks(aliasText.substring(0, aliasText.lastIndexOf(',')));
-							aliasText = aliasText.substring(aliasText.lastIndexOf(',') + 1);
+							aliasText = aliasText.substring(aliasText.lastIndexOf(',') + 1).split("\\s+")[0];
 							Role role = MiscUtils.getRoleByName(targetGuild, roleName);
 							if(role != null) {
 								if(commandSet.getRoleCommandDatabase(params[2]).addAlias(aliasText, role)) {

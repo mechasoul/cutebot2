@@ -4,10 +4,16 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -167,8 +173,9 @@ public class MiscUtils {
 	 * given guild
 	 */
 	public static ImmutableList<Role> parseRoles(final Guild guild, String text) {
-		if(QUOTATION_MARKS.matcher(text).matches()) {
-			text = extractQuotationMarks(text);
+		String extractedText = extractQuotationMarks(text);
+		if(extractedText != null) {
+			
 			//test for an exact role, then comma-separated
 			Role singleRole = MiscUtils.getRoleByName(guild, text);
 			if(singleRole != null) {
@@ -252,10 +259,23 @@ public class MiscUtils {
 	}
 	
 	public static boolean hasQuotationMarks(String input) {
-		return QUOTATION_MARKS.matcher(input).matches();
+		return QUOTATION_MARKS.matcher(input).find();
 	}
 	
+	/**
+	 * given an input string, returns the substring of everything inside the outermost two 
+	 * quotation marks in the input string. ie, returns the part of that string that starts
+	 * immediately after the first quotation mark, and ends immediately before the last 
+	 * quotation mark (quotation marks not included in the returned string). if the text 
+	 * does not contain at least two quotation marks, null is returned
+	 * @param string the string to extract text from
+	 * @return the substring of the given string that starts immediately after the first 
+	 * quotation mark and ends immediately before the last quotation mark, or null if the
+	 * string does not contain at least two quotation marks
+	 */
 	public static String extractQuotationMarks(String string) {
+		if(!hasQuotationMarks(string)) return null;
+		
 		string = string.split("\"", 2)[1];
 		return string.substring(0, string.lastIndexOf('"'));
 	}
@@ -274,6 +294,64 @@ public class MiscUtils {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+	
+	/**
+	 * attempts to match a Pattern against a given input String and return the match, with a 
+	 * set maximum execution time. if no match is found, null is returned, and if the execution
+	 * time is exceeded, an exception is thrown
+	 * @param pattern the regex to search for in the given text
+	 * @param input the text to search in
+	 * @param timeout the amount of time to look for
+	 * @param unit the unit for the timeout
+	 * @return the part of the input text that matched the pattern if a match was found, or null
+	 * if no match was found
+	 * @throws TimeoutException if the time spent searching the text for the given pattern exceeded
+	 * the given timeout duration
+	 */
+	public static String findMatchWithTimeout(Pattern pattern, String input, long timeout, TimeUnit unit) throws TimeoutException {
+		Matcher m = pattern.matcher(input);
+		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+			if(m.matches()) {
+				return m.group();
+			} else {
+				return null;
+			}
+		});
+		try {
+			return future.get(timeout, unit);
+		} catch (InterruptedException | ExecutionException e) {
+			//i think these shouldn't happen with this future?
+			throw new AssertionError(e);
+		}
+	}
+	
+	/**
+	 * searches a string for any text surrounded by quotation marks. if two quotation marks are found,
+	 * the text inside the quotation marks is split by commas, and the result is returned as an array. eg,
+	 * calling this method with the text 
+	 * <p>
+	 * hello i am well but i want to say "how, are you doing today, my, fellow?" to you
+	 * <p>
+	 * would return an array with<br>
+	 * array[0].equals("how")<br>
+	 * array[1].equals("are you doing today")<br>
+	 * array[2].equals("my")<br>
+	 * array[3].equals("fellow?")
+	 * <p>
+	 * this is used especially for extracting words to use for wordfilter (eg see PrivateChannelFilterCommand), 
+	 * hence the name of the method
+	 * <p>
+	 * note if the text does not contain two quotation marks, an empty array is returned
+	 * @param text the text to parse as specified above
+	 * @return an array containing the comma-separated strings inside the quotation marks in the given text
+	 */
+	public static String[] parseWordsToFilter(String text) {
+		if((text = extractQuotationMarks(text)) == null) {
+			return new String[0];
+		}
+		
+		return text.split(",");
 	}
 	
 }
