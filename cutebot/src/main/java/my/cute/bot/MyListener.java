@@ -10,12 +10,11 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandFactory;
+import my.cute.bot.commands.GuildCommandSet;
 import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PermissionManagerImpl;
-import my.cute.bot.commands.TextChannelCommand;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
@@ -74,7 +73,7 @@ public class MyListener extends ListenerAdapter {
 	private final JDA jda;
 	private final ConcurrentFinalEntryMap<String, GuildPreferences> allPrefs;
 	private final ConcurrentFinalEntryMap<String, WordFilter> allFilters;
-	private final ConcurrentFinalEntryMap<String, CommandSet<TextChannelCommand>> guildCommands;
+	private final ConcurrentFinalEntryMap<String, GuildCommandSet> guildCommands;
 	private final ConcurrentFinalEntryMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
 	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
@@ -120,7 +119,7 @@ public class MyListener extends ListenerAdapter {
 			this.registerGuild(guild);
 		}
 		
-		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters, this.permissions);
+		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters, this.guildCommands, this.permissions);
 		
 		
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
@@ -301,7 +300,7 @@ public class MyListener extends ListenerAdapter {
 		
 		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
 		WordFilter filter = WordFilterFactory.load(guild.getId());
-		CommandSet<TextChannelCommand> commands = CommandFactory.newDefaultTextChannelSet(this.jda, guild.getId(), prefs);
+		GuildCommandSet commands = CommandFactory.loadGuildCommandSet(this.jda, guild.getId(), prefs);
 		this.allPrefs.put(guild.getId(), prefs);
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);

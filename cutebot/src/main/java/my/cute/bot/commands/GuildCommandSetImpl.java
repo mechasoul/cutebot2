@@ -46,19 +46,23 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 //			return false;
 //		}
 //	}
-
-	//TODO ?
 	
+	/*
+	 * note PrivateChannelRoleCommand.execute() (under create case) is already making a check
+	 * to ensure the created command doesn't share a name with any other command, so the use
+	 * of putIfAbsent() here is maybe redundant? but i guess it's good practice anyway
+	 */
 	@Override
 	public boolean createRoleCommand(String name, List<Role> roles) throws IOException {
 		if(this.roleCommandDbs.size() < MAX_ROLE_COMMANDS) {
 			RoleCommandDatabase db = RoleCommandDatabaseFactory.create(this.id, name);
-			boolean newCommandAdded = this.roleCommandDbs.putIfAbsent(name, db) == null;
-			db.add(roles);
-			return newCommandAdded;
-		} else {
-			return false;
+			if(this.roleCommandDbs.putIfAbsent(name, db) == null) {
+				db.add(roles);
+				this.put(name, new GeneratedTextChannelRoleCommand(name, db, this.jda, this.id));
+				return true;
+			}
 		}
+		return false;
 	}
 
 	@Override
@@ -71,6 +75,7 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 		RoleCommandDatabase db = this.roleCommandDbs.remove(name);
 		if(db != null) {
 			db.delete();
+			this.remove(name);
 			return true;
 		} else {
 			return false;

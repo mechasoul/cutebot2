@@ -2,6 +2,7 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -12,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 
-import my.cute.bot.util.ConcurrentFinalEntryMap;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
@@ -65,7 +65,7 @@ import net.dv8tion.jda.api.entities.Role;
  * should be the name of the command to view defined roles for, and can be omitted to get 
  * information about all commands. no params
  * <p>
- * all user-defined commands are case insensitive
+ * all user-defined commands are <b>case insensitive</b>
  */
 final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
@@ -83,9 +83,9 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	private final static Pattern ALIAS = Pattern.compile("^\".*\",\\s*\\w+(?:\\s+|$)");
 	private final static int MAX_COMMAND_NAME_LENGTH = 30;
 	
-	private final ConcurrentFinalEntryMap<String, GuildCommandSet> allCommands;
+	private final Map<String, GuildCommandSet> allCommands;
 	
-	PrivateChannelRoleCommand(ConcurrentFinalEntryMap<String, GuildCommandSet> commands, JDA jda) {
+	PrivateChannelRoleCommand(JDA jda, Map<String, GuildCommandSet> commands) {
 		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allCommands = commands;
 	}
@@ -238,6 +238,7 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 			}
 		} catch (IOException e) {
 			//catchall for IOExceptions during RoleCommandDatabase modification
+			//TODO ?
 			e.printStackTrace();
 		}
 	}

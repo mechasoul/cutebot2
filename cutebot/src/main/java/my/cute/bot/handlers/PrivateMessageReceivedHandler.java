@@ -13,6 +13,7 @@ import my.cute.bot.MyListener;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.DefaultGuildDatabase;
+import my.cute.bot.commands.GuildCommandSet;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PrivateChannelCommand;
 import my.cute.bot.commands.PrivateChannelCommandTargeted;
@@ -38,11 +39,12 @@ public class PrivateMessageReceivedHandler {
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
 	public PrivateMessageReceivedHandler(MyListener bot, JDA jda, Map<String, GuildPreferences> allPrefs, 
-			Map<String, WordFilter> allFilters, PermissionManager permissions) throws IOException {
+			Map<String, WordFilter> allFilters, Map<String, GuildCommandSet> allCommands, PermissionManager permissions) throws IOException {
 		this.bot = bot;
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
-		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, this.executor);
+		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, 
+				allCommands, this.executor);
 		this.permissions = permissions;
 	}
 	

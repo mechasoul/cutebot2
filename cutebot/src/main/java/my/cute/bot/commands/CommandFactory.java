@@ -17,13 +17,6 @@ import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 
 public class CommandFactory {
-
-	//TODO load user-defined commands from a file somewhere
-	public static CommandSet<TextChannelCommand> newDefaultTextChannelSet(JDA jda, String id, GuildPreferences prefs) {
-		CommandSet<TextChannelCommand> set = new CommandSetImpl<TextChannelCommand>(2);
-		set.put("quote", new TextChannelQuoteCommand(jda, id, prefs));
-		return set;
-	}
 	
 	public static GuildCommandSet loadGuildCommandSet(JDA jda, String guildId, GuildPreferences prefs) throws IOException {
 		ConcurrentMap<String, RoleCommandDatabase> roleCommandDbs = new ConcurrentHashMap<>(3);
@@ -54,7 +47,8 @@ public class CommandFactory {
 	}
 	
 	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(JDA jda, MyListener bot, 
-			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, ExecutorService executor) {
+			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, 
+			Map<String, GuildCommandSet> allCommands, ExecutorService executor) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
 		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
 		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand(jda));
@@ -65,6 +59,7 @@ public class CommandFactory {
 		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand(jda));
 		set.put(PrivateChannelMaintCommand.NAME, new PrivateChannelMaintCommand(bot));
 		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(jda, bot, executor, allPrefs));
+		set.put(PrivateChannelRoleCommand.NAME, new PrivateChannelRoleCommand(jda, allCommands));
 		set.put(PrivateChannelStatusCommand.NAME, new PrivateChannelStatusCommand(jda));
 		
 		return set;

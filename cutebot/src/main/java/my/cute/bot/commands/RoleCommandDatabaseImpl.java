@@ -47,14 +47,6 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		this.path = PathUtils.getGeneratedRoleCommandDatabase(this.guildId, this.commandName);
 	}
 	
-	/*
-	 * TODO remove all use of role id in this class - maintain a list of role names the command
-	 * manages and the alias<->rolename map, but shouldnt need id for anything. will have to 
-	 * change GeneratedTextChannelRoleCommand.execute()'s use of Guild.getRoleById() to 
-	 * Guild.getRolesByName(), but should be fine
-	 */
-	
-	
 	@Override
 	public synchronized boolean add(String roleName) throws IOException {
 		if(roleName.isBlank() || this.roleNames.size() >= MAX_ROLES) return false;
@@ -234,6 +226,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 
 	@Override
 	public synchronized void save() throws IOException {
+		//directory creation happens in GuildCommandSetImpl constructor
 		try (BufferedWriter writer = Files.newBufferedWriter(this.path, StandardCharsets.UTF_8)) {
 			RoleCommandDatabaseFactory.GSON.toJson(this.roleNames, new TypeToken<THashSet<String>>(){}.getType(), writer);
 			writer.newLine();
