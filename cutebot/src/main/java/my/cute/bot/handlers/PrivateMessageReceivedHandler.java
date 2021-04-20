@@ -67,7 +67,7 @@ public class PrivateMessageReceivedHandler {
 		}
 		
 		if(command == null) {
-			event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0])).queue();
+			event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0].substring(1))).queue();
 			return;
 		}
 		

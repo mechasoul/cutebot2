@@ -124,7 +124,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
 			} else if (params[1].equalsIgnoreCase("set")) {
 				if(params.length >= 3) {
-					String filterString = MiscUtils.extractQuotationMarks(message.getContentRaw());
+					String filterString = MiscUtils.extractQuotationMarks(message);
 					if(filterString != null) {
 						String previousFilter = filter.get();
 						try {

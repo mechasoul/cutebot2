@@ -142,16 +142,19 @@ public class PermissionManagerImpl implements PermissionManager {
 		return this.addGuild(guild.getId());
 	}
 
-	/*
-	 * TODO should this delete local permission file on disk?
-	 */
 	@Override
-	public boolean removeGuild(String guildId) {
-		return this.permissions.remove(guildId) != null;
+	public boolean removeGuild(String guildId) throws IOException {
+		PermissionDatabase db = this.permissions.remove(guildId);
+		if(db != null) {
+			db.delete();
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 	@Override
-	public boolean removeGuild(Guild guild) {
+	public boolean removeGuild(Guild guild) throws IOException {
 		return this.removeGuild(guild.getId());
 	}
 	

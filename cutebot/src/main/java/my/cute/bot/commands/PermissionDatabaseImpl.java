@@ -90,6 +90,18 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 	}
 	
 	@Override
+	public synchronized void clear() throws IOException {
+		this.users.clear();
+		this.save();
+	}
+	
+	@Override
+	public synchronized void delete() throws IOException {
+		this.clear();
+		Files.deleteIfExists(this.path);
+	}
+	
+	@Override
 	public synchronized ImmutableSet<Long> getUsersWithPermission(PermissionLevel permission) {
 		ImmutableSet.Builder<Long> builder =  ImmutableSet.builderWithExpectedSize(this.users.size());
 		this.users.forEach(user -> {
@@ -100,7 +112,7 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 	}
 	
 	@Override
-	public int size() {
+	public synchronized int size() {
 		return this.users.size();
 	}
 

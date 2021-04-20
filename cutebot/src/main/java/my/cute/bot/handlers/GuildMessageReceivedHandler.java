@@ -49,6 +49,7 @@ public class GuildMessageReceivedHandler {
 			this.randomFactor = this.getNewRandomFactor();
 		}
 		
+		//gets a random float in [2/3, 4/3)
 		private float getNewRandomFactor() {
 			return (this.RAND.nextFloat() * (2f/3f)) + (2f/3f);
 		}

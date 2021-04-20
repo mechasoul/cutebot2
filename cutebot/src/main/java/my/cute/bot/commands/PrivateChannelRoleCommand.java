@@ -90,7 +90,6 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 		this.allCommands = commands;
 	}
 
-	//TODO case insensitivity 
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		
@@ -106,7 +105,7 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 		try {
 			if(params[1].equalsIgnoreCase("create")) {
 				if(params.length >= 4) {
-					if(!commandSet.contains(params[2].toLowerCase())) {
+					if(!commandSet.contains(params[2])) {
 						if(params[2].matches("[A-Za-z0-9]+") && params[2].length() <= MAX_COMMAND_NAME_LENGTH) {
 							//!role create commandname givenRoles
 							ImmutableList<Role> givenRoles = MiscUtils.parseRoles(targetGuild, message, 3);
@@ -162,35 +161,42 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if (params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 4) {
-					if(commandSet.isRoleCommand(params[2])) {
-						//!role remove commandName givenRoles
-						//TODO do something if no roles exist in command after removal
-						String roleText = MiscUtils.getWords(message, 4)[3];
-						String extractedText = MiscUtils.extractQuotationMarks(roleText);
-						if(extractedText != null) {
-							roleText = extractedText;
-							//check for single role in quotation marks
-							if(commandSet.getRoleCommandDatabase(params[2]).remove(roleText)) {
-								message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
+					RoleCommandDatabase db = commandSet.getRoleCommandDatabase(params[2]);
+					if(db != null) {
+						synchronized(db) {
+							//!role remove commandName givenRoles
+							String roleText = MiscUtils.getWords(message, 4)[3];
+							String extractedText = MiscUtils.extractQuotationMarks(roleText);
+							if(extractedText != null) {
+								roleText = extractedText;
+								//check for single role in quotation marks
+								if(db.remove(roleText)) {
+									message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
+								} else {
+									//try comma-separated list
+									List<String> removedRoleNames = db.removeByName(roleText.split(",\\s*"));
+									if(!removedRoleNames.isEmpty()) {
+										message.getChannel().sendMessage(StandardMessages.removedRoleNamesFromCommand(params[2], removedRoleNames)).queue();
+									} else {
+										message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+									}
+								}
 							} else {
-								//try comma-separated list
-								List<String> removedRoleNames = commandSet.getRoleCommandDatabase(params[2]).removeByName(roleText.split(",\\s*"));
-								if(!removedRoleNames.isEmpty()) {
-									message.getChannel().sendMessage(StandardMessages.removedRoleNamesFromCommand(params[2], removedRoleNames)).queue();
+								//attempt to remove single role
+								roleText = MiscUtils.getWords(roleText)[0];
+								Role role = MiscUtils.tryRoleById(targetGuild, roleText);
+								if(role != null) 
+									roleText = role.getName();
+								if(db.remove(roleText)) {
+									message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
 								} else {
 									message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
 								}
 							}
-						} else {
-							//attempt to remove single role
-							roleText = MiscUtils.getWords(roleText)[0];
-							Role role = MiscUtils.tryRoleById(targetGuild, roleText);
-							if(role != null) 
-								roleText = role.getName();
-							if(commandSet.getRoleCommandDatabase(params[2]).remove(roleText)) {
-								message.getChannel().sendMessage(StandardMessages.removedRoleFromCommand(params[2], roleText)).queue();
-							} else {
-								message.getChannel().sendMessage(StandardMessages.failedToFindRoles(message, 3)).queue();
+							if(db.isEmpty()) {
+								commandSet.deleteRoleCommand(db.getName());
+								message.getChannel().sendMessage("automatically deleted role command '" + db.getName()
+										+ "' since all roles had been removed").queue();
 							}
 						}
 					} else {
@@ -232,14 +238,23 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 				}
 			} else if (params[1].equalsIgnoreCase("view")) {
-				MiscUtils.sendMessages(message.getChannel(), this.getRoleCommandsAsMessages(targetGuild, commandSet));
+				if(params.length >= 3) {
+					RoleCommandDatabase db = commandSet.getRoleCommandDatabase(params[2]);
+					if(db != null) {
+						message.getChannel().sendMessage(db.getFormattedString()).queue();
+					} else {
+						message.getChannel().sendMessage(StandardMessages.unknownCommand(params[2])).queue();
+					}
+				} else {
+					MiscUtils.sendMessages(message.getChannel(), this.getRoleCommandsAsMessages(targetGuild, commandSet));
+				}
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
 		} catch (IOException e) {
-			//catchall for IOExceptions during RoleCommandDatabase modification
-			//TODO ?
-			e.printStackTrace();
+			logger.warn(this + ": unknown IOException during command execution! message: " + message + ", guild: " 
+					+ MiscUtils.getGuildString(targetGuild), e);
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		}
 	}
 	

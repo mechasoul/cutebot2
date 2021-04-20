@@ -23,10 +23,12 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	private final static Logger logger = LoggerFactory.getLogger(GeneratedTextChannelRoleCommand.class);
 
 	private final RoleCommandDatabase database;
+	private GuildCommandSet parent;
 	
-	GeneratedTextChannelRoleCommand(String name, RoleCommandDatabase db, JDA jda, String id) {
+	GeneratedTextChannelRoleCommand(String name, RoleCommandDatabase db, JDA jda, String id, GuildCommandSet parent) {
 		super(name, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
 		this.database = db;
+		this.parent = parent;
 	}
 	
 	@Override
@@ -35,7 +37,7 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 		//really shouldnt be possible for this to be null
 		Guild guild = this.jda.getGuildById(this.guildId);
 		String targetRoleName=null;
-		String specifiedRole = message.getContentRaw().trim().split("\\s+", 2)[1];
+		String specifiedRole = MiscUtils.getWords(message, 2)[1];
 		
 		if(this.database.isSingleRole()) {
 			targetRoleName = this.database.getSingleRoleName();
@@ -56,11 +58,16 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 				 * role name that exists in command no longer exists in server
 				 * remove role from command
 				 */
-				
 				try {
 					this.database.remove(role);
-					//TODO delete command or something if no roles left in db after removal
-					message.getChannel().sendMessage(StandardMessages.invalidRole(message.getAuthor(), specifiedRole)).queue();
+					if(this.database.isEmpty()) {
+						//no roles left in command. delete command
+						this.parent.deleteRoleCommand(this.getName());
+						this.parent = null;
+						message.getChannel().sendMessage(StandardMessages.unknownCommand(this.getName())).queue();
+					} else {
+						message.getChannel().sendMessage(StandardMessages.invalidRole(message.getAuthor(), specifiedRole)).queue();
+					}
 				} catch (IOException e) {
 					//unknown error when trying to remove role
 					logger.warn(this + ": ioexception when trying to remove role '" + role + "'", e);

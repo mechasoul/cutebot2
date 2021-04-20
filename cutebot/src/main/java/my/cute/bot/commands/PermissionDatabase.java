@@ -58,6 +58,13 @@ public interface PermissionDatabase {
 	
 	public boolean isEmpty();
 	
+	public void clear() throws IOException;
+	
+	/**
+	 * empties database and deletes all contents on disk. irreversible
+	 */
+	public void delete() throws IOException;
+	
 	/**
 	 * gets the set of all users in the database who have the given permission level. 
 	 * note current implementation copies backing store into an immutabelist, so this 

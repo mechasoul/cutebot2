@@ -36,27 +36,27 @@ class CommandSetImpl<T extends Command> implements CommandSet<T> {
 	
 	@Override
 	public boolean contains(String commandName) {
-		return this.commandSet.containsKey(commandName);
+		return this.commandSet.containsKey(commandName.toLowerCase());
 	}
 	
 	@Override
 	public T get(String commandName) {
-		return this.commandSet.get(commandName);
+		return this.commandSet.get(commandName.toLowerCase());
 	}
 	
 	@Override
 	public T put(String name, T command) {
-		return this.commandSet.putIfAbsent(name, command);
+		return this.commandSet.putIfAbsent(name.toLowerCase(), command);
 	}
 	
 	@Override
 	public T remove(String commandName) {
-		return this.commandSet.remove(commandName);
+		return this.commandSet.remove(commandName.toLowerCase());
 	}
 
 	@Override
 	public boolean execute(String name, Message message, String[] params) {
-		T command = this.commandSet.get(name);
+		T command = this.commandSet.get(name.toLowerCase());
 		if(command != null) {
 			command.execute(message, params);
 			return true;

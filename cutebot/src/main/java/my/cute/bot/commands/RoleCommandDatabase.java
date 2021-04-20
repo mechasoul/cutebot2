@@ -80,6 +80,13 @@ interface RoleCommandDatabase {
 	public boolean removeAlias(String alias) throws IOException;
 	
 	/**
+	 * checks to see if the database contains any roles
+	 * @return true if the database contains no roles, or false if it 
+	 * contains at least one role
+	 */
+	public boolean isEmpty();
+	
+	/**
 	 * checks if this database contains only a single role
 	 * @return true if this database contains a single role, false otherwise
 	 */

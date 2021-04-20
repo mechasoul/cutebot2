@@ -4,7 +4,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -34,6 +33,12 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction;
 import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class MiscUtils {
+	
+	/*
+	 * TODO things that split on a specific character should either trim() after or have optional whitespace on either side
+	 * eg instead of split(",") do split(",\\s*")
+	 * trim() after extractQuotationMarks(String), etc
+	 */
 	
 	public static final ZoneId TIMEZONE = ZoneId.of("America/Vancouver");
 	private static final Logger logger = LoggerFactory.getLogger(MiscUtils.class);
@@ -206,11 +211,11 @@ public class MiscUtils {
 	 * see {@link #parseRoles(Guild, String)}, but taking on some extra message parsing.
 	 * eg, message with content:
 	 * <p>
-	 * !role create region "North America,South America,Europe"
+	 * <pre>!role create region "North America,South America,Europe"</pre>
 	 * <p>
 	 * could call parseRole(guild, message, 3) to attempt to find roles matching the list.
-	 * or if you'd prefer, simply shorthand for <br>
-	 * parseRole(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore])
+	 * or if you'd prefer, simply shorthand for <p><pre>
+	 * parseRole(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore])</pre>
 	 * @param guild the guild to check for roles
 	 * @param message the message to strip roles from (probably a user-submitted command)
 	 * @param paramsToIgnore the number of words to ignore in the message until the roles
@@ -252,6 +257,7 @@ public class MiscUtils {
 	
 	private static ImmutableList<Role> getRolesFromCommaSeparatedList(Guild guild, String listOfRoles) {
 		return Stream.of(listOfRoles.split(","))
+				.map(name -> name.trim())
 				.filter(name -> !name.isEmpty())
 				.map(name -> MiscUtils.getRoleByName(guild, name))
 				.filter(role -> role != null)
@@ -276,8 +282,12 @@ public class MiscUtils {
 	public static String extractQuotationMarks(String string) {
 		if(!hasQuotationMarks(string)) return null;
 		
-		string = string.split("\"", 2)[1];
+		string = string.trim().split("\"", 2)[1];
 		return string.substring(0, string.lastIndexOf('"'));
+	}
+	
+	public static String extractQuotationMarks(Message message) {
+		return extractQuotationMarks(message.getContentRaw());
 	}
 	
 	/**

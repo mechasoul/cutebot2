@@ -59,7 +59,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	
 	@Override
 	public synchronized boolean add(Role role) throws IOException {
-		return this.add(role.getName().toLowerCase());
+		return this.add(role.getName());
 	}
 
 	private synchronized boolean addWithoutSave(Role role) {
@@ -143,10 +143,11 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		if(alias.isBlank()) return false;
 		alias = alias.toLowerCase();
 		
-		if(!this.roleNames.contains(role.getName().toLowerCase())) {
+		String roleName = role.getName().toLowerCase();
+		if(!this.roleNames.contains(roleName)) {
 			return false;
 		} else {
-			this.aliases.forcePut(alias, role.getName().toLowerCase());
+			this.aliases.forcePut(alias, roleName);
 			this.save();
 			return true;
 		}
@@ -159,6 +160,11 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 		boolean successfullyRemoved = this.aliases.remove(alias) != null;
 		if(successfullyRemoved) this.save();
 		return successfullyRemoved;
+	}
+	
+	@Override
+	public synchronized boolean isEmpty() {
+		return this.roleNames.isEmpty();
 	}
 
 	@Override
@@ -177,7 +183,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	
 	@Override
 	public synchronized boolean contains(String roleName) {
-		return this.roleNames.contains(roleName);
+		return this.roleNames.contains(roleName.toLowerCase());
 	}
 
 	@Override

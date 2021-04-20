@@ -15,11 +15,10 @@ import net.dv8tion.jda.api.entities.Message;
  * changes the target guild's automatic response time, to control how frequently
  * cutebot responds to user messages without being prompted
  * 
- * <br><br>use: !auto minutes|'off' [guild id]
+ * <p>use: !auto minutes|'off' [guild id]
  * 
- * <br><br>parameter 1 is either the word "off", which turns off automatic response, or 
+ * <p>parameter 1 is either the word "off", which turns off automatic response, or 
  * a number of minutes in [1, 525600] (shoutouts 2 rent)
- * <br>parameter 2 is the target guild id (can be omitted to use default guild)
  */
 public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	

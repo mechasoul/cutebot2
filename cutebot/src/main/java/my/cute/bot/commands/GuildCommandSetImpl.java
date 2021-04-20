@@ -11,6 +11,9 @@ import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Role;
 
+/*
+ * TODO possible synchronization problems?
+ */
 class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements GuildCommandSet {
 
 	private static final int MAX_ROLE_COMMANDS = 16; 
@@ -55,10 +58,11 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 	@Override
 	public boolean createRoleCommand(String name, List<Role> roles) throws IOException {
 		if(this.roleCommandDbs.size() < MAX_ROLE_COMMANDS) {
+			name = name.toLowerCase();
 			RoleCommandDatabase db = RoleCommandDatabaseFactory.create(this.id, name);
 			if(this.roleCommandDbs.putIfAbsent(name, db) == null) {
 				db.add(roles);
-				this.put(name, new GeneratedTextChannelRoleCommand(name, db, this.jda, this.id));
+				this.put(name, new GeneratedTextChannelRoleCommand(name, db, this.jda, this.id, this));
 				return true;
 			}
 		}
@@ -72,6 +76,7 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 
 	@Override
 	public boolean deleteRoleCommand(String name) throws IOException {
+		name = name.toLowerCase();
 		RoleCommandDatabase db = this.roleCommandDbs.remove(name);
 		if(db != null) {
 			db.delete();
@@ -84,12 +89,12 @@ class GuildCommandSetImpl extends CommandSetImpl<TextChannelCommand> implements 
 
 	@Override
 	public boolean isRoleCommand(String name) {
-		return this.roleCommandDbs.containsKey(name);
+		return this.roleCommandDbs.containsKey(name.toLowerCase());
 	}
 
 	@Override
 	public RoleCommandDatabase getRoleCommandDatabase(String name) {
-		return this.roleCommandDbs.get(name);
+		return this.roleCommandDbs.get(name.toLowerCase());
 	}
 
 	@Override

@@ -105,9 +105,9 @@ public interface PermissionManager {
 	 * returns true if a guild was removed from the manager as a result of this call,
 	 * false otherwise (eg given guild id wasn't found in manager)
 	 */
-	public boolean removeGuild(String guildId);
+	public boolean removeGuild(String guildId) throws IOException;
 	
-	public boolean removeGuild(Guild guild);
+	public boolean removeGuild(Guild guild) throws IOException;
 	
 	/**
 	 * gets an immutable set view of all admins in a given server. note this makes a 

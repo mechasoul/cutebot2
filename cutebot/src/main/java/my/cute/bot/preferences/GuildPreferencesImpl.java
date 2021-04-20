@@ -20,6 +20,7 @@ import my.cute.bot.util.PathUtils;
 class GuildPreferencesImpl implements GuildPreferences, Serializable {
 
 	private static final long serialVersionUID = 1L;
+	@SuppressWarnings("unused")
 	private static final Logger logger = LoggerFactory.getLogger(GuildPreferencesImpl.class);
 	private static final Gson GSON = new GsonBuilder().create();
 	
@@ -52,34 +53,33 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 		this.discussionChannels = null;
 	}
 	
-	@Override
-	public void save() {
+	private synchronized void save() throws IOException {
 		try (BufferedWriter writer = Files.newBufferedWriter(PathUtils.getPreferencesFile(this.id), StandardCharsets.UTF_8, 
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			writer.append(GSON.toJson(this));
-		} catch (IOException e) {
-			logger.warn("GuildPreferencesImpl-" + this.id + ": IOException thrown in save(); save failed!", e);
-		}
+		} 
 	}
 	
 	@Override
-	public String getPrefix() {
+	public synchronized String getPrefix() {
 		return this.commandPrefix;
 	}
 
 	@Override
-	public void setPrefix(String prefix) {
+	public synchronized void setPrefix(String prefix) throws IOException {
 		this.commandPrefix = prefix;
+		this.save();
 	}
 
 	@Override
-	public int getDatabaseAge() {
+	public synchronized int getDatabaseAge() {
 		return this.databaseAge;
 	}
 
 	@Override
-	public void setDatabaseAge(int age) {
+	public synchronized void setDatabaseAge(int age) throws IOException {
 		this.databaseAge = age;
+		this.save();
 	}
 	
 	@Override
@@ -97,21 +97,23 @@ class GuildPreferencesImpl implements GuildPreferences, Serializable {
 	}
 
 	@Override
-	public synchronized void setDiscussionChannels(Collection<String> discussionChannels) {
+	public synchronized void setDiscussionChannels(Collection<String> discussionChannels) throws IOException {
 		if(discussionChannels == null || discussionChannels.isEmpty()) {
 			this.discussionChannels = null;
 		} else {
 			this.discussionChannels = ImmutableList.copyOf(discussionChannels);
 		}
+		this.save();
 	}
 	
 	@Override
-	public void setAutomaticResponseTime(int minutes) {
+	public synchronized void setAutomaticResponseTime(int minutes) throws IOException {
 		this.automaticMessageTime = minutes;
+		this.save();
 	}
 
 	@Override
-	public int getAutomaticResponseTime() {
+	public synchronized int getAutomaticResponseTime() {
 		return this.automaticMessageTime;
 	}
 
