@@ -83,8 +83,7 @@ public class GuildDatabaseSetupTask implements Callable<CompletableFuture<Void>>
 						logger.info(this + ": successfully set up new guild '" + this.guild + "'");
 					} else {
 						logger.warn(this + ": encountered exception when trying to set up new guild '" 
-								+ this.guild + "'; setup process aborted! ex: " 
-								+ throwable.getMessage(), throwable);
+								+ this.guild + "'; setup process aborted!", throwable);
 					}
 					if(doingNothing) this.jda.getPresence().setActivity(null);
 				});

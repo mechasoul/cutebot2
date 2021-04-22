@@ -159,6 +159,11 @@ public class PermissionManagerImpl implements PermissionManager {
 	}
 	
 	@Override
+	public PermissionDatabase getPermissionDatabase(String guildId) {
+		return this.permissions.get(guildId);
+	}
+	
+	@Override
 	public ImmutableSet<Long> getAdmins(String guildId) {
 		PermissionDatabase db = this.permissions.get(guildId);
 		if(db != null) {

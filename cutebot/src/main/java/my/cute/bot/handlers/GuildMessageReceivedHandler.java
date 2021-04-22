@@ -12,8 +12,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
-import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.TextChannelCommand;
+import my.cute.bot.commands.GuildCommandSet;
+import my.cute.bot.commands.PermissionDatabase;
+import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
@@ -21,16 +22,24 @@ import my.cute.bot.preferences.wordfilter.FilterResponseAction;
 import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.WordfilterTimeoutException;
 import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+/*
+ * TODO
+ * in older code like this class, mylistener, etc i did a lot of catching IOException to
+ * log and swallow or log and rethrow. should take another look at these and see if theres
+ * any more appropriate action to take
+ */
 public class GuildMessageReceivedHandler {
 	
 	private class AutonomyHandler {
@@ -66,17 +75,19 @@ public class GuildMessageReceivedHandler {
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
 	private final WordFilter wordFilter;
-	private final CommandSet<TextChannelCommand> commands;
+	private final PermissionDatabase perms;
+	private final GuildCommandSet commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;;
 	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
-			ExecutorService executor, CommandSet<TextChannelCommand> commands) throws IOException {
+			PermissionDatabase perms, ExecutorService executor, GuildCommandSet commands) throws IOException {
 		this.jda = jda;
 		this.id = guild.getId();
 		this.prefs = prefs;
 		this.wordFilter = filter;
+		this.perms = perms;
 		this.autonomyHandler = new AutonomyHandler();
 		this.executor = executor;
 		this.database = new GuildDatabaseBuilder(guild)
@@ -138,6 +149,7 @@ public class GuildMessageReceivedHandler {
 					this.database.clearAutomaticBackups();
 					this.database.maintenance();
 				} catch (IOException e1) {
+					//not fatal
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
 				//should just run maintenance immediately instead?
@@ -156,11 +168,13 @@ public class GuildMessageReceivedHandler {
 		} catch (IOException e) {
 			/*
 			 * could indicate a problem with writing to workingset file, or something else unanticipated 
-			 * further operation will make workingset inconsistent. shutdown program and require user
-			 * intervention
+			 * further operation will make workingset inconsistent, so require user intervention
+			 * this method is called from MyListener, which will shutdown on IOException encountered 
+			 * here
 			 */
-			logger.error(this + ": unknown IOException thrown during line processing - possible workingset inconsistency! shutting down", e);
-			//TODO some kind of mark on the database to indicate that it should load from backup at next opportunity (maint?)
+			
+			logger.warn(this + ": unknown IOException thrown during line processing - possible workingset inconsistency!");
+			this.database.setShouldRestoreFromBackup(true);
 			throw e;
 		}
 			
@@ -207,8 +221,8 @@ public class GuildMessageReceivedHandler {
 		{
 			try {
 				this.database.maintenance();
-			} catch (Throwable th) {
-				logger.error(this + ": maintenance on guild " + this.id + " terminated due to throwable", th);
+			} catch (IOException e) {
+				logger.warn(this + ": maintenance on guild " + this.id + " terminated due to IOException", e);
 			}
 		});
 	}
@@ -255,27 +269,57 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	private boolean handleWordFilter(Message message) throws TimeoutException {
+	private boolean handleWordFilter(Message message) throws TimeoutException, IOException {
 		String filteredWord;
 		filteredWord = this.wordFilter.check(message.getContentRaw());
 		if(filteredWord != null) {
-			this.applyWordFilterActions(message, filteredWord);
+			try {
+				this.applyWordFilterActions(message, filteredWord);
+			} catch (InsufficientPermissionException | HierarchyException e) {
+				/*
+				 * less important exceptions thrown during wordfilter action application
+				 * more important ones are handled inside applyWordFilterActions(), but
+				 * these can be thrown from eg a server moderator triggering the 
+				 * wordfilter, someone triggering the wordfilter in a channel cutebot
+				 * doesn't have permissions in when it's set to delete offending messages,
+				 * etc
+				 * 
+				 * these edge cases could happen but don't really represent a general 
+				 * problem with the wordfilter (in the same sense as eg cutebot not having
+				 * permissions to kick users but being set to kick users), so we do nothing
+				 */
+			}
 			return true;
 		} else {
 			return false;
 		}
 	}
 	
-	//TODO add try/catch with admin notification for missing permissions to other actions (ban, etc)
-	private void applyWordFilterActions(final Message message, final String filteredWord) {
+	private void applyWordFilterActions(final Message message, final String filteredWord) throws IOException {
+		StringBuilder sb = new StringBuilder();
 		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
 		if(actions.contains(FilterResponseAction.BAN)) {
-			message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
+			try {
+				message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
+			} catch (InsufficientPermissionException e) {
+				sb.append(StandardMessages.missingPermissionsToBan());
+				sb.append(System.lineSeparator());
+			}
 		} else if (actions.contains(FilterResponseAction.KICK)) {
-			message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
+			try {
+				message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
+			} catch (InsufficientPermissionException e) {
+				sb.append(StandardMessages.missingPermissionsToKick());
+				sb.append(System.lineSeparator());
+			}
 		}
 		if(actions.contains(FilterResponseAction.DELETE_MESSAGE)) {
-			message.delete().queue();
+			try {
+				message.delete().queue();
+			} catch (InsufficientPermissionException e) {
+				sb.append(StandardMessages.missingPermissionsToDeleteMessages());
+				sb.append(System.lineSeparator());
+			}
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
 			MessageBuilder builder = new MessageBuilder();
@@ -286,6 +330,9 @@ public class GuildMessageReceivedHandler {
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_PRIVATE)) {
 			MessageBuilder builder = new MessageBuilder();
+			builder.append("dear user,");
+			builder.append(System.lineSeparator());
+			builder.append(System.lineSeparator());
 			builder.append("your message (");
 			builder.append(message.getJumpUrl());
 			builder.append(") in server '");
@@ -298,15 +345,48 @@ public class GuildMessageReceivedHandler {
 					.flatMap(channel -> channel.sendMessage(builder.build())).queue();
 		}
 		if(actions.contains(FilterResponseAction.ROLE)) {
-			try {
-				message.getGuild().addRoleToMember(message.getAuthor().getId(), 
-						message.getGuild().getRoleById(this.wordFilter.getRoleId())).queue();
-			} catch (IllegalArgumentException | InsufficientPermissionException | HierarchyException e) {
-				//exception thrown from addRoleToMember, illegalargument indicates some issue with stored role id
-				//others are missing permission
-				//TODO notify cutebot admin of relevant server
+			Role role = message.getGuild().getRoleById(this.wordFilter.getRoleId());
+			if(role == null) {
+				//stored role is no longer valid. remove this action and notify admins
+				actions.remove(FilterResponseAction.ROLE);
+				this.wordFilter.setActions(actions);
+				this.notifyCutebotAdmins("the role set to be applied to users who trigger the "
+						+ "wordfilter could not be found. please check your wordfilter settings");
+				return;
 			}
+			try {
+				message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
+			} catch (InsufficientPermissionException | HierarchyException e) {
+				//missing permission to modify roles or to interact with the specified role
+				sb.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
+				sb.append(System.lineSeparator());
+			} 
 		}
+		
+		String errorMessage = sb.toString();
+		if(!errorMessage.isEmpty())
+			this.notifyCutebotAdmins(errorMessage);
+	}
+	
+	private void notifyCutebotAdmins(String context) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("dear user,");
+		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
+		sb.append("there was a problem encountered in server '");
+		sb.append(MiscUtils.getGuildString(this.jda.getGuildById(this.id)));
+		sb.append("': ");
+		sb.append(System.lineSeparator());
+		sb.append(context);
+		sb.append("you are receiving this message because you have cutebot admin permissions in this server. "
+				+ "if you don't know what any of this means just ignore this or something");
+		sb.append(MiscUtils.getSignature());
+		String message = sb.toString();
+		this.perms.getUsersWithPermission(PermissionLevel.ADMIN)
+				.forEach(id -> this.jda.openPrivateChannelById(id)
+						.flatMap(channel -> channel.sendMessage(message))
+						.queue()
+				);
 	}
 	
 	@Override

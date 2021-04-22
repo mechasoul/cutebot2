@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.GuildCommandSet;
+import my.cute.bot.commands.PermissionDatabase;
 import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PermissionManagerImpl;
@@ -305,6 +306,7 @@ public class MyListener extends ListenerAdapter {
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);
 		this.permissions.addGuild(guild);
+		PermissionDatabase perms = this.permissions.getPermissionDatabase(guild.getId());
 		/*
 		 * TODO
 		 * move this owner->Admin check to PermissionDatabaseFactory or PermissionManager.addGuild()?
@@ -323,7 +325,8 @@ public class MyListener extends ListenerAdapter {
 		} catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
-		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, this.jda, prefs, filter, this.taskScheduler, commands)) == null;
+		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, 
+				this.jda, prefs, filter, perms, this.taskScheduler, commands)) == null;
 	}
 	
 	/**

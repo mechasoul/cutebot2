@@ -77,7 +77,11 @@ public final class GuildDiscussionChannelTask implements Runnable {
 			});
 			
 		} catch (IOException e) {
-			logger.warn(this + ": IOException when trying to process scraped files, aborting. ex: " + e, e);
+			/*
+			 * this seems weird but this class is run inside a completablefuture (see GuildDatabaseSetupTask)
+			 * so exception handling happens as part of that future
+			 * so i think it's ok
+			 */
 			throw new UncheckedIOException(e);
 		}
 		
@@ -96,8 +100,12 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		
 		discussionChannels.addAll(this.forcedChannels);
 		
-		this.prefs.setDiscussionChannels(discussionChannels);
-		this.prefs.save();
+		try {
+			this.prefs.setDiscussionChannels(discussionChannels);
+		} catch (IOException e) {
+			//as above, handled during future execution
+			throw new UncheckedIOException(e);
+		}
 		
 		logger.info(this + ": finished. determined channels: " + discussionChannels);
 	}

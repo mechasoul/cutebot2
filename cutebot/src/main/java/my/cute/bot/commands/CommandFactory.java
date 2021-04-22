@@ -31,7 +31,7 @@ public class CommandFactory {
 						//enforce alphanumeric command names, so the first occurrence of "." must be for file extension
 						String commandName = file.getFileName().toString().split("\\.")[0];
 						RoleCommandDatabase db = RoleCommandDatabaseFactory.load(guildId, commandName, file);
-						set.put(commandName, new GeneratedTextChannelRoleCommand(commandName, db, jda, guildId));
+						set.put(commandName, new GeneratedTextChannelRoleCommand(commandName, db, jda, guildId, set));
 						roleCommandDbs.put(commandName, db);
 					}
 				} catch (IOException e) {

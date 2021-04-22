@@ -109,6 +109,8 @@ public interface PermissionManager {
 	
 	public boolean removeGuild(Guild guild) throws IOException;
 	
+	public PermissionDatabase getPermissionDatabase(String guildId);
+	
 	/**
 	 * gets an immutable set view of all admins in a given server. note this makes a 
 	 * copy of the backing data structure and so is O(n)

@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -87,10 +88,12 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 				if(params.length == 3) {
 					try {
 						guildPrefs.setDatabaseAge(Integer.parseInt(params[2]));
-						guildPrefs.save();
 					} catch (NumberFormatException e) {
 						message.getChannel().sendMessage("error parsing new database age '" + params[2] + "'").queue();
 						return;
+					} catch (IOException e) {
+						logger.warn(this + ": unknown IOException during execution", e);
+						message.getChannel().sendMessage("unknown ioexception").queue();
 					}
 				}
 				this.executor.submit(new GuildDatabaseSetupTask(this.jda, guild, guildPrefs, this.bot.getDatabase(id)));
@@ -99,6 +102,11 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 				message.getChannel().sendMessage("no such guild id found").queue();
 			}
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return "PrivateChannelRebuildCommand";
 	}
 
 }

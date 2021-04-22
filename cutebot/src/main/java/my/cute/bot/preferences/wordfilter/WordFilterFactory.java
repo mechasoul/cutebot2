@@ -16,9 +16,10 @@ import my.cute.bot.util.PathUtils;
 
 public class WordFilterFactory {
 	
+	@SuppressWarnings("unused")
 	private static final Logger logger = LoggerFactory.getLogger(WordFilterFactory.class);
 
-	public static WordFilter load(String id) {
+	public static WordFilter load(String id) throws IOException {
 		Path path = PathUtils.getWordFilterFile(id);
 		if(Files.exists(path)) {
 			try (BufferedReader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
@@ -31,14 +32,7 @@ public class WordFilterFactory {
 				boolean enabled = Boolean.parseBoolean(reader.readLine());
 				int strikes = Integer.parseInt(reader.readLine());
 				return new WordFilterImpl(id, path, filterType, roleId, words, pattern, actions, enabled, strikes);
-			} catch (IOException e) {
-				/*
-				 * TODO maybe shouldnt swallow this?
-				 */
-				logger.warn("WordFilterFactory: IOException thrown when trying to load wordfilter for id '" + id
-						+ "', loading default wordfilter instead", e);
-				return new WordFilterImpl(id, path);
-			}
+			} 
 		} else {
 			return new WordFilterImpl(id, path);
 		}

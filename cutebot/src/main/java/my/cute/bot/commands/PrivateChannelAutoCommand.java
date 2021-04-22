@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import java.io.IOException;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -32,11 +33,7 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 		this.allPrefs = prefs;
 	}
 	
-	/*
-	 * TODO fix this to accommodate everything in description above
-	 * need to update stored time until next message, otherwise eg can't turn on
-	 * auto response if its turned off
-	 */
+
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		GuildPreferences prefs = this.allPrefs.get(targetGuild.getId());
@@ -52,29 +49,32 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 			return;
 		}
 
-		if (params[1].equalsIgnoreCase("off")) {
-			synchronized(prefs) {
-				prefs.setAutomaticResponseTime(0);
-				prefs.save();
-			}
-			message.getChannel().sendMessage("disabled automatic messages for server " 
-					+ MiscUtils.getGuildString(targetGuild)).queue();
-		} else {
-			try {
-				int minutes = Integer.parseInt(params[1]);
-				if(minutes < 1 || minutes > 525600) {
-					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
-					return;
-				}
+		try {
+			if (params[1].equalsIgnoreCase("off")) {
 				synchronized(prefs) {
-					prefs.setAutomaticResponseTime(minutes);
-					prefs.save();
+					prefs.setAutomaticResponseTime(0);
 				}
-				message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
-				+ " to " + params[1] + " min").queue();
-			} catch (NumberFormatException e) {
-				message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
+				message.getChannel().sendMessage("disabled automatic messages for server " 
+						+ MiscUtils.getGuildString(targetGuild)).queue();
+			} else {
+				try {
+					int minutes = Integer.parseInt(params[1]);
+					if(minutes < 1 || minutes > 525600) {
+						message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
+						return;
+					}
+					synchronized(prefs) {
+						prefs.setAutomaticResponseTime(minutes);
+					}
+					message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
+					+ " to " + params[1] + " min").queue();
+				} catch (NumberFormatException e) {
+					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
+				}
 			}
+		} catch (IOException e) {
+			logger.warn(this + ": unknown IOException during command execution", e);
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		}
 	}
 	

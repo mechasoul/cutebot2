@@ -20,12 +20,6 @@ import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
 
-/*
- * TODO change basically everything to require quotation marks
- * add, remove, set should require quotation marks and logic should work by
- * MiscUtils.hasQuotationMarks, MiscUtils.extractQuotationMarks
- * this allows spaces in filtered terms
- */
 /**
  * for managing a server's wordfilter, an object that can be configured to perform
  * some collection of actions when a user says any of a collection of flagged phrases
@@ -34,16 +28,20 @@ import net.dv8tion.jda.api.entities.Role;
  * <p>
  * <b>modes</b>: add, remove, clear, set, regex, action, role, view
  * <p>
- * <b>add</b>: args should be a comma-separated list of words to add to the filter. adds those
+ * <b>add</b>: args should be a comma-separated list of words to add to the filter, surrounded by 
+ * quotation marks. adds those
  * words in addition to whatever words already exist in the filter<br>
- * <b>remove</b>: args should be a comma-separated list of words to remove from the filter. removes
+ * <b>remove</b>: args should be a comma-separated list of words to remove from the filter, surrounded
+ * by quotation marks. removes
  * any words present in the list from the filter, leaving the remainder<br>
  * <b>clear</b>: no args. clears the filter, removing all words. after this, the filter won't match
  * on anything. note this does not change the set filter response actions<br>
  * <b>set</b>: args should be a comma-separated list of words to use for the filter, or a regex string
- * if the filter is in regex mode (see regex mode). discards any words that existed in the 
- * filter prior to executing the command
- * <b>regex</b>: args should either be "on" or "off". "on" switches the filter to regex mode - add and
+ * if the filter is in regex mode (see regex mode); in either case args should be surrounded by 
+ * quotation marks. discards any words that existed in the 
+ * filter prior to executing the command<br>
+ * <b>regex</b>: args should either be <code>on</code> or <code>off</code>. <code>on</code> switches the 
+ * filter to regex mode - add and
  * remove will no longer have any effect and the set list of words will be ignored. instead, 
  * an explicit regex filter can be set via "set" mode, for more advanced filter use<br>
  * <b>action</b>: args should be a single word consisting only of numbers - each number indicates a
@@ -51,7 +49,8 @@ import net.dv8tion.jda.api.entities.Role;
  * in the guild indicating that the wordfilter was triggered, 3: send a private message indicating
  * that the wordfilter was triggered, 4: delete the message, 5: apply the specified role to the user,
  * 6: kick the user, 7: ban the user<br>
- * <b>role</b>: args should be the id of the role to apply to users who trigger the filter<br>
+ * <b>role</b>: args should be the id of the role to apply to users who trigger the filter, for use
+ * with action 5 above<br>
  * <b>view</b>: no args. view the current filter (the word list if in basic mode, the regex
  * if in regex mode) and the current filter response actions
  *
@@ -177,8 +176,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if (params[1].equalsIgnoreCase("role")) {
 				if(params.length >= 3) {
-					//TODO change this to use MiscUtils.parseRole, require a single role
-					Role newRole = targetGuild.getRoleById(params[2]);
+					Role newRole = MiscUtils.parseRole(targetGuild, message, 2);
 					if(newRole != null) {
 						filter.setRoleId(params[2]);
 						message.getChannel().sendMessage("set role '" + newRole.getName() + "' (id=" + newRole.getId()
@@ -188,8 +186,8 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 									+ "filter is triggered)").queue();
 						}
 					} else {
-						message.getChannel().sendMessage("no role found with id '" + params[2] 
-								+ "' in server " + MiscUtils.getGuildString(targetGuild)).queue();
+						message.getChannel().sendMessage("no matching role found in your message. try "
+								+ " putting the role's name or id in quotation marks").queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();

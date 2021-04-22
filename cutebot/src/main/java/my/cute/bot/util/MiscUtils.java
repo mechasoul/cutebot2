@@ -167,8 +167,8 @@ public class MiscUtils {
 	 * looks for a role matching exactly what's inside the quotation marks, then for
 	 * roles matching a comma-separated list inside the quotation marks. if the given
 	 * text is not surrounded by quotation marks, instead a check is made to see if 
-	 * the first word in the text is an id matching a role, and then a check is made
-	 * for a role whose name matches the first word in the text
+	 * the first word in the text is the name of a role, and then a check is made
+	 * to see if the first word in the text is the id of any role
 	 * @param guild the guild to check for roles
 	 * @param text text to check for roles. most common use case will be as parameters
 	 * for a command, with the previous parameters stripped. should be a role name or
@@ -192,13 +192,12 @@ public class MiscUtils {
 		} else {
 			//no quotation marks. simply check the first word in the given text
 			text = MiscUtils.getWords(text)[0];
-			//first check id, then role name
-			Role singleRole = MiscUtils.tryRoleById(guild, text);
+			//first check role name, then id
+			Role singleRole = MiscUtils.getRoleByName(guild, text);
 			if(singleRole != null) {
 				return ImmutableList.of(singleRole);
 			} else {
-				singleRole = MiscUtils.getRoleByName(guild, text);
-				if(singleRole != null) {
+				if((singleRole = tryRoleById(guild, text)) != null) {
 					return ImmutableList.of(singleRole);
 				} else {
 					return ImmutableList.of();
@@ -225,6 +224,35 @@ public class MiscUtils {
 	 */
 	public static ImmutableList<Role> parseRoles(final Guild guild, final Message message, int paramsToIgnore) {
 		return parseRoles(guild, getWords(message, paramsToIgnore+1)[paramsToIgnore]);
+	}
+	
+	/**
+	 * as in {@link #parseRoles(Guild, Message, int)} but attempts to parse only a single
+	 * role, checking the message for an exact (up to case sensitivity) role name or id in
+	 * quotation marks, or if no quotation marks are found, checks the first word after 
+	 * the specified number of ignored params
+	 * @param guild the guild to check for roles
+	 * @param message the message to parse for roles
+	 * @param paramsToIgnore the number of params in the given message to be ignored when
+	 * checking for a role name or id, if no quotation marks were found in the given message
+	 * @return a role whose name matches the text in the message, or whose id was found in 
+	 * the message, or null if no matching role could be found
+	 */
+	public static Role parseRole(final Guild guild, final Message message, int paramsToIgnore) {
+		String textToParse = getWords(message, paramsToIgnore+1)[paramsToIgnore];
+		String extractedText = extractQuotationMarks(textToParse);
+		Role role;
+		if(extractedText == null) 
+			extractedText = getWords(textToParse)[0];
+		 
+		//check for exact role name of first word, then id
+		if((role = getRoleByName(guild, extractedText)) != null) 
+			return role;
+		else if((role = tryRoleById(guild, extractedText)) != null) 
+			return role;
+		else 
+			return null;
+
 	}
 	
 	/**

@@ -96,6 +96,23 @@ public class StandardMessages {
 		return user.getAsMention() + " error: unable to modify role due to missing permissions. please contact your local administrator";
 	}
 	
+	public static String missingPermissionsToApplyFilterRole(Role role) {
+		return "missing permissions to apply role '" + role.getName() + "' (id=" + role.getId()
+			+ ") to user who triggered the wordfilter";
+	}
+	
+	public static String missingPermissionsToKick() {
+		return "missing permissions to kick users";
+	}
+	
+	public static String missingPermissionsToBan() {
+		return "missing permissions to ban users";
+	}
+	
+	public static String missingPermissionsToDeleteMessages() {
+		return "missing permissions to delete messages";
+	}
+	
 	public static String commandNameAlreadyExists(String name) {
 		return "error: a command already exists with the name '" + name + "'";
 	}

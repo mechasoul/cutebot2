@@ -54,6 +54,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	private int workingSetMaxAge;
 	private boolean isShutdown = false;
 	private boolean prioritizeSpeed;
+	private boolean shouldRestoreFromBackup = false;
 	
 	@SuppressWarnings("unused")
 	private GuildDatabaseImpl() {
@@ -169,6 +170,16 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		this.save();
 		this.workingSetWriter.close();
 		this.isShutdown = true;
+	}
+	
+	@Override
+	public synchronized boolean getShouldRestoreFromBackup() {
+		return this.shouldRestoreFromBackup;
+	}
+	
+	@Override
+	public synchronized void setShouldRestoreFromBackup(boolean shouldRestore) {
+		this.shouldRestoreFromBackup = shouldRestore;
 	}
 	
 	@Override
@@ -304,6 +315,19 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized void maintenance() throws IOException {
 		if(this.isShutdown) throw new IllegalStateException("can't start maintenance on a shutdown database");
 		logger.info(this + ": starting maintenance");
+		
+		if(this.getShouldRestoreFromBackup()) {
+			logger.info(this + "-maint: db requires restoration from backup. attempting now");
+			if(this.restoreFromAutomaticBackups()) {
+				logger.info(this + "-maint: successfully restored from backup. continuing maintenance");
+				this.setShouldRestoreFromBackup(false);
+			} else {
+				logger.warn(this + "-maint: failed to restore from backup, db still in "
+						+ "flawed state. aborting maintenance");
+				return;
+			}
+		}
+		
 		this.save();
 		logger.info(this + "-maint: db saved. beginning workingset maintenance");
 		/*
@@ -348,22 +372,25 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		 * check for automatic backup creation
 		 */
 		logger.info(this + "-maint: finished workingset maintenance. beginning backup maintenance");
-		this.backupRecords.forEach(record ->
-		{
-			if(record.needsMaintenance()) {
-				try {
-					logger.info(this + "-maint: backup record '" + record.getName() + "' out of date. saving new backup");
-					this.saveBackup(record.getName());
-					record.maintenance();
-				} catch (IOException e) {
-					logger.warn(this + ": exception in maintenance() when trying to save backup '" 
-							+ record.getName() + "': " + e.getMessage(), e);
+		try {
+			this.backupRecords.forEach(record ->
+			{
+				if(record.needsMaintenance()) {
+					try {
+						logger.info(this + "-maint: backup record '" + record.getName() + "' out of date. saving new backup");
+						this.saveBackup(record.getName());
+						record.maintenance();
+					} catch (IOException e) {
+						logger.warn(this + ": exception in maintenance() when trying to save backup '" 
+								+ record.getName() + "': " + e.getMessage());
+						throw new UncheckedIOException(e);
+					}
 				}
-			}
-		});
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
+		}
 		logger.info(this + "-maint: finished backup maintenance. updating last maintenance time");
-		//TODO problem with updating this when potentially encountering exceptions?
-		//maybe shouldnt update last maint time in that case?
 		this.updateLastMaintenanceTime();
 		logger.info(this + ": finished maintenance");
 	}

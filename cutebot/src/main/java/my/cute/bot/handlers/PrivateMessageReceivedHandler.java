@@ -14,6 +14,7 @@ import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.DefaultGuildDatabase;
 import my.cute.bot.commands.GuildCommandSet;
+import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.commands.PermissionManager;
 import my.cute.bot.commands.PrivateChannelCommand;
 import my.cute.bot.commands.PrivateChannelCommandTargeted;
@@ -105,7 +106,7 @@ public class PrivateMessageReceivedHandler {
 			
 			//final validity check, ensure they're in the given guild
 			//requires GUILD_MEMBERS gateway intent i think
-			if(!targetGuild.isMember(event.getAuthor())) {
+			if(!targetGuild.isMember(event.getAuthor()) && !this.permissions.hasPermission(event.getAuthor(), PermissionLevel.DEVELOPER)) {
 				event.getChannel().sendMessage(StandardMessages.invalidGuild(targetGuildId)).queue();
 				return;
 			}
