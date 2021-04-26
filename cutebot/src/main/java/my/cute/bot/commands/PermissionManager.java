@@ -60,12 +60,35 @@ public interface PermissionManager {
 	 * returns true if a permission level was removed as a result of this call,
 	 * and false otherwise (eg the given user doesn't have the given permission)
 	 */
+	/**
+	 * removes the specified global permission level from the specified user id
+	 * after calling this, calling {@link #hasPermission(String, PermissionLevel)}
+	 * with the same arguments should return false
+	 * @param userId the id of the user
+	 * @param permission the permission level to remove
+	 * @return true if a permission level was removed as a result of this call, 
+	 * false otherwise (eg if the given user doesn't have the given permission). or
+	 * equivalently returns true if the manager changed as a result of this call
+	 * @throws IOException
+	 */
 	public boolean remove(String userId, PermissionLevel permission) throws IOException;
 	
 	public boolean remove(User user, PermissionLevel permission) throws IOException;
 	
-	/*
-	 * same as above, but removes per-guild permissions
+	/**
+	 * see {@link #remove(String, PermissionLevel)}, but modifies permissions for a 
+	 * specific guild, rather than the global permissions
+	 * <p>
+	 * note that if the removed user was the last user with permissions in the given
+	 * guild (ie, the given guild now has no admins), an attempt will be made to 
+	 * automatically add the server owner as admin
+	 * @param userId the id of the user
+	 * @param guildId the id of the guild
+	 * @param permission the permission level to remove from the user in the guild
+	 * @return true if a permission level was removed as a result of this call, 
+	 * false otherwise (eg if the given user doesn't have the given permission). or
+	 * equivalently returns true if the manager changed as a result of this call
+	 * @throws IOException
 	 */
 	public boolean remove(String userId, String guildId, PermissionLevel permission) throws IOException;
 	
@@ -87,12 +110,16 @@ public interface PermissionManager {
 	
 	public boolean hasPermission(User user, Guild guild, PermissionLevel permission);
 	
-	/*
-	 * adds a new guild to manage permissions for
-	 * use eg on guild join
-	 * 
-	 * returns true if the guild added was new (did not already exist in the manager), 
-	 * false otherwise
+	/**
+	 * adds a new guild to manage permissions for. used eg on guild join
+	 * <p>
+	 * note that if the list of permissions for the guild is empty (eg if this is
+	 * a guild that has never been managed in the past), an attempt will be made
+	 * to automatically add the guild owner as admin
+	 * @param guildId the id of the newly managed guild
+	 * @return true if the guild added was new (did not already exist in the manager),
+	 * false otherwise (or, true if the manager was changed as a result of this call)
+	 * @throws IOException
 	 */
 	public boolean addGuild(String guildId) throws IOException;
 	

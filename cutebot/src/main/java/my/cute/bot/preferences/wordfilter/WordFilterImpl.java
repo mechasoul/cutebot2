@@ -121,6 +121,7 @@ public class WordFilterImpl implements WordFilter {
 			this.filteredWords.clear();
 			for(String word : words.split(",")) {
 				if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
+				word = word.trim();
 				if(word.length() <= MAX_WORD_LENGTH) this.filteredWords.add(word);
 			}
 			this.updateCompiledFilter();
@@ -131,7 +132,7 @@ public class WordFilterImpl implements WordFilter {
 	}
 
 	@Override
-	public String get() {
+	public synchronized String get() {
 		if(this.mode == WordFilter.Type.BASIC) {
 			return String.join(",", this.filteredWords.stream().sorted().collect(Collectors.toList()));
 		} else /* this.mode == WordFilter.Type.REGEX */ {
@@ -145,7 +146,7 @@ public class WordFilterImpl implements WordFilter {
 	 * @throws IOException 
 	 */
 	@Override
-	public WordFilter.Type handleTimeout(String input) throws IOException {
+	public synchronized WordFilter.Type handleTimeout(String input) throws IOException {
 		WordFilter.Type type;
 		if(this.getType() == WordFilter.Type.REGEX) {
 			type = WordFilter.Type.REGEX;
@@ -165,7 +166,7 @@ public class WordFilterImpl implements WordFilter {
 	}
 
 	@Override
-	public EnumSet<FilterResponseAction> getActions() {
+	public synchronized EnumSet<FilterResponseAction> getActions() {
 		return this.responseActions;
 	}
 	
@@ -175,7 +176,7 @@ public class WordFilterImpl implements WordFilter {
 	}
 	
 	@Override
-	public void setType(WordFilter.Type type) throws IOException {
+	public synchronized void setType(WordFilter.Type type) throws IOException {
 		Type previousType = this.mode;
 		this.mode = type;
 		if(previousType == Type.REGEX && type == Type.BASIC) {
@@ -185,43 +186,43 @@ public class WordFilterImpl implements WordFilter {
 	}
 	
 	@Override
-	public WordFilter.Type getType() {
+	public synchronized WordFilter.Type getType() {
 		return this.mode;
 	}
 	
 	@Override
-	public boolean isEnabled() {
+	public synchronized boolean isEnabled() {
 		return this.enabled;
 	}
 	
 	@Override
-	public void setEnabled(boolean enabled) {
+	public synchronized void setEnabled(boolean enabled) {
 		this.enabled = enabled;
 	}
 	
 	@Override
-	public void addStrike() {
+	public synchronized void addStrike() {
 		if(this.strikes < WordFilter.getStrikesToDisable()) strikes++;
 	}
 
 	@Override
-	public int getStrikes() {
+	public synchronized int getStrikes() {
 		return this.strikes;
 	}
 
 	@Override
-	public void resetStrikes() {
+	public synchronized void resetStrikes() {
 		this.strikes = 0;
 	}
 	
 	@Override
-	public void setRoleId(String id) throws IOException {
+	public synchronized void setRoleId(String id) throws IOException {
 		this.roleId = id;
 		this.save();
 	}
 
 	@Override
-	public String getRoleId() {
+	public synchronized String getRoleId() {
 		return this.roleId;
 	}
 	

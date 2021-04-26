@@ -78,7 +78,7 @@ public class GuildMessageReceivedHandler {
 	private final PermissionDatabase perms;
 	private final GuildCommandSet commands;
 	private final Random random = new Random();
-	private final ExecutorService executor;;
+	private final ExecutorService executor;
 	private final AutonomyHandler autonomyHandler;
 	
 	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 

@@ -1,6 +1,7 @@
 package my.cute.bot.commands;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,12 +9,13 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableSet;
 
 import my.cute.bot.util.ConcurrentFinalEntryMap;
+import my.cute.bot.util.MiscUtils;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
 
 public class PermissionManagerImpl implements PermissionManager {
 	
-	@SuppressWarnings("unused")
 	private final static Logger logger = LoggerFactory.getLogger(PermissionManagerImpl.class);
 	private final static String GLOBAL_KEY = "global";
 	private final static int MAX_ADMINS = 30;
@@ -24,10 +26,12 @@ public class PermissionManagerImpl implements PermissionManager {
 	 * also use key GLOBAL_KEY for the global permission database
 	 */
 	private final ConcurrentFinalEntryMap<String, PermissionDatabase> permissions;
+	private final JDA jda;
 	
-	public PermissionManagerImpl(int initialSize) throws IOException {
+	public PermissionManagerImpl(int initialSize, JDA jda) throws IOException {
 		this.permissions = new ConcurrentFinalEntryMap<String, PermissionDatabase>(initialSize);
 		this.permissions.put(GLOBAL_KEY, PermissionDatabaseFactory.load(GLOBAL_KEY));
+		this.jda = jda;
 	}
 
 	@Override
@@ -89,7 +93,10 @@ public class PermissionManagerImpl implements PermissionManager {
 	public boolean remove(String userId, String guildId, PermissionLevel permission) throws IOException {
 		PermissionDatabase permDb = this.permissions.get(guildId);
 		if(permDb != null) {
-			 return permDb.remove(userId, permission);
+			 boolean successfullyRemoved = permDb.remove(userId, permission);
+			 if(permDb.isEmpty())
+				 this.addServerOwner(permDb);
+			 return successfullyRemoved;
 		} else {
 			throw new IllegalArgumentException(this + ": called remove with invalid guild id. params "
 					+ "userId='" + userId + "', "
@@ -134,9 +141,31 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean addGuild(String guildId) throws IOException {
-		return this.permissions.put(guildId, PermissionDatabaseFactory.load(guildId)) == null;
+		PermissionDatabase db = PermissionDatabaseFactory.load(guildId);
+		if(db.isEmpty())
+			this.addServerOwner(db);
+		
+		return this.permissions.put(guildId, db) == null;
 	}
 
+	private void addServerOwner(PermissionDatabase db) throws IOException {
+		String guildId = db.getId();
+		try {
+			this.jda.getGuildById(guildId).retrieveOwner(false).queue(owner -> {
+				try {
+					db.add(owner.getId(), PermissionLevel.ADMIN);
+				} catch (IOException e) {
+					throw new UncheckedIOException(e);
+				}
+			}, error -> {
+				logger.warn(this + ": unable to automatically add server owner as admin for guild "
+						+ MiscUtils.getGuildString(jda.getGuildById(guildId)), error);
+			});
+		} catch (UncheckedIOException e) {
+			throw e.getCause();
+		}
+	}
+	
 	@Override
 	public boolean addGuild(Guild guild) throws IOException {
 		return this.addGuild(guild.getId());
@@ -144,13 +173,7 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean removeGuild(String guildId) throws IOException {
-		PermissionDatabase db = this.permissions.remove(guildId);
-		if(db != null) {
-			db.delete();
-			return true;
-		} else {
-			return false;
-		}
+		return this.permissions.remove(guildId) != null;
 	}
 
 	@Override

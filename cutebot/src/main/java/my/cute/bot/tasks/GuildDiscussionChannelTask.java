@@ -50,7 +50,6 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		
 		logger.info(this + ": starting discussion channel task");
 		
-		//TODO params
 		ConcurrentHashMap<String, Long> lineCounts = new ConcurrentHashMap<>();
 		ConcurrentHashMap<String, Long> durations = new ConcurrentHashMap<>();
 		

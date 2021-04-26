@@ -96,23 +96,13 @@ public class MyListener extends ListenerAdapter {
 	 * and i dont think it really matters as long as im careful)
 	 */
 	
-	/*
-	 * TODO maybe a better way of distributing prefs and wordfilter to commands is to make like
-	 * a map in ctor and populate it with the prefs/wordfilter objects, then pass it in to the
-	 * privatemessagereceivedhandler ctor and have that pass it in to the commandset which passes
-	 * it in to any commands that require it. could stay final and we just remove/add on guild
-	 * leave/join. wordfilters could be replaced during runtime so theres possible concurrency
-	 * problems, but by doing this we avoid having awkward MyListener.getPreferences(String) 
-	 * methods and whatever that dont really make sense to be here (also load wordfilter here
-	 * and pass it in to guildmessagereceivedhandler like with prefs)
-	 */
 	MyListener(JDA jda) throws IOException {
 		this.jda = jda;
 		int numActiveGuilds = this.jda.getGuilds().size();
 		this.allPrefs = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.allFilters = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.guildCommands = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
-		this.permissions = new PermissionManagerImpl(this.jda.getGuilds().size() * 4 / 3);
+		this.permissions = new PermissionManagerImpl(this.jda.getGuilds().size() * 4 / 3, this.jda);
 		this.guildMessageHandlers = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
@@ -164,10 +154,13 @@ public class MyListener extends ListenerAdapter {
 		} catch (WordfilterTimeoutException e) {
 			this.handleWordfilterTimeout(event.getGuild(), e);
 		} catch (IOException e) {
-			//an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
-			//also assume the details have been logged from wherever the problem started
-			//TODO change that to log here instead probably? shouldnt log rethrow i think, should log
-			//where its actually handled
+			/*
+			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+			 * also assume the details have been logged from wherever the problem started
+			 * i know its bad to log rethrow but this lets us get some specifics from wherever the
+			 * problem started
+			 */
+			logger.error("unrecoverable IOException encountered. shutting down", e);
 			this.shutdown();
 		}
 	}
@@ -180,7 +173,6 @@ public class MyListener extends ListenerAdapter {
 	}
 	
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that
-	//TODO anything else to do on guuild join?
 	@Override
 	public void onGuildJoin(GuildJoinEvent event) {
 		boolean newGuild = false;
@@ -202,13 +194,15 @@ public class MyListener extends ListenerAdapter {
 		}
 	}
 	
-	//TODO add stuff to this
+	//currently does not delete any files on disk when leaving guild
 	@Override
 	public void onGuildLeave(GuildLeaveEvent event) {
 		logger.info(this + ": left guild " + event.getGuild());
-		String id = event.getGuild().getId().intern();
-		this.guildMessageHandlers.get(id).prepareForShutdown();
-		this.guildMessageHandlers.remove(id);
+		try {
+			this.deregisterGuild(event.getGuild());
+		} catch (IOException e) {
+			logger.warn(this + ": encountered IOException on guild leave, guild: " + MiscUtils.getGuildString(event.getGuild()), e);
+		}
 	}
 	
 	void checkMaintenance() {
@@ -242,13 +236,6 @@ public class MyListener extends ListenerAdapter {
 	
 	private void permissionMaintenance() {
 		this.jda.getGuildCache().forEach(guild -> {
-			guild.retrieveOwner().queue(owner -> {
-				try {
-					this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
 			this.permissions.getAdmins(guild.getId()).forEach(id -> {
 				guild.retrieveMemberById(id).queue(null, new ErrorHandler()
 						.handle(EnumSet.of(ErrorResponse.UNKNOWN_USER, ErrorResponse.UNKNOWN_MEMBER), 
@@ -307,26 +294,17 @@ public class MyListener extends ListenerAdapter {
 		this.guildCommands.put(guild.getId(), commands);
 		this.permissions.addGuild(guild);
 		PermissionDatabase perms = this.permissions.getPermissionDatabase(guild.getId());
-		/*
-		 * TODO
-		 * move this owner->Admin check to PermissionDatabaseFactory or PermissionManager.addGuild()?
-		 * so that if the permissions file is empty, owner gets added as admin
-		 * change permissionMaintenance() above to function the same way; if permissions empty, add owner
-		 * & also try to prevent last person with admin permissions from being removed as admin via command
-		 */
-		try {
-			guild.retrieveOwner(false).queue(owner -> {
-				try {
-					this.permissions.add(owner.getUser(), guild, PermissionLevel.ADMIN);
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
-		} catch (UncheckedIOException e) {
-			throw e.getCause();
-		}
 		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, 
 				this.jda, prefs, filter, perms, this.taskScheduler, commands)) == null;
+	}
+	
+	private boolean deregisterGuild(Guild guild) throws IOException {
+		this.allPrefs.remove(guild.getId());
+		this.allFilters.remove(guild.getId());
+		this.guildCommands.remove(guild.getId());
+		this.permissions.removeGuild(guild);
+		this.guildMessageHandlers.get(guild.getId()).prepareForShutdown();
+		return this.guildMessageHandlers.remove(guild.getId()) != null;
 	}
 	
 	/**

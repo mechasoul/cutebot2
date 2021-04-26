@@ -130,14 +130,14 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	public synchronized String generateLine() throws IOException {
 		if(this.isShutdown) throw new IllegalStateException("can't generate line from shutdown database");
 		
-		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(this.database));
+		return MiscUtils.replaceTokensWithNewLines(this.lineGenerator.generateLine(this.database));
 	}
 
 	@Override
 	public synchronized String generateLine(String startWord) throws IOException {
 		if(this.isShutdown) throw new IllegalStateException("can't generate line from shutdown database");
 		
-		return MiscUtils.replaceNewLineTokens(this.lineGenerator.generateLine(this.database, startWord));
+		return MiscUtils.replaceTokensWithNewLines(this.lineGenerator.generateLine(this.database, startWord));
 	}
 
 	@Override
@@ -428,7 +428,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 		
 	}
 	
-	private void updateLastMaintenanceTime() {
+	private synchronized void updateLastMaintenanceTime() {
 		try {
 			Files.write(PathUtils.getDatabaseLastMaintenanceFile(this.id), ZonedDateTime.now(MiscUtils.TIMEZONE)
 					.format(DateTimeFormatter.ISO_DATE_TIME).getBytes(StandardCharsets.UTF_8), 
@@ -439,7 +439,7 @@ public class GuildDatabaseImpl implements GuildDatabase {
 	}
 	
 	@Override
-	public void markForMaintenance() {
+	public synchronized void markForMaintenance() {
 		try {
 			Files.deleteIfExists(PathUtils.getDatabaseLastMaintenanceFile(this.id));
 		} catch (IOException e) {

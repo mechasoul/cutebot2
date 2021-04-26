@@ -61,9 +61,11 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {
 					try {
-						//ensure given id is a member in target guild
-						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
-						//this is fine, if ugly
+						
+						/*
+						 * use retrieveMemberById() since it updates cache
+						 * requires guild members gateway intent
+						 */
 						targetGuild.retrieveMemberById(params[2], false).queue(member ->
 						{
 							try {
@@ -93,9 +95,6 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			} else if(params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 3) {
 					try {
-						//ensure given id is a member in target guild
-						//isMember(User) requires user so we'd need to have jda access to do jda.getUser(id)
-						//this is fine, if ugly
 						targetGuild.retrieveMemberById(params[2], false).queue(member -> 
 						{
 							try {

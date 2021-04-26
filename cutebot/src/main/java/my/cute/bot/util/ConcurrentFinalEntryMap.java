@@ -9,7 +9,8 @@ import com.google.common.collect.ForwardingMap;
 /**
  * a concurrentmap that doesn't allow re-mapping of keys via put() - ie, once
  * a key is associated with a value in the map, no other value can be 
- * associated with that key by calling put()
+ * associated with that key by calling put() (calling put with a key that
+ * already exists has no effect)
  * 
  * <p>note this class still allows the use of remove() which makes it
  * probably really not useful in general since you could just remove() an 

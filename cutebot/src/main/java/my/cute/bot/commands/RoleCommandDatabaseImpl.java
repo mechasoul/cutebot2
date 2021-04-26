@@ -241,7 +241,7 @@ class RoleCommandDatabaseImpl implements RoleCommandDatabase {
 	}
 
 	@Override
-	public void delete() throws IOException {
+	public synchronized void delete() throws IOException {
 		Files.deleteIfExists(path);
 	}
 

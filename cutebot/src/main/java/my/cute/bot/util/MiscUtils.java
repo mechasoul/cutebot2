@@ -34,12 +34,6 @@ import net.dv8tion.jda.api.utils.cache.CacheView;
 
 public class MiscUtils {
 	
-	/*
-	 * TODO things that split on a specific character should either trim() after or have optional whitespace on either side
-	 * eg instead of split(",") do split(",\\s*")
-	 * trim() after extractQuotationMarks(String), etc
-	 */
-	
 	public static final ZoneId TIMEZONE = ZoneId.of("America/Vancouver");
 	private static final Logger logger = LoggerFactory.getLogger(MiscUtils.class);
 	private static final String NEW_LINE_TOKEN = "<_NL>";
@@ -57,12 +51,12 @@ public class MiscUtils {
 		return line.trim().replaceAll("\\R", NEW_LINE_TOKEN);
 	}
 	
-	public static String replaceNewLineTokens(String line) {
+	public static String replaceTokensWithNewLines(String line) {
 		return line.replace(NEW_LINE_TOKEN, System.lineSeparator());
 	}
 	
 	public static Emote getRandomEmoteFromCache(JDA jda) {
-		CacheView<Emote> emoteCache =jda.getEmoteCache();
+		CacheView<Emote> emoteCache = jda.getEmoteCache();
 		return emoteCache.applyStream(stream -> 
 		{
 			try {
@@ -310,7 +304,7 @@ public class MiscUtils {
 	public static String extractQuotationMarks(String string) {
 		if(!hasQuotationMarks(string)) return null;
 		
-		string = string.trim().split("\"", 2)[1];
+		string = string.trim().split("\"\\s*", 2)[1];
 		return string.substring(0, string.lastIndexOf('"'));
 	}
 	
@@ -389,7 +383,7 @@ public class MiscUtils {
 			return new String[0];
 		}
 		
-		return text.split(",");
+		return text.split("\\s*,\\s*");
 	}
 	
 }
