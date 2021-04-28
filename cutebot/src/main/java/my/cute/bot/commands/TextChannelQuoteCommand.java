@@ -134,4 +134,9 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 			}
 		}
 	}
+	
+	@Override
+	public String toString() {
+		return "TextChannelQuoteCommand-" + this.guildId;
+	}
 }

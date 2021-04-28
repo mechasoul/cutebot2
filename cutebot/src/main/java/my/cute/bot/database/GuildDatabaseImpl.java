@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 
+import my.cute.bot.CutebotTask;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.PathUtils;
 import my.cute.markov2.MarkovDatabase;
@@ -89,7 +90,10 @@ public class GuildDatabaseImpl implements GuildDatabase {
 					.build();
 		}
 		
-		this.lineGenerator = new LineGenerator();
+		if(CutebotTask.ACTIVE_TOKEN.equals(CutebotTask.CUTEBOT_PRIME_TOKEN))
+			this.lineGenerator = new SpookyLineGenerator();
+		else
+			this.lineGenerator = new LineGenerator();
 		
 		try {
 			this.workingSet.toFile().createNewFile();

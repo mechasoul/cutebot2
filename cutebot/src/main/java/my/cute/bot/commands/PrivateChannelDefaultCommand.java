@@ -82,5 +82,10 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 		}
 		return false;
 	}
+	
+	@Override
+	public String toString() {
+		return "PrivateChannelDefaultCommand";
+	}
 
 }

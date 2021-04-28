@@ -264,5 +264,8 @@ public class WordFilterImpl implements WordFilter {
 		}
 	}
 
-	
+	@Override
+	public String toString() {
+		return "WordFilterImpl-" + this.id;
+	}
 }
