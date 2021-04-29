@@ -92,6 +92,8 @@ public interface PermissionManager {
 	 */
 	public boolean remove(String userId, String guildId, PermissionLevel permission) throws IOException;
 	
+	public boolean remove(long userId, long guildId, PermissionLevel permission) throws IOException;
+	
 	public boolean remove(User user, Guild guild, PermissionLevel permission) throws IOException;
 	
 	/*

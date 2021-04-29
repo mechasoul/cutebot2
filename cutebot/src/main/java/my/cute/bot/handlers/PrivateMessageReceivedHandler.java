@@ -44,9 +44,9 @@ public class PrivateMessageReceivedHandler {
 		this.bot = bot;
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
-		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, 
-				allCommands, this.executor);
 		this.permissions = permissions;
+		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, 
+				allCommands, permissions, this.executor);
 	}
 	
 	/*
@@ -64,10 +64,12 @@ public class PrivateMessageReceivedHandler {
 		PrivateChannelCommand command = null;
 		if(params[0].startsWith("!")) {
 			String commandName = params[0].substring(1).toLowerCase();
+			System.out.println("command name: " + commandName);
 			command = this.commands.get(commandName);
 		}
 		
 		if(command == null) {
+			System.out.println("null cmd");
 			event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0].substring(1))).queue();
 			return;
 		}
@@ -75,7 +77,13 @@ public class PrivateMessageReceivedHandler {
 		if(command instanceof PrivateChannelCommandTargeted) {
 			//check for explicitly provided guild
 			String targetGuildId = params[params.length - 1];
-			Guild targetGuild = this.jda.getGuildById(targetGuildId);
+			Guild targetGuild;
+			try {
+				targetGuild = this.jda.getGuildById(targetGuildId);
+			} catch (NumberFormatException e) {
+				targetGuild = null;
+			}
+			System.out.println("target guild: " + targetGuildId);
 			if(targetGuild == null) {
 				try {
 					//check for default guild

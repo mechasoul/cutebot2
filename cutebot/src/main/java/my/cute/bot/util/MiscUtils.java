@@ -105,7 +105,7 @@ public class MiscUtils {
 	}
 	
 	public static String getUserString(User user) {
-		return user.getName() + user.getDiscriminator() + " (id=" + user.getId() + ")";
+		return user.getName() + "#" + user.getDiscriminator() + " (id=" + user.getId() + ")";
 	}
 	
 	public static String getSignature() {

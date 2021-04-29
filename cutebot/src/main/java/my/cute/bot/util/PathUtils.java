@@ -70,7 +70,7 @@ public final class PathUtils {
 	}
 	
 	public static Path getDefaultGuildsFile() {
-		return Paths.get(DEFAULT_GUILDS_FILE_NAME);
+		return Paths.get(DATABASE_PARENT_DIRECTORY + File.separator + DEFAULT_GUILDS_FILE_NAME);
 	}
 	
 	public static Path getWordFilterFile(String guildId) {

@@ -4,9 +4,13 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.stream.Stream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import gnu.trove.map.TLongLongMap;
 import gnu.trove.map.hash.TLongLongHashMap;
@@ -34,6 +38,8 @@ import net.dv8tion.jda.api.entities.User;
  */
 class DefaultGuildDatabaseImpl implements DefaultGuildDatabase {
 	
+	private static final Logger logger = LoggerFactory.getLogger(DefaultGuildDatabaseImpl.class);
+	
 	private final TLongLongMap defaultGuilds;
 	private final Path path;
 	
@@ -48,18 +54,17 @@ class DefaultGuildDatabaseImpl implements DefaultGuildDatabase {
 	 */
 	@Override
 	public synchronized String getDefaultGuildId(String userId) throws IOException {
-		long guildId = this.defaultGuilds.get(Long.parseLong(userId));
-		if(guildId == -1) {
-			return null;
-		} else {
-			return ""+guildId;
-		}
+		return this.getDefaultGuildId(Long.parseLong(userId));
 	}
 	
 	@Override
 	public synchronized String getDefaultGuildId(User user) throws IOException {
-		long guildId = this.defaultGuilds.get(user.getIdLong());
-		if(guildId == -1) {
+		return this.getDefaultGuildId(user.getIdLong());
+	}
+	
+	private synchronized String getDefaultGuildId(long userId) throws IOException {
+		long guildId = this.defaultGuilds.get(userId);
+		if(guildId == this.defaultGuilds.getNoEntryValue()) {
 			return null;
 		} else {
 			return ""+guildId;
@@ -76,22 +81,20 @@ class DefaultGuildDatabaseImpl implements DefaultGuildDatabase {
 	 */
 	@Override
 	public synchronized String setDefaultGuildId(String userId, String guildId) throws IOException {
-		long previousValue = this.defaultGuilds.put(Long.parseLong(userId), Long.parseLong(guildId));
-		if(previousValue == -1) {
-			return null;
-		} else {
-			this.save();
-			return ""+previousValue;
-		}
+		return this.setDefaultGuildId(Long.parseLong(userId), Long.parseLong(guildId));
 	}
 	
 	@Override
 	public synchronized String setDefaultGuildId(User user, Guild guild) throws IOException {
-		long previousValue = this.defaultGuilds.put(user.getIdLong(), guild.getIdLong());
-		if(previousValue == -1) {
+		return this.setDefaultGuildId(user.getIdLong(), guild.getIdLong());
+	}
+	
+	private synchronized String setDefaultGuildId(long userId, long guildId) throws IOException {
+		long previousValue = this.defaultGuilds.put(userId, guildId);
+		this.save();
+		if(previousValue == this.defaultGuilds.getNoEntryValue()) {
 			return null;
 		} else {
-			this.save();
 			return ""+previousValue;
 		}
 	}
@@ -105,19 +108,17 @@ class DefaultGuildDatabaseImpl implements DefaultGuildDatabase {
 	 */
 	@Override
 	public synchronized String clearDefaultGuildId(String userId) throws IOException {
-		long previousValue = this.defaultGuilds.remove(Long.parseLong(userId));
-		if(previousValue == -1) {
-			return null;
-		} else {
-			this.save();
-			return ""+previousValue;
-		}
+		return this.clearDefaultGuildId(Long.parseLong(userId));
 	}
 	
 	@Override
 	public synchronized String clearDefaultGuildId(User user) throws IOException {
-		long previousValue = this.defaultGuilds.remove(user.getIdLong());
-		if(previousValue == -1) {
+		return this.clearDefaultGuildId(user.getIdLong());
+	}
+	
+	private synchronized String clearDefaultGuildId(long id) throws IOException {
+		long previousValue = this.defaultGuilds.remove(id);
+		if(previousValue == this.defaultGuilds.getNoEntryValue()) {
 			return null;
 		} else {
 			this.save();
@@ -143,14 +144,22 @@ class DefaultGuildDatabaseImpl implements DefaultGuildDatabase {
 	
 	private synchronized TLongLongMap load() throws IOException {
 		TLongLongMap map = new TLongLongHashMap(10, 0.5f, -1, -1);
-		try (Stream<String> lines = Files.lines(this.path, StandardCharsets.UTF_8)) {
-			lines.forEach(line ->
-			{
-				String[] ids = line.split(",");
-				map.put(Long.parseLong(ids[0]), Long.parseLong(ids[1]));
-			});
+		try {
+			try (Stream<String> lines = Files.lines(this.path, StandardCharsets.UTF_8)) {
+				lines.forEach(line ->
+				{
+					String[] ids = line.split(",");
+					map.put(Long.parseLong(ids[0]), Long.parseLong(ids[1]));
+				});
+			}
+		} catch (NoSuchFileException e) {
+			logger.info(this + ": NoSuchFileException when trying to load default guilds database (first run?)");
 		}
 		return map;
 	}
 
+	@Override
+	public String toString() {
+		return "DefaultGuildDatabaseImpl";
+	}
 }

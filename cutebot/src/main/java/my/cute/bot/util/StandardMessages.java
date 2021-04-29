@@ -24,8 +24,8 @@ public class StandardMessages {
 		return "invalid server: '" + guildId + "'";
 	}
 	
-	public static String invalidMember(String userId, String guildId) {
-		return "no member found with id '" + userId + "' in server '" + guildId + "'";
+	public static String invalidMember(String userId, Guild guild) {
+		return "no member found with id '" + userId + "' in server '" + MiscUtils.getGuildString(guild) + "'";
 	}
 	
 	public static String unknownError() {

@@ -1,6 +1,7 @@
 package my.cute.bot.commands;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,7 +11,6 @@ import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.User;
 
 /*
  * sets the user's default guild for commands. any commands that require 
@@ -45,19 +45,46 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 				if(defaultGuildId == null) {
 					message.getChannel().sendMessage("you currently have no default server set").queue();
 				} else {
-					if(this.isValidDefaultGuild(message.getAuthor(), defaultGuildId)) {
-						message.getChannel().sendMessage("your default server is currently set to '" + 
-								MiscUtils.getGuildString(this.jda.getGuildById(defaultGuildId)) + "'").queue();
+					Guild guild = this.jda.getGuildById(defaultGuildId);
+					if(guild != null) {
+						try {
+							guild.retrieveMember(message.getAuthor()).queue(member -> {
+								message.getChannel().sendMessage("your default server is currently set to '" + 
+										MiscUtils.getGuildString(guild) + "'").queue();
+							}, error -> {
+								try {
+									this.defaultGuilds.clearDefaultGuildId(message.getAuthor());
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+								message.getChannel().sendMessage("you currently have no default server set").queue();
+							});
+						} catch (UncheckedIOException e) {
+							throw e.getCause();
+						}
 					} else {
 						this.defaultGuilds.clearDefaultGuildId(message.getAuthor());
 						message.getChannel().sendMessage("you currently have no default server set").queue();
 					}
 				}
 			} else {
-				if(this.isValidDefaultGuild(message.getAuthor(), params[1])) {
-					this.defaultGuilds.setDefaultGuildId(message.getAuthor().getId(), params[1]);
-					message.getChannel().sendMessage("your default server has been set to '" + MiscUtils
-							.getGuildString(this.jda.getGuildById(params[1])) + "'").queue();
+				Guild guild = this.jda.getGuildById(params[1]);
+				if(guild != null) {
+					try {
+						guild.retrieveMember(message.getAuthor()).queue(member -> {
+							try {
+								this.defaultGuilds.setDefaultGuildId(message.getAuthor().getId(), params[1]);
+								message.getChannel().sendMessage("your default server has been set to '" + MiscUtils
+										.getGuildString(guild) + "'").queue();
+							} catch (IOException e) {
+								throw new UncheckedIOException(e);
+							}
+						}, error -> {
+							message.getChannel().sendMessage(StandardMessages.invalidGuild(params[1])).queue();
+						});
+					} catch (UncheckedIOException e) {
+						throw e.getCause();
+					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidGuild(params[1])).queue();
 				}
@@ -68,19 +95,6 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 			
 		}
-	}
-	
-	/*
-	 * requires GUILD_MEMBERS gateway intent i think
-	 */
-	private boolean isValidDefaultGuild(User user, String guildId) {
-		Guild guild = this.jda.getGuildById(guildId);
-		if(guild != null) {
-			if(guild.isMember(user)) {
-				return true;
-			}
-		}
-		return false;
 	}
 	
 	@Override

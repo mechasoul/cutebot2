@@ -48,8 +48,9 @@ public class CommandFactory {
 	
 	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(JDA jda, MyListener bot, 
 			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, 
-			Map<String, GuildCommandSet> allCommands, ExecutorService executor) {
+			Map<String, GuildCommandSet> allCommands, PermissionManager perms, ExecutorService executor) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
+		set.put(PrivateChannelAdminCommand.NAME, new PrivateChannelAdminCommand(perms));
 		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
 		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand(jda));
 		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(jda, defaultGuilds));

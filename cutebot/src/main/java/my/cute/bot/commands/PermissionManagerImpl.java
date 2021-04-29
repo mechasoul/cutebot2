@@ -2,6 +2,7 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,6 +11,7 @@ import com.google.common.collect.ImmutableSet;
 
 import my.cute.bot.util.ConcurrentFinalEntryMap;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.PathUtils;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -30,7 +32,9 @@ public class PermissionManagerImpl implements PermissionManager {
 	
 	public PermissionManagerImpl(int initialSize, JDA jda) throws IOException {
 		this.permissions = new ConcurrentFinalEntryMap<String, PermissionDatabase>(initialSize);
+		Files.createDirectories(PathUtils.getPermissionsFile(GLOBAL_KEY).getParent());
 		this.permissions.put(GLOBAL_KEY, PermissionDatabaseFactory.load(GLOBAL_KEY));
+		this.add("115618938510901249", PermissionLevel.ADMIN);
 		this.jda = jda;
 	}
 
@@ -94,6 +98,7 @@ public class PermissionManagerImpl implements PermissionManager {
 		PermissionDatabase permDb = this.permissions.get(guildId);
 		if(permDb != null) {
 			 boolean successfullyRemoved = permDb.remove(userId, permission);
+			 System.out.println("attempt to remove user " + userId + " from guild " + guildId + ": " + successfullyRemoved);
 			 if(permDb.isEmpty())
 				 this.addServerOwner(permDb);
 			 return successfullyRemoved;
@@ -102,6 +107,11 @@ public class PermissionManagerImpl implements PermissionManager {
 					+ "userId='" + userId + "', "
 					+ "guildId='" + guildId + "', permission='" + permission + "'");
 		}
+	}
+	
+	@Override
+	public boolean remove(long userId, long guildId, PermissionLevel permission) throws IOException {
+		return this.remove(""+userId, ""+guildId, permission);
 	}
 	
 	@Override
