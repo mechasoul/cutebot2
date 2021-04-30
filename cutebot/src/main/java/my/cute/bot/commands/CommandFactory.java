@@ -53,6 +53,7 @@ public class CommandFactory {
 		set.put(PrivateChannelAdminCommand.NAME, new PrivateChannelAdminCommand(perms));
 		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
 		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand());
+		set.put(PrivateChannelCommandsCommand.NAME, new PrivateChannelCommandsCommand(set, perms));
 		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(defaultGuilds));
 		set.put(PrivateChannelExitCommand.NAME, new PrivateChannelExitCommand(bot));
 		set.put(PrivateChannelExportCommand.NAME, new PrivateChannelExportCommand(bot));

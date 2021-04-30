@@ -1,5 +1,8 @@
 package my.cute.bot.commands;
 
+import java.awt.Color;
+import java.util.Comparator;
+
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
@@ -8,6 +11,7 @@ class PrivateChannelCommandsCommand extends PrivateChannelCommand {
 	
 	final static String NAME = "commands";
 	private final static String DESCRIPTION = "view the list of available commands";
+	private static final Color EMBED_COLOR = Color.getHSBColor(0.58f, 0.36f, 0.54f);
 	
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
@@ -31,8 +35,12 @@ class PrivateChannelCommandsCommand extends PrivateChannelCommand {
 		EmbedBuilder embed = new EmbedBuilder();
 		embed.setTitle("commands");
 		this.commands.stream().filter(command -> highestLevel.greaterThanOrEquals(command.getRequiredPermissionLevel()))
-				.forEach(command -> embed.addField(command.getName(), command.getDescription(), false));
-		embed.setFooter(MiscUtils.getSignature());
+				.sorted(Comparator.comparing(command -> command.getName()))
+				.forEachOrdered(command -> embed.addField(command.getName(), command.getDescription(), false));
+		embed.addBlankField(false);
+		embed.setFooter(System.lineSeparator() + MiscUtils.getSignature(), 
+				"https://cdn.discordapp.com/attachments/668188089474088980/837729441785970688/mothyes.png");
+		embed.setColor(EMBED_COLOR);
 		message.getChannel().sendMessage(embed.build()).queue();
 	}
 
