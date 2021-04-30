@@ -1,23 +1,21 @@
 package my.cute.bot.commands;
 
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelGuildCommand extends PrivateChannelCommand {
 
 	final static String NAME = "guild";
-	private final JDA jda;
+	private final static String DESCRIPTION = "view the name of a given server id";
 	
-	public PrivateChannelGuildCommand(JDA jda) {
-		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
-		this.jda = jda;
+	public PrivateChannelGuildCommand() {
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 1, 1);
 	}
 	
 	@Override
 	public void execute(Message message, String[] params) {
 		try {
-			Guild guild = this.jda.getGuildById(params[1]);
+			Guild guild = message.getJDA().getGuildById(params[1]);
 			message.getChannel().sendMessage(guild != null ? guild.toString() : "no guild found with id '" 
 					+ params[1] + "'").queue();
 		} catch (NumberFormatException e) {

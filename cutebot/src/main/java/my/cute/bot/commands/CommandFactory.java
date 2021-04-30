@@ -46,22 +46,22 @@ public class CommandFactory {
 		return set;
 	}
 	
-	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(JDA jda, MyListener bot, 
+	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(MyListener bot, 
 			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, 
 			Map<String, GuildCommandSet> allCommands, PermissionManager perms, ExecutorService executor) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
 		set.put(PrivateChannelAdminCommand.NAME, new PrivateChannelAdminCommand(perms));
 		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
-		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand(jda));
-		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(jda, defaultGuilds));
+		set.put(PrivateChannelChannelCommand.NAME, new PrivateChannelChannelCommand());
+		set.put(PrivateChannelDefaultCommand.NAME, new PrivateChannelDefaultCommand(defaultGuilds));
 		set.put(PrivateChannelExitCommand.NAME, new PrivateChannelExitCommand(bot));
 		set.put(PrivateChannelExportCommand.NAME, new PrivateChannelExportCommand(bot));
 		set.put(PrivateChannelFilterCommand.NAME, new PrivateChannelFilterCommand(allFilters));
-		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand(jda));
+		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand());
 		set.put(PrivateChannelMaintCommand.NAME, new PrivateChannelMaintCommand(bot));
-		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(jda, bot, executor, allPrefs));
-		set.put(PrivateChannelRoleCommand.NAME, new PrivateChannelRoleCommand(jda, allCommands));
-		set.put(PrivateChannelStatusCommand.NAME, new PrivateChannelStatusCommand(jda));
+		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(bot, executor, allPrefs));
+		set.put(PrivateChannelRoleCommand.NAME, new PrivateChannelRoleCommand(allCommands));
+		set.put(PrivateChannelStatusCommand.NAME, new PrivateChannelStatusCommand());
 		
 		return set;
 	}

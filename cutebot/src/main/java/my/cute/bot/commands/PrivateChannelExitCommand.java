@@ -6,10 +6,12 @@ import net.dv8tion.jda.api.entities.Message;
 class PrivateChannelExitCommand extends PrivateChannelCommand {
 
 	final static String NAME = "exit";
+	private final static String DESCRIPTION = "shut down cutebot";
+	
 	private final MyListener bot;
 	
 	PrivateChannelExitCommand(MyListener bot) {
-		super(NAME, PermissionLevel.DEVELOPER, 0, 0);
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 0, 0);
 		this.bot = bot;
 	}
 

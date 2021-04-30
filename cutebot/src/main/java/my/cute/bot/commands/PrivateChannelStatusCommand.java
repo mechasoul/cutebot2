@@ -1,18 +1,15 @@
 package my.cute.bot.commands;
 
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
 
 public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 
 	final static String NAME = "status";
+	private static final String DESCRIPTION = "change cutebot's status";
 	
-	private final JDA jda;
-	
-	public PrivateChannelStatusCommand(JDA jda) {
-		super(NAME, PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
-		this.jda = jda;
+	public PrivateChannelStatusCommand() {
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
 	}
 	
 	/*
@@ -30,12 +27,12 @@ public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 	@Override
 	public void execute(Message message, String[] params) {
 		if(params.length == 1) {
-			this.jda.getPresence().setActivity(null);
+			message.getJDA().getPresence().setActivity(null);
 			message.getChannel().sendMessage("resetting").queue();
 		} else {
 			String status = message.getContentDisplay().split("!status\\s+", 2)[1];
 			message.getChannel().sendMessage("set status to '" + status + "'").queue();
-			this.jda.getPresence().setActivity(Activity.playing(status));
+			message.getJDA().getPresence().setActivity(Activity.playing(status));
 		}
 	}
 

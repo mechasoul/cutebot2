@@ -15,7 +15,6 @@ import com.google.common.collect.ImmutableList;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
-import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.MessageBuilder.SplitPolicy;
 import net.dv8tion.jda.api.entities.Guild;
@@ -71,6 +70,9 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRoleCommand.class);
 	final static String NAME = "role";
+	private final static String DESCRIPTION = "modify or view admin-defined role commands, "
+			+ "to allow server users to toggle some roles via cutebot";
+	
 	/*
 	 * pattern for matching role/alias syntax
 	 * proper syntax is:
@@ -85,8 +87,8 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	
 	private final Map<String, GuildCommandSet> allCommands;
 	
-	PrivateChannelRoleCommand(JDA jda, Map<String, GuildCommandSet> commands) {
-		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+	PrivateChannelRoleCommand(Map<String, GuildCommandSet> commands) {
+		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allCommands = commands;
 	}
 

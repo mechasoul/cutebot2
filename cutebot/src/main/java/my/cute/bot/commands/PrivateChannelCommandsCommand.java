@@ -7,12 +7,13 @@ import net.dv8tion.jda.api.entities.Message;
 class PrivateChannelCommandsCommand extends PrivateChannelCommand {
 	
 	final static String NAME = "commands";
+	private final static String DESCRIPTION = "view the list of available commands";
 	
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
 
 	protected PrivateChannelCommandsCommand(CommandSet<PrivateChannelCommand> commands, PermissionManager perms) {
-		super(NAME, PermissionLevel.USER, 0, 0);
+		super(NAME, DESCRIPTION, PermissionLevel.USER, 0, 0);
 		this.commands = commands;
 		this.permissions = perms;
 	}

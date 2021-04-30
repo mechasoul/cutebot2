@@ -20,13 +20,15 @@ import net.dv8tion.jda.api.requests.ErrorResponse;
 
 class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	
-	private final static Logger logger = LoggerFactory.getLogger(GeneratedTextChannelRoleCommand.class);
+	private static final Logger logger = LoggerFactory.getLogger(GeneratedTextChannelRoleCommand.class);
+	
+	private static final String DESCRIPTION = "used for changing roles";
 
 	private final RoleCommandDatabase database;
 	private GuildCommandSet parent;
 	
 	GeneratedTextChannelRoleCommand(String name, RoleCommandDatabase db, JDA jda, String id, GuildCommandSet parent) {
-		super(name, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
+		super(name, DESCRIPTION, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
 		this.database = db;
 		this.parent = parent;
 	}

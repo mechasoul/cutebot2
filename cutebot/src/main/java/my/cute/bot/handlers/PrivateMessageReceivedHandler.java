@@ -45,7 +45,7 @@ public class PrivateMessageReceivedHandler {
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
 		this.permissions = permissions;
-		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.jda, this.bot, this.defaultGuilds, allPrefs, allFilters, 
+		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.bot, this.defaultGuilds, allPrefs, allFilters, 
 				allCommands, permissions, this.executor);
 	}
 	

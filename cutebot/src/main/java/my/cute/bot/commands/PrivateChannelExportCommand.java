@@ -7,10 +7,12 @@ import net.dv8tion.jda.api.entities.Message;
 public class PrivateChannelExportCommand extends PrivateChannelCommand {
 
 	final static String NAME = "export";
+	private final static String DESCRIPTION = "exports the provided guild's database to a txt file";
+	
 	private final MyListener bot;
 	
 	public PrivateChannelExportCommand(MyListener bot) {
-		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 	

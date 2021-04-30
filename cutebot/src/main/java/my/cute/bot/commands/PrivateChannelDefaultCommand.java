@@ -6,9 +6,8 @@ import java.io.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.MiscUtils;
-import net.dv8tion.jda.api.JDA;
+import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -27,14 +26,14 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelDefaultCommand.class);
 	final static String NAME = "default";
+	private final static String DESCRIPTION = "set a default server for your commands, so you don't "
+			+ "have to provide the server id every time";
 	
 	private final DefaultGuildDatabase defaultGuilds;
-	private final JDA jda;
 
-	protected PrivateChannelDefaultCommand(JDA jda, DefaultGuildDatabase guilds) {
-		super(NAME, PermissionLevel.USER, 1, 1);
+	protected PrivateChannelDefaultCommand(DefaultGuildDatabase guilds) {
+		super(NAME, DESCRIPTION, PermissionLevel.USER, 1, 1);
 		this.defaultGuilds = guilds;
-		this.jda = jda;
 	}
 
 	@Override
@@ -45,7 +44,7 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 				if(defaultGuildId == null) {
 					message.getChannel().sendMessage("you currently have no default server set").queue();
 				} else {
-					Guild guild = this.jda.getGuildById(defaultGuildId);
+					Guild guild = message.getJDA().getGuildById(defaultGuildId);
 					if(guild != null) {
 						try {
 							guild.retrieveMember(message.getAuthor()).queue(member -> {
@@ -68,14 +67,15 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 					}
 				}
 			} else {
-				Guild guild = this.jda.getGuildById(params[1]);
+				Guild guild = message.getJDA().getGuildById(params[1]);
 				if(guild != null) {
 					try {
 						guild.retrieveMember(message.getAuthor()).queue(member -> {
 							try {
 								this.defaultGuilds.setDefaultGuildId(message.getAuthor().getId(), params[1]);
 								message.getChannel().sendMessage("your default server has been set to '" + MiscUtils
-										.getGuildString(guild) + "'").queue();
+										.getGuildString(guild) + "'. if you use a command that requires a target server but don't "
+												+ "provide one, it will automatically use this server").queue();
 							} catch (IOException e) {
 								throw new UncheckedIOException(e);
 							}

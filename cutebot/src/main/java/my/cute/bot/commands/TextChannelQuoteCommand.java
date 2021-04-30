@@ -38,6 +38,9 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	
 	private static final Logger logger = LoggerFactory.getLogger(TextChannelQuoteCommand.class);
 
+	static final String NAME = "quote";
+	private static final String DESCRIPTION = "view today's Twitch Chat:tm: Quote Of The Day";
+	
 	/*
 	 * the file that holds quotes
 	 * each line should be a single quote
@@ -55,7 +58,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	private final GuildPreferences prefs;
 	
 	TextChannelQuoteCommand(JDA jda, String id, GuildPreferences prefs) {
-		super("quote", PermissionLevel.USER, 0, 0, jda, id);
+		super(NAME, DESCRIPTION, PermissionLevel.USER, 0, 0, jda, id);
 		this.prefs = prefs;
 	}
 

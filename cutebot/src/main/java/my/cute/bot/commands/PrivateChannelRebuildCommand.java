@@ -22,15 +22,14 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRebuildCommand.class);
 	final static String NAME = "rebuild";
-	
-	private final JDA jda;
+	private final static String DESCRIPTION = "force rebuild of a specific server's database, or all servers' databases (!)";
+
 	private final MyListener bot;
 	private final ExecutorService executor;
 	private final Map<String, GuildPreferences> allPrefs;
 	
-	public PrivateChannelRebuildCommand(JDA jda, MyListener bot, ExecutorService executor, Map<String, GuildPreferences> allPrefs) {
-		super(NAME, PermissionLevel.DEVELOPER, 1, 2);
-		this.jda = jda;
+	public PrivateChannelRebuildCommand(MyListener bot, ExecutorService executor, Map<String, GuildPreferences> allPrefs) {
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 1, 2);
 		this.bot = bot;
 		this.executor = executor;
 		this.allPrefs = allPrefs;
@@ -38,16 +37,18 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	
 	@Override
 	public void execute(Message message, String[] params) {
+		JDA jda = message.getJDA();
 		if(params[1].equals("all")) {
+			
 			logger.info(this + ": beginning rebuild on all guilds");
 			message.getChannel().sendMessage("beginning rebuild on all guilds").queue();
 			
 			List<CompletableFuture<Void>> futures = new ArrayList<>();
 			
-			Activity previousActivity = this.jda.getPresence().getActivity();
-			this.jda.getPresence().setActivity(Activity.playing("VERY busy"));
+			Activity previousActivity = jda.getPresence().getActivity();
+			jda.getPresence().setActivity(Activity.playing("VERY busy"));
 			
-			for(Guild guild : this.jda.getGuilds()) {
+			for(Guild guild : jda.getGuilds()) {
 				String id = guild.getId();
 				GuildPreferences guildPrefs = this.allPrefs.get(id);
 				if(guildPrefs != null) {
@@ -57,7 +58,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					 */
 					CompletableFuture.supplyAsync(() -> {
 						try {
-							return new GuildDatabaseSetupTask(this.jda, guild, guildPrefs, this.bot.getDatabase(id)).call();
+							return new GuildDatabaseSetupTask(jda, guild, guildPrefs, this.bot.getDatabase(id)).call();
 						} catch (Exception e) {
 							return CompletableFuture.<Void>failedFuture(e);
 						}
@@ -78,11 +79,11 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					logger.info(this + ": encountered problems during rebuild. likely not successful");
 					message.getChannel().sendMessage("encountered problems during rebuild. likely not successful").queue();
 				}
-				this.jda.getPresence().setActivity(previousActivity);
+				jda.getPresence().setActivity(previousActivity);
 			});
 		} else {
 			String id = params[1];
-			Guild guild = this.jda.getGuildById(id);
+			Guild guild = jda.getGuildById(id);
 			GuildPreferences guildPrefs = this.allPrefs.get(id);
 			if(guild != null && guildPrefs != null) {
 				if(params.length == 3) {
@@ -96,8 +97,8 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 						message.getChannel().sendMessage("unknown ioexception").queue();
 					}
 				}
-				this.executor.submit(new GuildDatabaseSetupTask(this.jda, guild, guildPrefs, this.bot.getDatabase(id)));
-				message.getChannel().sendMessage("rebuilding database for guild " + this.jda.getGuildById(id)).queue();
+				this.executor.submit(new GuildDatabaseSetupTask(jda, guild, guildPrefs, this.bot.getDatabase(id)));
+				message.getChannel().sendMessage("rebuilding database for guild " + jda.getGuildById(id)).queue();
 			} else {
 				message.getChannel().sendMessage("no such guild id found").queue();
 			}

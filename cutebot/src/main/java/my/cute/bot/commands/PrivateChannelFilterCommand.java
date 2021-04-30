@@ -59,6 +59,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelFilterCommand.class);
 	final static String NAME = "filter";
+	private final static String DESCRIPTION = "modify or view a server's wordfilter";
 	private final static Pattern ACTION_FLAGS = Pattern.compile("[1234567]+");
 	
 	private final Map<String, WordFilter> allFilters;
@@ -70,7 +71,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		 * want, so we do this. targetguild can still be obtained if its provided as the 
 		 * last parameter or if a default guild is set
 		 */
-		super(NAME, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allFilters = filters;
 	}
 

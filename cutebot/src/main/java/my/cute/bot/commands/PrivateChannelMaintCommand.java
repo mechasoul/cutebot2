@@ -6,10 +6,12 @@ import net.dv8tion.jda.api.entities.Message;
 public class PrivateChannelMaintCommand extends PrivateChannelCommand {
 	
 	final static String NAME = "maint";
+	private final static String DESCRIPTION = "force start maintenance on a specific server or all servers";
+	
 	private MyListener bot;
 
 	PrivateChannelMaintCommand(MyListener bot) {
-		super(NAME, PermissionLevel.DEVELOPER, 1, 1);
+		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 1, 1);
 		this.bot = bot;
 	}
 
