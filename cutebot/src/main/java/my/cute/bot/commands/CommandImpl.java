@@ -17,10 +17,10 @@ public abstract class CommandImpl implements Command {
 	private final int minParams;
 	private final int maxParams;
 	
-	protected CommandImpl(String name, PermissionLevel permission, int min, int max) {
+	protected CommandImpl(String name, String description, PermissionLevel permission, int min, int max) {
 		this.name = name;
-		this.description = "";
 		this.help = "";
+		this.description = description;
 		this.requiredPermissionLevel = permission;
 		this.minParams = min;
 		this.maxParams = max;

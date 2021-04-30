@@ -98,7 +98,6 @@ public class PermissionManagerImpl implements PermissionManager {
 		PermissionDatabase permDb = this.permissions.get(guildId);
 		if(permDb != null) {
 			 boolean successfullyRemoved = permDb.remove(userId, permission);
-			 System.out.println("attempt to remove user " + userId + " from guild " + guildId + ": " + successfullyRemoved);
 			 if(permDb.isEmpty())
 				 this.addServerOwner(permDb);
 			 return successfullyRemoved;
@@ -147,6 +146,18 @@ public class PermissionManagerImpl implements PermissionManager {
 	@Override
 	public boolean hasPermission(User user, Guild guild, PermissionLevel permission) {
 		return this.hasPermission(user.getId(), guild.getId(), permission);
+	}
+	
+	@Override
+	public PermissionLevel getHighestPermissionLevel(User user) {
+		if(this.hasPermission(user, PermissionLevel.DEVELOPER))
+			return PermissionLevel.DEVELOPER;
+		else {
+			if(user.getMutualGuilds().stream().anyMatch(guild -> this.hasPermission(user, guild, PermissionLevel.ADMIN)))
+				return PermissionLevel.ADMIN;
+			else
+				return PermissionLevel.USER;
+		}
 	}
 
 	@Override

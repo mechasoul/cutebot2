@@ -125,7 +125,6 @@ class PermissionDatabaseImpl implements PermissionDatabase {
 		try (BufferedWriter writer = Files.newBufferedWriter(this.path, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING,
 				StandardOpenOption.WRITE)) {
 			StringBuilder data = new StringBuilder();
-			System.out.println("in save: " + this.users.toString());
 			this.users.forEach(id -> 
 			{
 				data.append(id);

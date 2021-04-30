@@ -25,11 +25,13 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAutoCommand.class);
 	final static String NAME = "auto";
+	private final static String DESCRIPTION = "enable or disable automatic cutebot messages, or change the approximate "
+			+ "time in between them";
 
 	private final Map<String, GuildPreferences> allPrefs;
 	
 	public PrivateChannelAutoCommand(Map<String, GuildPreferences> prefs) {
-		super(NAME, PermissionLevel.ADMIN, 1, 2);
+		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, 2);
 		this.allPrefs = prefs;
 	}
 	

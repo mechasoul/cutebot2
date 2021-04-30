@@ -241,7 +241,7 @@ public class MyListener extends ListenerAdapter {
 						.handle(EnumSet.of(ErrorResponse.UNKNOWN_USER, ErrorResponse.UNKNOWN_MEMBER), 
 								ex -> {
 									try {
-										this.permissions.remove(id+"", guild.getId(), PermissionLevel.ADMIN);
+										this.permissions.remove(id, guild.getIdLong(), PermissionLevel.ADMIN);
 									} catch (IOException e) {
 										throw new UncheckedIOException(e);
 									}

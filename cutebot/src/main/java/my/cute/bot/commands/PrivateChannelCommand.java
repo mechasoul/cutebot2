@@ -7,8 +7,8 @@ public abstract class PrivateChannelCommand extends CommandImpl {
 	 * commands that don't require a target guild parameter should use this
 	 * as their base class (see PrivateChannelCommandTargeted for more)
 	 */
-	protected PrivateChannelCommand(String name, PermissionLevel permission, int min, int max) {
-		super(name, permission, min, max);
+	protected PrivateChannelCommand(String name, String description, PermissionLevel permission, int min, int max) {
+		super(name, description, permission, min, max);
 	}
 
 }

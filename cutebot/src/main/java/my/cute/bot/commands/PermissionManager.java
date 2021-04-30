@@ -113,6 +113,15 @@ public interface PermissionManager {
 	public boolean hasPermission(User user, Guild guild, PermissionLevel permission);
 	
 	/**
+	 * determines the highest permission level a user possesses for any database contained
+	 * in this PermissionManager. DEVELOPER > ADMIN > USER
+	 * @param user the user to check
+	 * @return the highest permission level the given user has, for anything present in 
+	 * this manager
+	 */
+	public PermissionLevel getHighestPermissionLevel(User user);
+	
+	/**
 	 * adds a new guild to manage permissions for. used eg on guild join
 	 * <p>
 	 * note that if the list of permissions for the guild is empty (eg if this is

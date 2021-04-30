@@ -11,10 +11,12 @@ public abstract class PrivateChannelCommandTargeted extends PrivateChannelComman
 	 * in order to execute the command. these commands must be handled a bit differently
 	 * (eg we need to obtain the target guild from their message, give an error if one
 	 * isn't supplied, etc), so this class should be the base for such commands
+	 * 
+	 * note target guild is counted as a part of parameter count
 	 */
 	
-	PrivateChannelCommandTargeted(String name, PermissionLevel permission, int min, int max) {
-		super(name, permission, min, max);
+	PrivateChannelCommandTargeted(String name, String description, PermissionLevel permission, int min, int max) {
+		super(name, description, permission, min, max);
 	}
 
 	

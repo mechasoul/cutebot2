@@ -56,11 +56,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAdminCommand.class);
 	final static String NAME = "admin";
+	private final static String DESCRIPTION = "modify and view which users have permission to use admin-restricted commands";
 	
 	private final PermissionManager allPermissions;
 	
 	PrivateChannelAdminCommand(PermissionManager perms) {
-		super(NAME, PermissionLevel.ADMIN, 1, 3);
+		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, 3);
 		this.allPermissions = perms;
 	}
 

@@ -1,6 +1,7 @@
 package my.cute.bot.commands;
 
 import java.util.Map.Entry;
+import java.util.stream.Stream;
 
 import net.dv8tion.jda.api.entities.Message;
 
@@ -17,6 +18,8 @@ public interface CommandSet<T extends Command> extends Iterable<Entry<String, T>
 	public T put(String name, T command);
 	
 	public T remove(String commandName);
+	
+	public Stream<T> stream();
 	
 	public boolean execute(String name, Message message, String[] params);
 }

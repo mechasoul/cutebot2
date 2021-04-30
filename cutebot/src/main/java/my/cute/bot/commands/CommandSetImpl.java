@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Stream;
 
 import net.dv8tion.jda.api.entities.Message;
 
@@ -52,6 +53,11 @@ class CommandSetImpl<T extends Command> implements CommandSet<T> {
 	@Override
 	public T remove(String commandName) {
 		return this.commandSet.remove(commandName.toLowerCase());
+	}
+	
+	@Override
+	public Stream<T> stream() {
+		return this.commandSet.values().stream();
 	}
 
 	@Override
