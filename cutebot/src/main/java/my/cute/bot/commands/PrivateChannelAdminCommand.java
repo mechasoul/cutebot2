@@ -43,9 +43,6 @@ import net.dv8tion.jda.api.requests.RestAction;
 
 /*
  * TODO
- * remove block on removing server owner. permissions db already auto adds 
- * owner if it's empty after removal, so this is redundant
- * 
  * update to allow for comma-separated list. i specified it in the docs 
  * above but the command doesnt actually check for it?
  * 

@@ -7,16 +7,16 @@ import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
 
-class PrivateChannelCommandsCommand extends PrivateChannelCommand {
+class PrivateChannelHelpCommand extends PrivateChannelCommand {
 	
-	final static String NAME = "commands";
-	private final static String DESCRIPTION = "view the list of available commands";
+	final static String NAME = "help";
+	private final static String DESCRIPTION = "view the list of available commands, or get detailed information about a command";
 	private static final Color EMBED_COLOR = Color.getHSBColor(0.58f, 0.36f, 0.54f);
 	
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
 
-	protected PrivateChannelCommandsCommand(CommandSet<PrivateChannelCommand> commands, PermissionManager perms) {
+	protected PrivateChannelHelpCommand(CommandSet<PrivateChannelCommand> commands, PermissionManager perms) {
 		super(NAME, DESCRIPTION, PermissionLevel.USER, 0, 0);
 		this.commands = commands;
 		this.permissions = perms;
@@ -34,6 +34,7 @@ class PrivateChannelCommandsCommand extends PrivateChannelCommand {
 		PermissionLevel highestLevel = this.permissions.getHighestPermissionLevel(message.getAuthor());
 		EmbedBuilder embed = new EmbedBuilder();
 		embed.setTitle("commands");
+		embed.setDescription("you can use `!help <command name>` to get detailed information about any of the following commands");
 		this.commands.stream().filter(command -> highestLevel.greaterThanOrEquals(command.getRequiredPermissionLevel()))
 				.sorted(Comparator.comparing(command -> command.getName()))
 				.forEachOrdered(command -> embed.addField(command.getName(), command.getDescription(), false));
