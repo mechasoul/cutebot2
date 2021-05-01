@@ -47,11 +47,24 @@ public interface PermissionManager {
 	 * @param permission the permission level to grant that user
 	 * @return true if a permission level was newly added for a user as a result
 	 * of this call, and false otherwise (eg userId invalid, they already have
-	 * the given permission, etc)
+	 * the given permission, etc). equivalently, returns true if the manager changed
+	 * as a result of this call
 	 * @throws IOException
 	 */
 	public boolean add(String userId, String guildId, PermissionLevel permission) throws IOException;
 	
+	/**
+	 * see {@link #add(String, String, PermissionLevel)}. uses the provided user and guild
+	 * as sources of userId and guildId
+	 * @param user the user to change permissions for
+	 * @param guild the guild to change permissions for that user in
+	 * @param permission the permission level to grant that user
+	 * @return true if a permission level was newly added for a user as a result
+	 * of this call, and false otherwise (eg userId invalid, they already have
+	 * the given permission, etc). equivalently, returns true if the manager changed
+	 * as a result of this call
+	 * @throws IOException
+	 */
 	public boolean add(User user, Guild guild, PermissionLevel permission) throws IOException;
 	
 	/*

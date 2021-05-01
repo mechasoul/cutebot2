@@ -308,6 +308,14 @@ public class MiscUtils {
 		return string.substring(0, string.lastIndexOf('"'));
 	}
 	
+	/**
+	 * see {@link #extractQuotationMarks(String)}. uses the raw content of the provided
+	 * message as the parameter
+	 * @param message the message to extract text from
+	 * @return the substring of the given message that starts immediately after the first 
+	 * quotation mark and ends immediately before the last quotation mark, or null if the
+	 * message does not contain at least two quotation marks
+	 */
 	public static String extractQuotationMarks(Message message) {
 		return extractQuotationMarks(message.getContentRaw());
 	}

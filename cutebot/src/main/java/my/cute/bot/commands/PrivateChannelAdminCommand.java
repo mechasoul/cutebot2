@@ -2,6 +2,10 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -11,8 +15,10 @@ import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.requests.RestAction;
 
 /**
@@ -41,14 +47,6 @@ import net.dv8tion.jda.api.requests.RestAction;
  * to eg add another parameter for specifying permission level to modify, etc
  */
 
-/*
- * TODO
- * update to allow for comma-separated list. i specified it in the docs 
- * above but the command doesnt actually check for it?
- * 
- * update getUserById in view to use retrieveUser / retrieveMember
- * need to probably change most uses of get to retrieve...
- */
 class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAdminCommand.class);
@@ -68,29 +66,33 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {
 					try {
+						String userIdList = MiscUtils.extractQuotationMarks(message);
+						if(userIdList == null)
+							userIdList = params[2];
 						
-						/*
-						 * use retrieveMemberById() since it updates cache
-						 * requires guild members gateway intent
-						 */
-						targetGuild.retrieveMemberById(params[2], false).queue(member ->
-						{
-							try {
-								boolean newAdmin = this.allPermissions.add(member.getUser(), targetGuild, PermissionLevel.ADMIN);
-								if(newAdmin) {
-									message.getChannel().sendMessage("user " + MiscUtils.getUserString(member.getUser()) 
-											+ " now has cutebot admin privileges in server " + MiscUtils.getGuildString(member.getGuild())).queue();
-								} else {
-									message.getChannel().sendMessage("user was not added as a cutebot admin in server " 
-											+ MiscUtils.getGuildString(member.getGuild()) + " (already admin?)").queue();
-								}
-							} catch (IOException e) {
-								throw new UncheckedIOException(e);
-							}
-							
-						}, 
-						error -> message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue()
-						);
+						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
+							.filter(id -> !id.isBlank())
+							.map(id -> targetGuild.retrieveMemberById(id, false).onErrorMap(throwable -> null))
+							.collect(Collectors.toList()))
+							.queue(list -> {
+								List<String> addedMembers = list.stream().filter(Objects::nonNull).filter(member -> {
+									try {
+										return this.allPermissions.add(member.getUser(), targetGuild, PermissionLevel.ADMIN);
+									} catch (IOException e) {
+										throw new UncheckedIOException(e);
+									}
+								}).map(member -> MiscUtils.getUserString(member.getUser()))
+								.collect(Collectors.toList());
+								
+								if(addedMembers.isEmpty())
+									message.getChannel().sendMessage("no user added as a cutebot admin in server " 
+											+ MiscUtils.getGuildString(targetGuild) + " (already admin? invalid user?)").queue();
+								else 
+									message.getChannel().sendMessage("the following users now have cutebot admin privileges in server "
+											+ MiscUtils.getGuildString(targetGuild) + ": " + String.join(", ", addedMembers)).queue();
+								
+							}, 
+							error -> message.getChannel().sendMessage(StandardMessages.unknownError()).queue());
 					} catch (NumberFormatException e) {
 						message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue();
 					} catch (UncheckedIOException e) {
@@ -102,24 +104,33 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			} else if(params[1].equalsIgnoreCase("remove")) {
 				if(params.length >= 3) {
 					try {
-						targetGuild.retrieveMemberById(params[2], false).queue(member -> 
-						{
-							try {
-								boolean removedAdmin = this.allPermissions.remove(member.getUser(), targetGuild, PermissionLevel.ADMIN);
-								if(removedAdmin) {
-									message.getChannel().sendMessage("removed admin privileges from user " + MiscUtils.getUserString(member.getUser()) 
-									+ " in server " + MiscUtils.getGuildString(member.getGuild())).queue();
-								} else {
-									message.getChannel().sendMessage("unable to remove admin privileges from user " 
-											+ MiscUtils.getUserString(member.getUser()) + " in server "
-											+ MiscUtils.getGuildString(member.getGuild()) + " (not an admin?)").queue();
-								}
-							} catch (IOException e) {
-								throw new UncheckedIOException(e);
-							}
-						}, 
-						error -> message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue()
-						);
+						String userIdList = MiscUtils.extractQuotationMarks(message);
+						if(userIdList == null)
+							userIdList = params[2];
+						
+						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
+							.filter(id -> !id.isBlank())
+							.map(id -> targetGuild.retrieveMemberById(id, false).onErrorMap(throwable -> null))
+							.collect(Collectors.toList()))
+							.queue(list -> {
+								List<String> removedMembers = list.stream().filter(Objects::nonNull).filter(member -> {
+									try {
+										return this.allPermissions.remove(member.getUser(), targetGuild, PermissionLevel.ADMIN);
+									} catch (IOException e) {
+										throw new UncheckedIOException(e);
+									}
+								}).map(member -> MiscUtils.getUserString(member.getUser()))
+								.collect(Collectors.toList());
+								
+								if(removedMembers.isEmpty())
+									message.getChannel().sendMessage("no users have had cutebot admin privileges removed in server " 
+											+ MiscUtils.getGuildString(targetGuild) + " (not an admin? invalid user?)").queue();
+								else 
+									message.getChannel().sendMessage("the following users no longer have cutebot admin privileges in server "
+											+ MiscUtils.getGuildString(targetGuild) + ": " + String.join(", ", removedMembers)).queue();
+								
+							}, 
+							error -> message.getChannel().sendMessage(StandardMessages.unknownError()).queue());
 					} catch (NumberFormatException e) {
 						message.getChannel().sendMessage(StandardMessages.invalidMember(params[2], targetGuild)).queue();
 					} catch (UncheckedIOException e) {
@@ -169,29 +180,6 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 		} catch (UncheckedIOException e) {
 			throw e.getCause();
 		}
-		
-//		action.queue(admins -> {
-//			admins.forEach(admin -> {
-//				if(admin != null) 
-//					builder.append(MiscUtils.getUserString(admin));
-//				else
-//					builder.append("unknown user");
-//			});
-//			MiscUtils.sendMessages(targetChannel, builder.buildAll());
-//		}, error -> {
-//			targetChannel.sendMessage(StandardMessages.unknownError()).queue();
-//		});
-		
-//		builder.append(this.allPermissions.getAdmins(targetGuild.getId()).stream().map(userId ->
-//		{
-//			this.jda.retrieveUserById(userId).
-//			User user = this.jda.getUserById(userId);
-//			if(user != null) {
-//				return MiscUtils.getUserString(user);
-//			} else {
-//				return "unknown user id " + userId;
-//			}
-//		}).collect(Collectors.joining(System.lineSeparator())));
 		
 	}
 	
