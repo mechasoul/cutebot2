@@ -215,7 +215,11 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			builder.append("filter: " + filter.get());
 		} else {
 			builder.append("flagged words: ```");
-			builder.append(filter.get());
+			String filterString = filter.get();
+			if(filterString.isBlank())
+				builder.append("none");
+			else
+				builder.append(filterString);
 			builder.append("```");
 		}
 		builder.append(System.lineSeparator());

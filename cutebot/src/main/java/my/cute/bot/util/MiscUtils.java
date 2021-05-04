@@ -39,7 +39,8 @@ public class MiscUtils {
 	private static final String NEW_LINE_TOKEN = "<_NL>";
 	private static final Random RAND = new Random();
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
-	private final static Pattern QUOTATION_MARKS = Pattern.compile("^\".*\"(?:\\s+|$)");
+	//used to test for existence of two quotation marks anywhere in given text
+	private final static Pattern QUOTATION_MARKS = Pattern.compile(".*\".*\"");
 
 	public static String replaceNewLinesWithTokens(String line) {
 		/*
@@ -286,35 +287,36 @@ public class MiscUtils {
 				.collect(ImmutableList.toImmutableList());
 	}
 	
-	public static boolean hasQuotationMarks(String input) {
+	private static boolean hasQuotationMarks(String input) {
 		return QUOTATION_MARKS.matcher(input).find();
 	}
 	
 	/**
-	 * given an input string, returns the substring of everything inside the outermost two 
-	 * quotation marks in the input string. ie, returns the part of that string that starts
-	 * immediately after the first quotation mark, and ends immediately before the last 
-	 * quotation mark (quotation marks not included in the returned string). if the text 
-	 * does not contain at least two quotation marks, null is returned
+	 * given an input string, returns the (trimmed) substring of everything inside the 
+	 * outermost two quotation marks in the input string. ie, returns the part of that 
+	 * string that starts immediately after the first quotation mark & any following 
+	 * whitespace, and ends immediately before the last quotation mark (& before any 
+	 * preceding whitespace). quotation marks not included in the returned string. if 
+	 * the text does not contain at least two quotation marks, null is returned
 	 * @param string the string to extract text from
-	 * @return the substring of the given string that starts immediately after the first 
-	 * quotation mark and ends immediately before the last quotation mark, or null if the
-	 * string does not contain at least two quotation marks
+	 * @return the trimmed substring of the given string that starts immediately after 
+	 * the first quotation mark and ends immediately before the last quotation mark, or 
+	 * null if the string does not contain at least two quotation marks
 	 */
 	public static String extractQuotationMarks(String string) {
 		if(!hasQuotationMarks(string)) return null;
 		
-		string = string.trim().split("\"\\s*", 2)[1];
-		return string.substring(0, string.lastIndexOf('"'));
+		string = string.split("\"", 2)[1];
+		return string.substring(0, string.lastIndexOf('"')).trim();
 	}
 	
 	/**
 	 * see {@link #extractQuotationMarks(String)}. uses the raw content of the provided
 	 * message as the parameter
 	 * @param message the message to extract text from
-	 * @return the substring of the given message that starts immediately after the first 
-	 * quotation mark and ends immediately before the last quotation mark, or null if the
-	 * message does not contain at least two quotation marks
+	 * @return the trimmed substring of the given message that starts immediately after 
+	 * the first quotation mark and ends immediately before the last quotation mark, or 
+	 * null if the message does not contain at least two quotation marks
 	 */
 	public static String extractQuotationMarks(Message message) {
 		return extractQuotationMarks(message.getContentRaw());
@@ -368,23 +370,25 @@ public class MiscUtils {
 	
 	/**
 	 * searches a string for any text surrounded by quotation marks. if two quotation marks are found,
-	 * the text inside the quotation marks is split by commas, and the result is returned as an array. eg,
-	 * calling this method with the text 
+	 * the text inside the quotation marks is split by commas (plus any leading/trailing whitespace), 
+	 * and the result is returned as an array. eg, calling this method with the text 
 	 * <p>
-	 * hello i am well but i want to say "how, are you doing today, my, fellow?" to you
+	 * <code>hello i am well but i want to say "how, are you doing today, my, fellow?" to you</code>
 	 * <p>
-	 * would return an array with<br>
+	 * would return an array with<p><code>
 	 * array[0].equals("how")<br>
 	 * array[1].equals("are you doing today")<br>
 	 * array[2].equals("my")<br>
-	 * array[3].equals("fellow?")
+	 * array[3].equals("fellow?")</code>
 	 * <p>
-	 * this is used especially for extracting words to use for wordfilter (eg see PrivateChannelFilterCommand), 
+	 * this is used especially for extracting words to use for wordfilter (eg see 
+	 * {@link my.cute.bot.commands.PrivateChannelFilterCommand#execute(Message, String[], Guild)})
 	 * hence the name of the method
 	 * <p>
 	 * note if the text does not contain two quotation marks, an empty array is returned
 	 * @param text the text to parse as specified above
-	 * @return an array containing the comma-separated strings inside the quotation marks in the given text
+	 * @return an array containing the trimmed, comma-separated strings inside the quotation marks in the given 
+	 * text
 	 */
 	public static String[] parseWordsToFilter(String text) {
 		if((text = extractQuotationMarks(text)) == null) {
