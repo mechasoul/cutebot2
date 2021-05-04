@@ -2,10 +2,8 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -15,11 +13,10 @@ import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.requests.RestAction;
+import net.dv8tion.jda.api.utils.Result;
 
 /**
  * command for managing user permissions. users have the authority to add and remove
@@ -72,10 +69,10 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 						
 						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
 							.filter(id -> !id.isBlank())
-							.map(id -> targetGuild.retrieveMemberById(id, false).onErrorMap(throwable -> null))
+							.map(id -> targetGuild.retrieveMemberById(id, false).mapToResult())
 							.collect(Collectors.toList()))
 							.queue(list -> {
-								List<String> addedMembers = list.stream().filter(Objects::nonNull).filter(member -> {
+								List<String> addedMembers = list.stream().filter(Result::isSuccess).map(Result::get).filter(member -> {
 									try {
 										return this.allPermissions.add(member.getUser(), targetGuild, PermissionLevel.ADMIN);
 									} catch (IOException e) {
@@ -110,10 +107,10 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 						
 						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
 							.filter(id -> !id.isBlank())
-							.map(id -> targetGuild.retrieveMemberById(id, false).onErrorMap(throwable -> null))
+							.map(id -> targetGuild.retrieveMemberById(id, false).mapToResult())
 							.collect(Collectors.toList()))
 							.queue(list -> {
-								List<String> removedMembers = list.stream().filter(Objects::nonNull).filter(member -> {
+								List<String> removedMembers = list.stream().filter(Result::isSuccess).map(Result::get).filter(member -> {
 									try {
 										return this.allPermissions.remove(member.getUser(), targetGuild, PermissionLevel.ADMIN);
 									} catch (IOException e) {

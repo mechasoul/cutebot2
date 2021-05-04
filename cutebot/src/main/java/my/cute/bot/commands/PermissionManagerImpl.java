@@ -120,7 +120,11 @@ public class PermissionManagerImpl implements PermissionManager {
 
 	@Override
 	public boolean hasPermission(String userId, PermissionLevel permission) {
-		return this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission);
+		//can do stuff here to blacklist users from using any command, etc
+		if(permission == PermissionLevel.USER) 
+			return true;
+		else
+			return this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission);
 	}
 	
 	@Override
@@ -133,13 +137,17 @@ public class PermissionManagerImpl implements PermissionManager {
 	 */
 	@Override
 	public boolean hasPermission(String userId, String guildId, PermissionLevel permission) {
-		PermissionDatabase permDb = this.permissions.get(guildId);
-		if(permDb != null) {
-			 return (permDb.hasPermission(userId, permission) || this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission));
+		if(permission == PermissionLevel.USER) {
+			return true;
 		} else {
-			throw new IllegalArgumentException(this + ": called hasPermission with invalid guild "
-					+ "id. params userId='" + userId + "', "
-					+ "guildId='" + guildId + "', permission='" + permission + "'");
+			PermissionDatabase permDb = this.permissions.get(guildId);
+			if(permDb != null) {
+				 return (permDb.hasPermission(userId, permission) || this.permissions.get(GLOBAL_KEY).hasPermission(userId, permission));
+			} else {
+				throw new IllegalArgumentException(this + ": called hasPermission with invalid guild "
+						+ "id. params userId='" + userId + "', "
+						+ "guildId='" + guildId + "', permission='" + permission + "'");
+			}
 		}
 	}
 	
