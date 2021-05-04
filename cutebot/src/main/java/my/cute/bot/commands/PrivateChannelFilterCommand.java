@@ -213,18 +213,16 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		builder.append(System.lineSeparator());
 		builder.append("mode: " + filter.getType().name().toLowerCase());
 		builder.append(System.lineSeparator());
-		if(filter.getType() == WordFilter.Type.REGEX) {
-			builder.append("filter: " + filter.get());
-		} else {
+		if(filter.getType() == WordFilter.Type.REGEX) 
+			builder.append("filter: ```");
+		else /*filter.getType() == WordFilter.Type.BASIC */
 			builder.append("flagged words: ```");
-			String filterString = filter.get();
-			if(filterString.isBlank())
-				builder.append("none");
-			else
-				builder.append(filterString);
-			builder.append("```");
-		}
-		builder.append(System.lineSeparator());
+		String filterString = filter.get();
+		if(filterString.isBlank())
+			builder.append("none");
+		else
+			builder.append(filterString);
+		builder.append("```");
 		builder.append("actions taken when filter is triggered: " );
 		builder.append(filter.getActions().stream().map(action 
 				-> FilterResponseAction.toDescription(action)).collect(Collectors.joining(", ")));

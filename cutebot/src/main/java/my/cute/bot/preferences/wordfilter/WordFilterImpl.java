@@ -74,7 +74,7 @@ public class WordFilterImpl implements WordFilter {
 		if(initialNumFilteredWords >= MAX_FILTERED_WORDS) return false;
 		for(String word : words) {
 			if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
-			if(word.length() <= MAX_WORD_LENGTH) this.filteredWords.add(word);
+			if(word.length() <= MAX_WORD_LENGTH && !word.isBlank()) this.filteredWords.add(word);
 		}
 		boolean filterChanged = this.filteredWords.size() > initialNumFilteredWords;
 		if (filterChanged) {
@@ -122,7 +122,7 @@ public class WordFilterImpl implements WordFilter {
 			for(String word : words.split(",")) {
 				if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
 				word = word.trim();
-				if(word.length() <= MAX_WORD_LENGTH) this.filteredWords.add(word);
+				if(word.length() <= MAX_WORD_LENGTH && !word.isBlank()) this.filteredWords.add(word);
 			}
 			this.updateCompiledFilter();
 		} else /* this.mode == WordFilter.Type.REGEX */ {
