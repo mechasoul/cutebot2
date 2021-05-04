@@ -167,6 +167,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			} else if (params[1].equalsIgnoreCase("action")) {
 				if(params.length >= 3) {
 					if(ACTION_FLAGS.matcher(params[2]).matches()) {
+						//TODO in return message, show new action descriptions
 						filter.setActions(FilterResponseAction.numbersToActions(params[2]));
 						message.getChannel().sendMessage("wordfilter actions successfully modified").queue();
 					} else {
@@ -177,6 +178,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 				}
 			} else if (params[1].equalsIgnoreCase("role")) {
 				if(params.length >= 3) {
+					//TODO option to clear set role
 					Role newRole = MiscUtils.parseRole(targetGuild, message, 2);
 					if(newRole != null) {
 						filter.setRoleId(params[2]);
@@ -229,9 +231,15 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		if(filter.getActions().contains(FilterResponseAction.ROLE)) {
 			builder.append(System.lineSeparator());
 			builder.append("role to apply when filter is triggered: " );
-			//guild should never be null unless something really weird happens
-			//possible that the role is null (eg role deleted since id was set)
-			Role role = guild.getRoleById(filter.getRoleId());
+			/*
+			 * possible that the role is null (eg role deleted since it was set), or no
+			 * role has ever been set (filter.getRoleId() returns empty string)
+			 */
+			Role role;
+			if(filter.getRoleId().isBlank())
+				role = null;
+			else
+				role = guild.getRoleById(filter.getRoleId());
 			if(role != null) {
 				builder.append(role.getName());
 				builder.append(" (id=");

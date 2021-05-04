@@ -136,7 +136,7 @@ public class WordFilterImpl implements WordFilter {
 		if(this.mode == WordFilter.Type.BASIC) {
 			return String.join(",", this.filteredWords.stream().sorted().collect(Collectors.toList()));
 		} else /* this.mode == WordFilter.Type.REGEX */ {
-			return this.compiledFilter.pattern();
+			return (this.compiledFilter == null ? "" : this.compiledFilter.pattern());
 		}
 	}
 	
