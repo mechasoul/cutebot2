@@ -296,29 +296,29 @@ public class GuildMessageReceivedHandler {
 	}
 	
 	private void applyWordFilterActions(final Message message, final String filteredWord) throws IOException {
-		StringBuilder sb = new StringBuilder();
+		StringBuilder errorBuilder = new StringBuilder();
 		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
 		if(actions.contains(FilterResponseAction.BAN)) {
 			try {
 				message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
 			} catch (InsufficientPermissionException e) {
-				sb.append(StandardMessages.missingPermissionsToBan());
-				sb.append(System.lineSeparator());
+				errorBuilder.append(StandardMessages.missingPermissionsToBan());
+				errorBuilder.append(System.lineSeparator());
 			}
 		} else if (actions.contains(FilterResponseAction.KICK)) {
 			try {
 				message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
 			} catch (InsufficientPermissionException e) {
-				sb.append(StandardMessages.missingPermissionsToKick());
-				sb.append(System.lineSeparator());
+				errorBuilder.append(StandardMessages.missingPermissionsToKick());
+				errorBuilder.append(System.lineSeparator());
 			}
 		}
 		if(actions.contains(FilterResponseAction.DELETE_MESSAGE)) {
 			try {
 				message.delete().queue();
 			} catch (InsufficientPermissionException e) {
-				sb.append(StandardMessages.missingPermissionsToDeleteMessages());
-				sb.append(System.lineSeparator());
+				errorBuilder.append(StandardMessages.missingPermissionsToDeleteMessages());
+				errorBuilder.append(System.lineSeparator());
 			}
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
@@ -345,25 +345,35 @@ public class GuildMessageReceivedHandler {
 					.flatMap(channel -> channel.sendMessage(builder.build())).queue();
 		}
 		if(actions.contains(FilterResponseAction.ROLE)) {
-			Role role = message.getGuild().getRoleById(this.wordFilter.getRoleId());
+			/*
+			 * role could be invalid either by not having been set (wordFilter.getRoleId()
+			 * is empty), or by being deleted since being set (guild.getRoleById(String) 
+			 * returns null)
+			 */
+			Role role; 
+			if(this.wordFilter.getRoleId().isBlank())
+				role = null;
+			else 
+				role = message.getGuild().getRoleById(this.wordFilter.getRoleId());
 			if(role == null) {
-				//stored role is no longer valid. remove this action and notify admins
+				//stored role is invalid. remove this action and notify admins
 				actions.remove(FilterResponseAction.ROLE);
 				this.wordFilter.setActions(actions);
-				this.notifyCutebotAdmins("the role set to be applied to users who trigger the "
-						+ "wordfilter could not be found. please check your wordfilter settings");
+				this.wordFilter.clearRoleId();
+				this.notifyCutebotAdmins("the wordfilter was set to apply a role to users who trigger it, "
+						+ "but no valid role was provided. please check your wordfilter settings");
 				return;
 			}
 			try {
 				message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
 			} catch (InsufficientPermissionException | HierarchyException e) {
 				//missing permission to modify roles or to interact with the specified role
-				sb.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
-				sb.append(System.lineSeparator());
+				errorBuilder.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
+				errorBuilder.append(System.lineSeparator());
 			} 
 		}
 		
-		String errorMessage = sb.toString();
+		String errorMessage = errorBuilder.toString();
 		if(!errorMessage.isEmpty())
 			this.notifyCutebotAdmins(errorMessage);
 	}

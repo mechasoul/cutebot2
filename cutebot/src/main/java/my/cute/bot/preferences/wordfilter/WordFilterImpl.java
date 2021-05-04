@@ -220,6 +220,12 @@ public class WordFilterImpl implements WordFilter {
 		this.roleId = id;
 		this.save();
 	}
+	
+	@Override
+	public synchronized void clearRoleId() throws IOException {
+		this.roleId = "";
+		this.save();
+	}
 
 	@Override
 	public synchronized String getRoleId() {
@@ -256,7 +262,7 @@ public class WordFilterImpl implements WordFilter {
 			writer.newLine();
 			writer.append(this.compiledFilter == null ? EMPTY_COMPILED_FILTER_TOKEN : this.compiledFilter.pattern());
 			writer.newLine();
-			writer.append(this.responseActions.stream().map(action -> action.name()).collect(Collectors.joining(", ")));
+			writer.append(this.responseActions.stream().map(action -> action.name()).collect(Collectors.joining(",")));
 			writer.newLine();
 			writer.append(""+this.enabled);
 			writer.newLine();

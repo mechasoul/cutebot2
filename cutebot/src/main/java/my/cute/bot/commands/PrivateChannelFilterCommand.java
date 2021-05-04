@@ -181,7 +181,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 					//TODO option to clear set role
 					Role newRole = MiscUtils.parseRole(targetGuild, message, 2);
 					if(newRole != null) {
-						filter.setRoleId(params[2]);
+						filter.setRoleId(newRole.getId());
 						message.getChannel().sendMessage("set role '" + newRole.getName() + "' (id=" + newRole.getId()
 								+ ") as role to apply when wordfilter is triggered").queue();
 						if(!filter.getActions().contains(FilterResponseAction.ROLE)) {

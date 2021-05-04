@@ -160,6 +160,8 @@ public interface WordFilter {
 	 */
 	public void setRoleId(String id) throws IOException;
 	
+	public void clearRoleId() throws IOException;
+	
 	/**
 	 * gets the set wordfilter role id. one option for a FilterResponseAction is to apply
 	 * a role to users who trigger the wordfilter (can be used to eg apply a "mute" role),
