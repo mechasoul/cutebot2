@@ -53,7 +53,7 @@ public class WordFilterImpl implements WordFilter {
 		this.roleId = roleId;
 		this.filteredWords = new HashSet<String>((words.length * 4 / 3) + 1);
 		for(String word : words) {
-			this.filteredWords.add(word);
+			if(!word.isBlank()) this.filteredWords.add(word);
 		}
 		this.compiledFilter = pattern.equals(EMPTY_COMPILED_FILTER_TOKEN) ? null : Pattern.compile(pattern, Pattern.CASE_INSENSITIVE);
 		this.responseActions = actions;

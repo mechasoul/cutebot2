@@ -375,7 +375,7 @@ public class GuildMessageReceivedHandler {
 		
 		String errorMessage = errorBuilder.toString();
 		if(!errorMessage.isEmpty())
-			this.notifyCutebotAdmins(errorMessage);
+			this.notifyCutebotAdmins("wordfilter error: " + errorMessage);
 	}
 	
 	private void notifyCutebotAdmins(String context) {
