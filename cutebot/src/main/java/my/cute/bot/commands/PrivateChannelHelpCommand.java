@@ -42,7 +42,7 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 		embed.setFooter(System.lineSeparator() + MiscUtils.getSignature(), 
 				"https://cdn.discordapp.com/attachments/668188089474088980/837729441785970688/mothyes.png");
 		embed.setColor(EMBED_COLOR);
-		message.getChannel().sendMessage(embed.build()).queue();
+		message.getChannel().sendMessageEmbeds(embed.build()).queue();
 	}
 
 }

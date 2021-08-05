@@ -88,7 +88,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 		}
 		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (" 
 				+ this.prefs.getPrefix() + "quote)")
-				.setEmbed(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
+				.setEmbeds(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}
 	
 	/*
