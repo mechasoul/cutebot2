@@ -79,7 +79,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 			dailyQuote = this.updateDailyQuoteFile();
 		}
 		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (!quote)")
-				.setEmbed(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
+				.setEmbeds(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}
 
 	@Override
