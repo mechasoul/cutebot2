@@ -1,6 +1,7 @@
 package my.cute.bot.commands;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Map;
 import java.util.Queue;
 import java.util.regex.Pattern;
@@ -34,7 +35,7 @@ import net.dv8tion.jda.api.entities.Role;
  * <b>remove</b>: args should be a comma-separated list of words to remove from the filter, surrounded
  * by quotation marks. removes
  * any words present in the list from the filter, leaving the remainder<br>
- * <b>clear</b>: no args. clears the filter, removing all words. after this, the filter won't match
+ * <b>clear</b>: no args. clears the filter, removing all words and turning regex mode off if it was on. after this, the filter won't match
  * on anything. note this does not change the set filter response actions<br>
  * <b>set</b>: args should be a comma-separated list of words to use for the filter, or a regex string
  * if the filter is in regex mode (see regex mode); in either case args should be surrounded by 
@@ -129,18 +130,34 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 						String previousFilter = filter.get();
 						try {
 							filter.set(filterString);
-							if(filter.getType() == WordFilter.Type.REGEX) {
-								if(RegexValidator.regexTimeoutTest(Pattern.compile(filterString, Pattern.CASE_INSENSITIVE))) {
-									//validation success
-									message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
-								} else {
-									//validation fail. restore previous filter
-									filter.set(previousFilter);
-									message.getChannel().sendMessage("error: your supplied regex was too slow. your previous wordfilter has been restored").queue();
-								}
-							} else /* filter.getType() == WordFilter.Type.BASIC */ {
-								message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
-							}
+							RegexValidator.regexTimeoutTestAsync(Pattern.compile(filterString, Pattern.CASE_INSENSITIVE))
+								.whenCompleteAsync((result, throwable) -> {
+									if(throwable != null) {
+										message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
+										logger.warn("unknown exception during regex timeout test: " + throwable);
+										throwable.printStackTrace();
+										try {
+											filter.set(previousFilter);
+										} catch (IOException e) {
+											throw new UncheckedIOException(e);
+										}
+									} else {
+										if(result == true) {
+											//validation success
+											message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
+										} else {
+											//validation fail. restore previous filter
+											//TODO increment server wordfilter strikes here? or maybe a more forgiving strike system
+											//this is a definite point for malicious abuse of the bot so should probably consider that
+											message.getChannel().sendMessage("error: your supplied regex was too slow. your previous wordfilter has been restored").queue();
+											try {
+												filter.set(previousFilter);
+											} catch (IOException e) {
+												throw new UncheckedIOException(e);
+											}
+										}
+									}
+								});
 						} catch (PatternSyntaxException e) {
 							message.getChannel().sendMessage("invalid regex. wordfilter was not modified").queue();
 						}
@@ -200,6 +217,9 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			} else {
 				message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();
 			}
+		} catch (UncheckedIOException e) {
+			logger.warn(this + ": unknown IOException during command execution. msg: " + message, e.getCause());
+			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 		} catch (IOException e) {
 			logger.warn(this + ": unknown IOException during command execution. msg: " + message, e);
 			message.getChannel().sendMessage(StandardMessages.unknownError()).queue();

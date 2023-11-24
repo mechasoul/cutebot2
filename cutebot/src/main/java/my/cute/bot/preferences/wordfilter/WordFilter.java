@@ -17,7 +17,7 @@ public interface WordFilter {
 	/**
 	 * checks a given string against the wordfilter
 	 * 
-	 * @return the string if a match was found, or returns null
+	 * @return the part of the input string that matched the wordfilter if a match was found, or returns null
 	 * 		if no match was found or if the wordfilter is disabled
 	 * 		(see {@link#isEnabled()})
 	 * @throws TimeoutException if a timeout occurs while matching
@@ -148,7 +148,7 @@ public interface WordFilter {
 	public void resetStrikes();
 	
 	public static int getStrikesToDisable() {
-		return 3;
+		return 2;
 	}
 	
 	/**

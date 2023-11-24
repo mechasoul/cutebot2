@@ -9,6 +9,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
@@ -64,7 +65,12 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public synchronized String check(String input) throws TimeoutException {
 		if(this.compiledFilter == null || !this.isEnabled()) return null;
-		return MiscUtils.findMatchWithTimeout(this.compiledFilter, input, 1, TimeUnit.SECONDS);
+		try {
+			return MiscUtils.findMatchWithTimeout(this.compiledFilter, input, 1, TimeUnit.SECONDS);
+		} catch (InterruptedException | ExecutionException e) {
+			//TODO ?
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override

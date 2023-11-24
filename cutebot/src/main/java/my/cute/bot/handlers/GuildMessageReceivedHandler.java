@@ -119,12 +119,23 @@ public class GuildMessageReceivedHandler {
 		}
 		
 		try {
+			/*
+			 * TODO note: wordfilter handling is all currently single-threaded
+			 * could consider making it multithreaded?
+			 * message processing depends on wordfilter result so we can't make
+			 * only the wordfilter part parallel, would need to be all message handling
+			 * dispatching a new task to forkjoinpool or w/e for every received message seems troublesome
+			 * but might be worth doing at some point
+			 * potentially other solutions like each guild having a dedicated thread? idk
+			 */
 			if(this.handleWordFilter(event.getMessage())) {
 				//wordfilter found a match
 				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
 			}
 		} catch (TimeoutException e) {
 			//problem with wordfilter
+			//call low-level maintenance so wordfilter can do any necessary changes
+			//then throw exception so something higher-up can handle the general issues that come from this
 			WordFilter.Type type = this.wordFilter.handleTimeout(event.getMessage().getContentRaw());
 			throw new WordfilterTimeoutException(e, type);
 		}
@@ -149,15 +160,19 @@ public class GuildMessageReceivedHandler {
 					this.database.clearAutomaticBackups();
 					this.database.maintenance();
 				} catch (IOException e1) {
-					//not fatal
+					/*
+					 * TODO should do something like rebuild here?
+					 * database was successfully rebuilt but io error when deleting backups/performing maintenance could still
+					 * result in db being in a compromised state
+					 * maybe nuke and start over? or do SOMETHING instead of logging and swallowing
+					 */
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
-				//should just run maintenance immediately instead?
-				
 			} else {
 				try {
 					this.database.clearAutomaticBackups();
 				} catch (IOException e1) {
+					//see above. maybe do something here
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
 				this.database.markForMaintenance();
@@ -201,8 +216,9 @@ public class GuildMessageReceivedHandler {
 			 */
 		} catch (IOException e) {
 			/*
-			 * an IOException here is technically not fatal. we can wait for it to be thrown
-			 * from a more critical spot, and just continue without doing line generation here
+			 * line generation isn't a terribly important place for an IOException to be thrown so don't
+			 * do anything. if something is wrong with the database then we can just wait for it to be 
+			 * thrown from somewhere where we're writing to db
 			 */
 			logger.warn(this + ": encountered IOException during line generation", e);
 		}
@@ -222,6 +238,7 @@ public class GuildMessageReceivedHandler {
 			try {
 				this.database.maintenance();
 			} catch (IOException e) {
+				//TODO do something else here?
 				logger.warn(this + ": maintenance on guild " + this.id + " terminated due to IOException", e);
 			}
 		});

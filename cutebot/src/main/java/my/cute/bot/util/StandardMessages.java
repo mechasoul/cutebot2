@@ -12,32 +12,32 @@ import net.dv8tion.jda.api.entities.User;
 public class StandardMessages {
 	
 	public static String unknownCommand(String givenCommand) {
-		return "invalid command: '" + givenCommand + "'. try !help for a list of commands";
+		return "error: invalid command: '" + givenCommand + "'. try `!help` for a list of commands";
 	}
 	
 	public static String noTargetGuild() {
-		return "error: invalid server. either give a target server or set a default "
-				+ "server for your commands (see !default)";
+		return "error: invalid server. either provide a target server or set a default "
+				+ "server for your commands (see `!default`)";
 	}
 	
 	public static String invalidGuild(String guildId) {
-		return "invalid server: '" + guildId + "'";
+		return "error: invalid server: '" + guildId + "'";
 	}
 	
 	public static String invalidMember(String userId, Guild guild) {
-		return "no member found with id '" + userId + "' in server '" + MiscUtils.getGuildString(guild) + "'";
+		return "error: no member found with id `" + userId + "` in server `" + MiscUtils.getGuildString(guild) + "`";
 	}
 	
 	public static String unknownError() {
-		return "an unknown error has occurred. please call an adult";
+		return "error: an unknown error has occurred. please call an adult";
 	}
 	
 	public static String invalidSyntax(String commandName) {
-		return "invalid syntax. try !help " + commandName;
+		return "error: invalid syntax. try !help " + commandName;
 	}
 
 	public static String invalidAutoResponseTime(String givenMinutes) {
-		return "invalid automatic response time: '" + givenMinutes + "'. please use a number from 1 to 525600";
+		return "error: invalid automatic response time: '" + givenMinutes + "'. please use a number from 1 to 525600";
 	}
 	
 	public static String wordfilterModified() {
@@ -45,7 +45,7 @@ public class StandardMessages {
 	}
 	
 	public static String failedToFindWordfilterWords() {
-		return "invalid syntax. make sure your word list is surrounded by quotation marks";
+		return "error: invalid syntax. make sure your word list is surrounded by quotation marks";
 	}
 	
 	public static String wordfilterStrike(Guild guild, WordFilter.Type type) {

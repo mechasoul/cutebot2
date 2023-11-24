@@ -350,8 +350,10 @@ public class MiscUtils {
 	 * if no match was found
 	 * @throws TimeoutException if the time spent searching the text for the given pattern exceeded
 	 * the given timeout duration
+	 * @throws ExecutionException 
+	 * @throws InterruptedException 
 	 */
-	public static String findMatchWithTimeout(Pattern pattern, String input, long timeout, TimeUnit unit) throws TimeoutException {
+	public static String findMatchWithTimeout(Pattern pattern, String input, long timeout, TimeUnit unit) throws TimeoutException, InterruptedException, ExecutionException {
 		Matcher m = pattern.matcher(input);
 		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
 			if(m.matches()) {
@@ -360,12 +362,19 @@ public class MiscUtils {
 				return null;
 			}
 		});
-		try {
-			return future.get(timeout, unit);
-		} catch (InterruptedException | ExecutionException e) {
-			//i think these shouldn't happen with this future?
-			throw new AssertionError(e);
-		}
+		return future.get(timeout, unit);
+	}
+	
+	public static CompletableFuture<String> findMatchWithTimeoutAsync(Pattern pattern, String input, long timeout, TimeUnit unit) {
+		Matcher m = pattern.matcher(input);
+		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+			if(m.matches()) {
+				return m.group();
+			} else {
+				return null;
+			}
+		});
+		return future.orTimeout(timeout, unit);
 	}
 	
 	/**
