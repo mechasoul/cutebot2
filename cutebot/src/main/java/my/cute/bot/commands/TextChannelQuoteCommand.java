@@ -19,7 +19,9 @@ import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.preferences.GuildPreferences;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -36,6 +38,9 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	
 	private static final Logger logger = LoggerFactory.getLogger(TextChannelQuoteCommand.class);
 
+	static final String NAME = "quote";
+	private static final String DESCRIPTION = "view today's Twitch Chat:tm: Quote Of The Day";
+	
 	/*
 	 * the file that holds quotes
 	 * each line should be a single quote
@@ -50,12 +55,15 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	private static final Path DAILY_QUOTE_FILE = Paths.get("./daily_quote.txt");
 	private static final Random RAND = new Random();
 	
-	TextChannelQuoteCommand(String name) {
-		super(name);
+	private final GuildPreferences prefs;
+	
+	TextChannelQuoteCommand(JDA jda, String id, GuildPreferences prefs) {
+		super(NAME, DESCRIPTION, PermissionLevel.USER, 0, 0, jda, id);
+		this.prefs = prefs;
 	}
 
 	@Override
-	public void execute(Message message) {
+	public void execute(Message message, String[] params) {
 		String dailyQuote = null;
 		/*
 		 * prevent possibly having two guilds try to update quote file at same time,
@@ -78,7 +86,8 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 			//need to update quote info file and get new quote
 			dailyQuote = this.updateDailyQuoteFile();
 		}
-		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (!quote)")
+		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (" 
+				+ this.prefs.getPrefix() + "quote)")
 				.setEmbeds(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}
 
@@ -138,5 +147,10 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 				return "the quotes broke so im taking the day off";
 			}
 		}
+	}
+	
+	@Override
+	public String toString() {
+		return "TextChannelQuoteCommand-" + this.guildId;
 	}
 }

@@ -1,8 +1,10 @@
 package my.cute.bot.handlers;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -10,21 +12,57 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.CutebotTask;
-import my.cute.bot.commands.CommandSet;
-import my.cute.bot.commands.CommandSetFactory;
+import my.cute.bot.commands.GuildCommandSet;
+import my.cute.bot.commands.PermissionDatabase;
+import my.cute.bot.commands.PermissionLevel;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.database.GuildDatabaseBuilder;
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.preferences.wordfilter.FilterResponseAction;
+import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
 import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.StandardMessages;
+import my.cute.bot.util.WordfilterTimeoutException;
 import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
+import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
+/*
+ * TODO
+ * in older code like this class, mylistener, etc i did a lot of catching IOException to
+ * log and swallow or log and rethrow. should take another look at these and see if theres
+ * any more appropriate action to take
+ */
 public class GuildMessageReceivedHandler {
+	
+	private class AutonomyHandler {
+		private long lastAutoMessageTime=0;
+		private final Random RAND = new Random();
+		private float randomFactor = this.getNewRandomFactor();
+		
+		private boolean shouldSendAutomaticMessage() {
+			int autoMessageTime = prefs.getAutomaticResponseTime();
+			return autoMessageTime != 0 && 
+					(System.currentTimeMillis() - this.lastAutoMessageTime) >= ((long)(autoMessageTime * this.randomFactor) * 60000L);
+		}
+		
+		private void update() {
+			this.lastAutoMessageTime = System.currentTimeMillis();
+			this.randomFactor = this.getNewRandomFactor();
+		}
+		
+		//gets a random float in [2/3, 4/3)
+		private float getNewRandomFactor() {
+			return (this.RAND.nextFloat() * (2f/3f)) + (2f/3f);
+		}
+	}
 	
 	private static final Logger logger = LoggerFactory.getLogger(GuildMessageReceivedHandler.class);
 	@SuppressWarnings("unused")
@@ -36,43 +74,74 @@ public class GuildMessageReceivedHandler {
 	private final String id;
 	private final GuildDatabase database;
 	private final GuildPreferences prefs;
-	private final CommandSet commands;
+	private final WordFilter wordFilter;
+	private final PermissionDatabase perms;
+	private final GuildCommandSet commands;
 	private final Random random = new Random();
 	private final ExecutorService executor;
+	private final AutonomyHandler autonomyHandler;
 	
-	private long lastAutoMessageTime = 0;
-	private long timeUntilNextAutoMessage;
-	
-	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, ExecutorService executor) throws IOException {
+	public GuildMessageReceivedHandler(Guild guild, JDA jda, GuildPreferences prefs, WordFilter filter, 
+			PermissionDatabase perms, ExecutorService executor, GuildCommandSet commands) throws IOException {
 		this.jda = jda;
 		this.id = guild.getId();
 		this.prefs = prefs;
+		this.wordFilter = filter;
+		this.perms = perms;
+		this.autonomyHandler = new AutonomyHandler();
 		this.executor = executor;
 		this.database = new GuildDatabaseBuilder(guild)
 				.databaseAge(this.prefs.getDatabaseAge())
 				.build();
 		this.database.load();
-		this.commands = CommandSetFactory.newDefaultTextChannelSet();
-		
-		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
+		this.commands = commands;
 	}
 	
-	public void handle(GuildMessageReceivedEvent event) {
+	/*
+	 * TODO this is a really big method can maybe separate it into pieces or whatever
+	 */
+	public void handle(GuildMessageReceivedEvent event) throws IOException, WordfilterTimeoutException {
 		
 		String content = event.getMessage().getContentRaw();
 		
 		if(!StringUtils.isWhitespace(content)) {
 			//message nonempty. check for command
-			String firstWord = content.split("\\s")[0];
+			String[] params = MiscUtils.getWords(event.getMessage());
+			String firstWord = params[0];
 			if(firstWord.startsWith(this.prefs.getPrefix())) {
 				//first word starts with designated command prefix. check if it's a command
-				String commandName = firstWord.substring(this.prefs.getPrefix().length());
-				if(this.commands.execute(commandName, event.getMessage())) {
+				String commandName = firstWord.substring(this.prefs.getPrefix().length()).toLowerCase();
+				if(this.commands.execute(commandName, event.getMessage(), params)) {
 					//don't process commands into database
 					return;
 				}
 			}
 		}
+		
+		try {
+			/*
+			 * TODO note: wordfilter handling is all currently single-threaded
+			 * could consider making it multithreaded?
+			 * message processing depends on wordfilter result so we can't make
+			 * only the wordfilter part parallel, would need to be all message handling
+			 * dispatching a new task to forkjoinpool or w/e for every received message seems troublesome
+			 * but might be worth doing at some point
+			 * potentially other solutions like each guild having a dedicated thread? idk
+			 */
+			if(this.handleWordFilter(event.getMessage())) {
+				//wordfilter found a match
+				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
+			}
+		} catch (TimeoutException e) {
+			//problem with wordfilter
+			//call low-level maintenance so wordfilter can do any necessary changes
+			//then throw exception so something higher-up can handle the general issues that come from this
+			WordFilter.Type type = this.wordFilter.handleTimeout(event.getMessage().getContentRaw());
+			throw new WordfilterTimeoutException(e, type);
+		}
+		
+		//don't process messages / send automatic messages in non-discussion channels
+		if(!this.prefs.isDiscussionChannel(event.getChannel().getId())) return;
 		
 		try {
 			
@@ -89,39 +158,48 @@ public class GuildMessageReceivedHandler {
 				
 				try {
 					this.database.clearAutomaticBackups();
+					this.database.maintenance();
 				} catch (IOException e1) {
+					/*
+					 * TODO should do something like rebuild here?
+					 * database was successfully rebuilt but io error when deleting backups/performing maintenance could still
+					 * result in db being in a compromised state
+					 * maybe nuke and start over? or do SOMETHING instead of logging and swallowing
+					 */
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
-				//should just run maintenance immediately instead?
-				this.database.markForMaintenance();
 			} else {
 				try {
 					this.database.clearAutomaticBackups();
 				} catch (IOException e1) {
+					//see above. maybe do something here
 					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
 				}
 				this.database.markForMaintenance();
-				this.executor.submit(new GuildDatabaseSetupTask(this.jda, this.id, this.prefs, this.database));
+				this.executor.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.prefs, this.database));
 			}
 			//don't continue with line generation and whatever if the database is broken
 			return;
 		} catch (IOException e) {
 			/*
-			 * could indicate a problem with writing to workingset file, or something else
-			 * currently just logging. should maybe throw fatal exception if workingset 
-			 * isnt working properly?
+			 * could indicate a problem with writing to workingset file, or something else unanticipated 
+			 * further operation will make workingset inconsistent, so require user intervention
+			 * this method is called from MyListener, which will shutdown on IOException encountered 
+			 * here
 			 */
-			logger.warn(this + ": general IOException thrown during line processing - possible workingset inconsistency!", e);
+			
+			logger.warn(this + ": unknown IOException thrown during line processing - possible workingset inconsistency!");
+			this.database.setShouldRestoreFromBackup(true);
+			throw e;
 		}
 			
 		try {
-			if(this.shouldSendAutomaticMessage()) {
+			if(this.autonomyHandler.shouldSendAutomaticMessage()) {
 				String line = this.database.generateLine();
 				event.getChannel().sendMessage(line).queue();
-				this.lastAutoMessageTime = System.currentTimeMillis();
-				this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
-				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in " 
-						+ (this.timeUntilNextAutoMessage / 60000L) + " mins");
+				this.autonomyHandler.update();
+				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
+						+ this.prefs.getAutomaticResponseTime() + " mins");
 			} else if(BOT_NAME.matcher(content).matches()) {
 				if(isQuestion(content)) {
 					event.getChannel().sendMessage(this.database.generateLine()).queue();
@@ -138,8 +216,9 @@ public class GuildMessageReceivedHandler {
 			 */
 		} catch (IOException e) {
 			/*
-			 * an IOException here is technically not fatal. we can wait for it to be thrown
-			 * from a more critical spot, and just continue without doing line generation here
+			 * line generation isn't a terribly important place for an IOException to be thrown so don't
+			 * do anything. if something is wrong with the database then we can just wait for it to be 
+			 * thrown from somewhere where we're writing to db
 			 */
 			logger.warn(this + ": encountered IOException during line generation", e);
 		}
@@ -158,8 +237,9 @@ public class GuildMessageReceivedHandler {
 		{
 			try {
 				this.database.maintenance();
-			} catch (Throwable th) {
-				logger.error(this + ": maintenance on guild " + this.id + " terminated due to throwable", th);
+			} catch (IOException e) {
+				//TODO do something else here?
+				logger.warn(this + ": maintenance on guild " + this.id + " terminated due to IOException", e);
 			}
 		});
 	}
@@ -180,10 +260,6 @@ public class GuildMessageReceivedHandler {
 		return this.prefs;
 	}
 	
-	public void updatePreferences() {
-		this.timeUntilNextAutoMessage = this.getTimeInBetweenAutoMessages(this.prefs.getAutomaticResponseTime());
-	}
-	
 	//TODO this sucks
 	private static boolean isQuestion(String s) {
 		if(s.contains("what") || s.contains("who") || s.contains("why") || s.contains("wat") || s.contains("how") || s.contains("when") || s.contains("will") || s.contains("are you") || s.contains("are u") || s.contains("can you") || s.contains("do you") || s.contains("can u") || s.contains("do u") || s.contains("where") || s.contains("?")) {
@@ -193,20 +269,6 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	private long getTimeInBetweenAutoMessages(final int autoResponseTime) {
-		int minutes;
-		if(autoResponseTime == 0) {
-			minutes = 0;
-		} else {
-			minutes = this.random.nextInt(autoResponseTime) + autoResponseTime;
-		}
-		return ((long)minutes) * 60000L;
-	}
-	
-	private boolean shouldSendAutomaticMessage() {
-		return this.timeUntilNextAutoMessage != 0 && 
-				(System.currentTimeMillis() - this.lastAutoMessageTime) >= this.timeUntilNextAutoMessage;
-	}
 	
 	private void addReactionToMessage(Message message) {
 		try {
@@ -222,6 +284,136 @@ public class GuildMessageReceivedHandler {
 			 * do nothing
 			 */
 		}
+	}
+	
+	private boolean handleWordFilter(Message message) throws TimeoutException, IOException {
+		String filteredWord;
+		filteredWord = this.wordFilter.check(message.getContentRaw());
+		if(filteredWord != null) {
+			try {
+				this.applyWordFilterActions(message, filteredWord);
+			} catch (InsufficientPermissionException | HierarchyException e) {
+				/*
+				 * less important exceptions thrown during wordfilter action application
+				 * more important ones are handled inside applyWordFilterActions(), but
+				 * these can be thrown from eg a server moderator triggering the 
+				 * wordfilter, someone triggering the wordfilter in a channel cutebot
+				 * doesn't have permissions in when it's set to delete offending messages,
+				 * etc
+				 * 
+				 * these edge cases could happen but don't really represent a general 
+				 * problem with the wordfilter (in the same sense as eg cutebot not having
+				 * permissions to kick users but being set to kick users), so we do nothing
+				 */
+			}
+			return true;
+		} else {
+			return false;
+		}
+	}
+	
+	private void applyWordFilterActions(final Message message, final String filteredWord) throws IOException {
+		StringBuilder errorBuilder = new StringBuilder();
+		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
+		if(actions.contains(FilterResponseAction.BAN)) {
+			try {
+				message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
+			} catch (InsufficientPermissionException e) {
+				errorBuilder.append(StandardMessages.missingPermissionsToBan());
+				errorBuilder.append(System.lineSeparator());
+			}
+		} else if (actions.contains(FilterResponseAction.KICK)) {
+			try {
+				message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
+			} catch (InsufficientPermissionException e) {
+				errorBuilder.append(StandardMessages.missingPermissionsToKick());
+				errorBuilder.append(System.lineSeparator());
+			}
+		}
+		if(actions.contains(FilterResponseAction.DELETE_MESSAGE)) {
+			try {
+				message.delete().queue();
+			} catch (InsufficientPermissionException e) {
+				errorBuilder.append(StandardMessages.missingPermissionsToDeleteMessages());
+				errorBuilder.append(System.lineSeparator());
+			}
+		}
+		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
+			MessageBuilder builder = new MessageBuilder();
+			builder.mention(message.getAuthor());
+			builder.append(message.getAuthor());
+			builder.append(" your message contained a flagged phrase please don't do that");
+			message.getChannel().sendMessage(builder.build()).queue();
+		}
+		if(actions.contains(FilterResponseAction.SEND_RESPONSE_PRIVATE)) {
+			MessageBuilder builder = new MessageBuilder();
+			builder.append("dear user,");
+			builder.append(System.lineSeparator());
+			builder.append(System.lineSeparator());
+			builder.append("your message (");
+			builder.append(message.getJumpUrl());
+			builder.append(") in server '");
+			builder.append(MiscUtils.getGuildString(message.getGuild()));
+			builder.append("' contained the flagged phrase '");
+			builder.append(filteredWord);
+			builder.append("'. please don't do that");
+			builder.append(MiscUtils.getSignature());
+			message.getAuthor().openPrivateChannel()
+					.flatMap(channel -> channel.sendMessage(builder.build())).queue();
+		}
+		if(actions.contains(FilterResponseAction.ROLE)) {
+			/*
+			 * role could be invalid either by not having been set (wordFilter.getRoleId()
+			 * is empty), or by being deleted since being set (guild.getRoleById(String) 
+			 * returns null)
+			 */
+			Role role; 
+			if(this.wordFilter.getRoleId().isBlank())
+				role = null;
+			else 
+				role = message.getGuild().getRoleById(this.wordFilter.getRoleId());
+			if(role == null) {
+				//stored role is invalid. remove this action and notify admins
+				actions.remove(FilterResponseAction.ROLE);
+				this.wordFilter.setActions(actions);
+				this.wordFilter.clearRoleId();
+				this.notifyCutebotAdmins("the wordfilter was set to apply a role to users who trigger it, "
+						+ "but no valid role was provided. please check your wordfilter settings");
+				return;
+			}
+			try {
+				message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
+			} catch (InsufficientPermissionException | HierarchyException e) {
+				//missing permission to modify roles or to interact with the specified role
+				errorBuilder.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
+				errorBuilder.append(System.lineSeparator());
+			} 
+		}
+		
+		String errorMessage = errorBuilder.toString();
+		if(!errorMessage.isEmpty())
+			this.notifyCutebotAdmins("wordfilter error: " + errorMessage);
+	}
+	
+	private void notifyCutebotAdmins(String context) {
+		StringBuilder sb = new StringBuilder();
+		sb.append("dear user,");
+		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
+		sb.append("there was a problem encountered in server '");
+		sb.append(MiscUtils.getGuildString(this.jda.getGuildById(this.id)));
+		sb.append("': ");
+		sb.append(System.lineSeparator());
+		sb.append(context);
+		sb.append("you are receiving this message because you have cutebot admin permissions in this server. "
+				+ "if you don't know what any of this means just ignore this or something");
+		sb.append(MiscUtils.getSignature());
+		String message = sb.toString();
+		this.perms.getUsersWithPermission(PermissionLevel.ADMIN)
+				.forEach(id -> this.jda.openPrivateChannelById(id)
+						.flatMap(channel -> channel.sendMessage(message))
+						.queue()
+				);
 	}
 	
 	@Override

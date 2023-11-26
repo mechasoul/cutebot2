@@ -28,11 +28,6 @@ public final class GuildDatabaseRebuildTask implements Runnable {
 		this.db = db;
 		this.prefs = prefs;
 	}
-	
-	/*
-	 * TODO
-	 * mark backups as out of date when rebuild occurs?
-	 */
 
 	/*
 	 * replaces the contents of the given GuildDatabase with the contents of the existing
@@ -81,6 +76,8 @@ public final class GuildDatabaseRebuildTask implements Runnable {
 				}
 				logger.info(this + ": finished processing. constructing new database for memory");
 				this.db.prioritizeMemory();
+				this.db.clearAutomaticBackups();
+				this.db.markForMaintenance();
 				logger.info(this + ": complete");
 			} catch (IOException e) {
 				logger.warn(this + ": encountered IOException, db may be in inconsistent state! ex: " + e, e);

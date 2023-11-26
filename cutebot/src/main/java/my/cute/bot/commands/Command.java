@@ -17,13 +17,32 @@ public interface Command {
 	 * try changing to Message and continuing. see if any issues pop up later from not 
 	 * passing in the event
 	 */
-	public void execute(Message message);
 	
-	public String getName();
+	/*
+	 * executes the Command, using the given Message as a parameter.
+	 * all required arguments for the command are to be given in the Message's content.
+	 * before calling execute(Message), it should be guaranteed that
+	 * the Message's content (as given by Message.getContentDisplay()) starts with 
+	 * '!<command name>', where <command name> is Command.name - ie, 
+	 * message.getContentDisplay().startsWith("!" + command.getName)
+	 * returns true
+	 * 
+	 * can take basically any action
+	 */
+	void execute(Message message, String[] params);
+
+	String getName();
+
+	String getDescription();
+
+	String getHelp();
+
+	PermissionLevel getRequiredPermissionLevel();
 	
-	public String getDescription();
-	
-	public String getHelp();
-	
-	public PermissionLevel getRequiredPermissionLevel();
+	/*
+	 * syntax check
+	 * should pass in all the user's words as given by MiscUtils.getWords(Message)
+	 */
+	boolean hasCorrectParameterCount(String[] words);
+
 }

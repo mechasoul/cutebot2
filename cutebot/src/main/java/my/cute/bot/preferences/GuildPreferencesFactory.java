@@ -18,6 +18,7 @@ import my.cute.bot.util.PathUtils;
 
 public class GuildPreferencesFactory {
 	
+	@SuppressWarnings("unused")
 	private static final Logger logger = LoggerFactory.getLogger(GuildPreferencesFactory.class);
 	private static final Gson GSON;
 	
@@ -31,16 +32,12 @@ public class GuildPreferencesFactory {
 		return new GuildPreferencesImpl(id);
 	}
 	
-	public static GuildPreferences loadGuildPreferences(String id) {
+	public static GuildPreferences load(String id) throws IOException {
 		Path preferencesFile = PathUtils.getPreferencesFile(id);
 		if(Files.exists(preferencesFile)) {
 			try (BufferedReader reader = Files.newBufferedReader(preferencesFile, StandardCharsets.UTF_8)) {
 				return GSON.fromJson(reader.readLine(), GuildPreferencesImpl.class);
-			} catch (IOException e) {
-				logger.warn("GuildPreferencesFactory: IOException thrown when trying to load preferences for id '" + id
-						+ "', loading default preferences instead", e);
-				return new GuildPreferencesImpl(id);
-			}
+			} 
 		} else {
 			return new GuildPreferencesImpl(id);
 		}

@@ -23,8 +23,7 @@ public class ImmutableListDeserializer implements JsonDeserializer<ImmutableList
 		try {
 			array = json.getAsJsonArray();
 		} catch (IllegalStateException e) {
-			logger.warn("ImmutableListDeserializer: tried to load json that was not a JsonArray, returning empty list! ex: "
-					+ e, e);
+			logger.warn("ImmutableListDeserializer: tried to load json that was not a JsonArray, returning empty list", e);
 			return ImmutableList.of();
 		}
 		ImmutableList.Builder<String> builder = ImmutableList.<String>builder();

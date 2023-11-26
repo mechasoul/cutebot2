@@ -3,20 +3,25 @@ package my.cute.bot.commands;
 import java.util.Iterator;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Stream;
 
 import net.dv8tion.jda.api.entities.Message;
 
-class CommandSetImpl implements CommandSet {
+class CommandSetImpl<T extends Command> implements CommandSet<T> {
 
-	private final ConcurrentHashMap<String, Command> commandSet;
+	protected final ConcurrentMap<String, T> commandSet;
+	
+	public CommandSetImpl(int capacity) {
+		this.commandSet = new ConcurrentHashMap<>(capacity);
+	}
 	
 	public CommandSetImpl() {
-		//TODO params
 		this.commandSet = new ConcurrentHashMap<>();
 	}
 	
 	@Override
-	public Iterator<Entry<String, Command>> iterator() {
+	public Iterator<Entry<String, T>> iterator() {
 		return this.commandSet.entrySet().iterator();
 	}
 	
@@ -32,29 +37,34 @@ class CommandSetImpl implements CommandSet {
 	
 	@Override
 	public boolean contains(String commandName) {
-		return this.commandSet.containsKey(commandName);
+		return this.commandSet.containsKey(commandName.toLowerCase());
 	}
 	
 	@Override
-	public Command get(String commandName) {
-		return this.commandSet.get(commandName);
+	public T get(String commandName) {
+		return this.commandSet.get(commandName.toLowerCase());
 	}
 	
 	@Override
-	public Command put(String name, Command command) {
-		return this.commandSet.put(name, command);
+	public T put(String name, T command) {
+		return this.commandSet.putIfAbsent(name.toLowerCase(), command);
 	}
 	
 	@Override
-	public Command remove(String commandName) {
-		return this.commandSet.remove(commandName);
+	public T remove(String commandName) {
+		return this.commandSet.remove(commandName.toLowerCase());
+	}
+	
+	@Override
+	public Stream<T> stream() {
+		return this.commandSet.values().stream();
 	}
 
 	@Override
-	public boolean execute(String name, Message message) {
-		Command command = this.commandSet.get(name);
+	public boolean execute(String name, Message message, String[] params) {
+		T command = this.commandSet.get(name.toLowerCase());
 		if(command != null) {
-			command.execute(message);
+			command.execute(message, params);
 			return true;
 		} else {
 			return false;

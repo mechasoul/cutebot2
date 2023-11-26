@@ -2,12 +2,7 @@ package my.cute.bot;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import java.util.EnumSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -15,82 +10,117 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import my.cute.bot.commands.CommandFactory;
+import my.cute.bot.commands.GuildCommandSet;
+import my.cute.bot.commands.PermissionDatabase;
+import my.cute.bot.commands.PermissionLevel;
+import my.cute.bot.commands.PermissionManager;
+import my.cute.bot.commands.PermissionManagerImpl;
 import my.cute.bot.database.GuildDatabase;
 import my.cute.bot.handlers.GuildMessageReceivedHandler;
 import my.cute.bot.handlers.PrivateMessageReceivedHandler;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.GuildPreferencesFactory;
+import my.cute.bot.preferences.wordfilter.WordFilter;
+import my.cute.bot.preferences.wordfilter.WordFilterFactory;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
+import my.cute.bot.util.ConcurrentFinalEntryMap;
+import my.cute.bot.util.MiscUtils;
+import my.cute.bot.util.StandardMessages;
+import my.cute.bot.util.WordfilterTimeoutException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
 import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
 import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.ErrorHandler;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.requests.ErrorResponse;
 import okhttp3.OkHttpClient;
 
 public class MyListener extends ListenerAdapter {
 	
+	/*
+	 * method of generating unprompted messages without relying on a recent 
+	 * user message. ended up spamming messages during off-hours, maybe with
+	 * a way to modify timer based on activity it would work...keeping the
+	 * framework here in case i revisit it
+	 */
 	@SuppressWarnings("unused")
 	private class AutomaticMessageTask implements Runnable {
 		
 		@Override
 		public void run() {
-			for(String id : automaticMessageGuilds) {
-				try {
-					String line = getDatabase(id).generateLine();
-					Guild guild = jda.getGuildById(id);
-					guild.getDefaultChannel().sendMessage(line).queue();
-					logger.info("AutomaticMessageTask: sent line '" + line + "' in guild '" + jda.getGuildById(id)
-						+ "' in channel '" + guild.getDefaultChannel());
-				} catch (IOException e) {
-					logger.warn("AutomaticMessageTask: encountered IOException on guild '" + jda.getGuildById(id) + "'", e);
-				}
-			}
-			int delay = RAND.nextInt(180) + 30;
-			taskScheduler.schedule(this, delay, TimeUnit.MINUTES);
-			logger.info("AutomaticMessageTask: scheduled next automatic message in " + delay + "min");
+//			for(String id : automaticMessageGuilds) {
+//				try {
+//					String line = getDatabase(id).generateLine();
+//					Guild guild = jda.getGuildById(id);
+//					guild.getDefaultChannel().sendMessage(line).queue();
+//					logger.info("AutomaticMessageTask: sent line '" + line + "' in guild '" + jda.getGuildById(id)
+//						+ "' in channel '" + guild.getDefaultChannel());
+//				} catch (IOException e) {
+//					logger.warn("AutomaticMessageTask: encountered IOException on guild '" + jda.getGuildById(id) + "'", e);
+//				}
+//			}
+//			int delay = RAND.nextInt(180) + 30;
+//			taskScheduler.schedule(this, delay, TimeUnit.MINUTES);
+//			logger.info("AutomaticMessageTask: scheduled next automatic message in " + delay + "min");
 		}
 		
 	}
 	
 	private static final Logger logger = LoggerFactory.getLogger(MyListener.class);
-	private static final Random RAND = new Random();
-	
 	private final JDA jda;
-	private final ConcurrentMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
+	private final ConcurrentFinalEntryMap<String, GuildPreferences> allPrefs;
+	private final ConcurrentFinalEntryMap<String, WordFilter> allFilters;
+	private final ConcurrentFinalEntryMap<String, GuildCommandSet> guildCommands;
+	private final ConcurrentFinalEntryMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
+	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
-	private final List<String> automaticMessageGuilds;
+	
+	/*
+	 * i think it's supposed to be bad practice to use "this" as an argument to something 
+	 * else from inside a constructor because the object isn't properly initialized or 
+	 * something but it's really a lot simpler this way and i'm trying to be careful to 
+	 * make sure nothing is done with the reference aside from saving it
+	 * 
+	 * there are ways around it (eg make the privateMessageHandler field not final, have
+	 * a method to create it and call that method after creating the MyListener object),
+	 * but this seems generally uglier than just doing it like this (could avoid most
+	 * problems by say making ctor private, having an internal factory class, and have
+	 * the factory create method be public and take care of calling the initialization
+	 * methods? then its just like MyListener.Factory.create() to build and all the other
+	 * stuff is hidden away in the create method. but still that field has to be non-final
+	 * and i dont think it really matters as long as im careful)
+	 */
 	
 	MyListener(JDA jda) throws IOException {
 		this.jda = jda;
-		this.automaticMessageGuilds = Collections.synchronizedList(new ArrayList<>());
-		this.automaticMessageGuilds.add("101153748377686016");
-		this.guildMessageHandlers = new ConcurrentHashMap<>(jda.getGuilds().size() * 4 / 3, 0.75f);
-		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda);
-		
+		int numActiveGuilds = this.jda.getGuilds().size();
+		this.allPrefs = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.allFilters = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.guildCommands = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.permissions = new PermissionManagerImpl(this.jda.getGuilds().size() * 4 / 3, this.jda);
+		this.guildMessageHandlers = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
-		try {
-			jda.getGuilds().forEach(guild -> {
-				try {
-					GuildPreferences prefs = GuildPreferencesFactory.loadGuildPreferences(guild.getId());
-					this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, jda, prefs, this.taskScheduler));
-				} catch (IOException e) {
-					throw new UncheckedIOException(e);
-				}
-			});
-		} catch (UncheckedIOException e) {
-			throw e.getCause();
+		for(Guild guild : this.jda.getGuilds()) {
+			this.registerGuild(guild);
 		}
+		
+		this.privateMessageHandler = new PrivateMessageReceivedHandler(this, jda, this.allPrefs, this.allFilters, this.guildCommands, this.permissions);
 		
 		
 		this.taskScheduler.scheduleWithFixedDelay(() -> 
 		{ 
-			checkMaintenance();
+			this.checkMaintenance();
 		}, 1, 12, TimeUnit.HOURS);
+		this.taskScheduler.scheduleWithFixedDelay(() ->
+		{
+			this.permissionMaintenance();
+		}, 1, 36, TimeUnit.HOURS);
 		//shelving this for now and going back to old method of automatic messages
 		//(generate message after someone else sends a message after the given time)
 //		this.taskScheduler.execute(new AutomaticMessageTask());
@@ -119,7 +149,20 @@ public class MyListener extends ListenerAdapter {
 	public void onGuildMessageReceived(GuildMessageReceivedEvent event) {
 		if(event.getAuthor().isBot()) return;
 		
-		this.guildMessageHandlers.get(event.getGuild().getId()).handle(event);
+		try {
+			this.guildMessageHandlers.get(event.getGuild().getId()).handle(event);
+		} catch (WordfilterTimeoutException e) {
+			this.handleWordfilterTimeout(event.getGuild(), e);
+		} catch (IOException e) {
+			/*
+			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+			 * also assume the details have been logged from wherever the problem started
+			 * i know its bad to log rethrow but this lets us get some specifics from wherever the
+			 * problem started
+			 */
+			logger.error("unrecoverable IOException encountered. shutting down", e);
+			this.shutdown();
+		}
 	}
 	
 	@Override
@@ -132,14 +175,12 @@ public class MyListener extends ListenerAdapter {
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that
 	@Override
 	public void onGuildJoin(GuildJoinEvent event) {
-		GuildPreferences prefs = GuildPreferencesFactory.newDefaultGuildPreferences(event.getGuild().getId());;
 		boolean newGuild = false;
 		//preliminary check to avoid unnecessary GuildMessageReceivedHandler creation since it's slightly expensive
 		if(!this.guildMessageHandlers.containsKey(event.getGuild().getId())) {
 			//verify that guild hasn't been added in the meantime by other thread
 			try {
-				newGuild = this.guildMessageHandlers.putIfAbsent(event.getGuild().getId(), 
-						new GuildMessageReceivedHandler(event.getGuild(), jda, prefs, this.taskScheduler)) == null;
+				newGuild = this.registerGuild(event.getGuild());
 			} catch (IOException e) {
 				logger.error(this + ": encountered IOException when trying to construct GuildMessageReceivedHandler for new guild '" +
 						event.getGuild() + "', can't continue!", e);
@@ -149,16 +190,19 @@ public class MyListener extends ListenerAdapter {
 		
 		if(newGuild) {
 			String id = event.getGuild().getId().intern();
-			this.taskScheduler.submit(new GuildDatabaseSetupTask(this.jda, id, this.getPreferences(id), this.getDatabase(id)));
+			this.taskScheduler.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.allPrefs.get(id), this.getDatabase(id)));
 		}
 	}
 	
+	//currently does not delete any files on disk when leaving guild
 	@Override
 	public void onGuildLeave(GuildLeaveEvent event) {
 		logger.info(this + ": left guild " + event.getGuild());
-		String id = event.getGuild().getId().intern();
-		this.guildMessageHandlers.get(id).prepareForShutdown();
-		this.guildMessageHandlers.remove(id);
+		try {
+			this.deregisterGuild(event.getGuild());
+		} catch (IOException e) {
+			logger.warn(this + ": encountered IOException on guild leave, guild: " + MiscUtils.getGuildString(event.getGuild()), e);
+		}
 	}
 	
 	void checkMaintenance() {
@@ -170,8 +214,42 @@ public class MyListener extends ListenerAdapter {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.checkMaintenance());
 	}
 	
+	/*
+	 * used to force maintenance to start on all servers
+	 * checkMaintenance() should generally be used instead. this exists primarily for,
+	 * eg, a developer command so a dev can force maintenance if they need to
+	 */
+	public void forceMaintenance() {
+		this.guildMessageHandlers.forEach((id, handler) -> handler.maintenance());
+	}
+	
+	/*
+	 * same as above but for a specific server
+	 * throws IllegalArgumentException if the given server id isn't a valid key in 
+	 * this.guildMessageHandlers
+	 */
 	public void forceMaintenance(String id) {
-		this.guildMessageHandlers.get(id).maintenance();
+		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
+		if(handler == null) throw new IllegalArgumentException("invalid guild id '" + id + "'");
+		handler.maintenance();
+	}
+	
+	private void permissionMaintenance() {
+		this.jda.getGuildCache().forEach(guild -> {
+			this.permissions.getAdmins(guild.getId()).forEach(id -> {
+				guild.retrieveMemberById(id).queue(null, new ErrorHandler()
+						.handle(EnumSet.of(ErrorResponse.UNKNOWN_USER, ErrorResponse.UNKNOWN_MEMBER), 
+								ex -> {
+									try {
+										this.permissions.remove(id, guild.getIdLong(), PermissionLevel.ADMIN);
+									} catch (IOException e) {
+										throw new UncheckedIOException(e);
+									}
+								}
+						)
+				);
+			});
+		});
 	}
 	
 	public void shutdown() {
@@ -193,20 +271,74 @@ public class MyListener extends ListenerAdapter {
 		}
 	}
 	
-	public GuildPreferences getPreferences(String id) {
-		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
-		if(handler != null) {
-			return handler.getPreferences();
-		} else {
-			return null;
-		}
+	/**
+	 * to be called when a new guild needs to be managed. adds all necessary resources to
+	 * maps and whatever so they can be received wherever they're needed. note if an already
+	 * registered guild is passed in to this, nothing will break, although it will probably
+	 * cost a bit of processing time (mostly since a new GuildMessageReceivedHandler will be
+	 * constructed, which requires loading that guild's database. the handler won't go in the
+	 * map and will eventually be garbage collected but loading db can take some time)
+	 * @param guild the new guild to manage
+	 * @return true if the guild is newly registered, or false if it was already registered
+	 * @throws IOException if an unknown IOException occurs when trying to load resources from 
+	 * disk
+	 */
+	private boolean registerGuild(Guild guild) throws IOException {
+		if(this.guildMessageHandlers.containsKey(guild.getId())) return false;
+		
+		GuildPreferences prefs = GuildPreferencesFactory.load(guild.getId());
+		WordFilter filter = WordFilterFactory.load(guild.getId());
+		GuildCommandSet commands = CommandFactory.loadGuildCommandSet(this.jda, guild.getId(), prefs);
+		this.allPrefs.put(guild.getId(), prefs);
+		this.allFilters.put(guild.getId(), filter);
+		this.guildCommands.put(guild.getId(), commands);
+		this.permissions.addGuild(guild);
+		PermissionDatabase perms = this.permissions.getPermissionDatabase(guild.getId());
+		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, 
+				this.jda, prefs, filter, perms, this.taskScheduler, commands)) == null;
 	}
 	
-	public void update(String id) {
-		GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(id);
-		if(handler != null) {
-			handler.updatePreferences();
+	private boolean deregisterGuild(Guild guild) throws IOException {
+		this.allPrefs.remove(guild.getId());
+		this.allFilters.remove(guild.getId());
+		this.guildCommands.remove(guild.getId());
+		this.permissions.removeGuild(guild);
+		this.guildMessageHandlers.get(guild.getId()).prepareForShutdown();
+		return this.guildMessageHandlers.remove(guild.getId()) != null;
+	}
+	
+	/**
+	 * top-level handling for when a guild's wordfilter exceeds the set max execution time. 
+	 * this is likely going to be caused by someone deliberately setting a problematic 
+	 * explicit regex filter, rather than normal use. when this occurs, a strike is recorded
+	 * against the wordfilter in question. if the number of strikes reaches the set limit 
+	 * (as determined by {@link#WordFilter.getStrikesToDisable()}), the wordfilter is
+	 * disabled. in any case, a message is sent (or attempted to be sent) to all users with
+	 * cutebot admin permissions in the relevant guild
+	 * @param guild the guild that had a WordfilterTimeoutException occur
+	 * @param e the exception that was thrown
+	 */
+	private void handleWordfilterTimeout(Guild guild, WordfilterTimeoutException e) {
+		WordFilter filter = this.allFilters.get(guild.getId());
+		//shouldnt happen
+		if(filter == null) throw new AssertionError("guild '" + MiscUtils.getGuildString(guild) + "' threw a "
+				+ "WordfilterTimeoutException, but couldn't find wordfilter with that id?", e);
+		
+		filter.addStrike();
+		String message;
+		if(filter.getStrikes() >= WordFilter.getStrikesToDisable()) {
+			filter.setEnabled(false);
+			message = StandardMessages.wordfilterDisabled(guild);
+		} else {
+			message = StandardMessages.wordfilterStrike(guild, e.getType());
 		}
+		this.permissions.getAdmins(guild.getId()).forEach(id -> {
+			this.jda.openPrivateChannelById(id).flatMap(channel -> channel.sendMessage(message)).queue();
+		});
+	}
+	
+	public String getGuildString(String id) {
+		return this.jda.getGuildById(id).toString();
 	}
 
 	@Override
