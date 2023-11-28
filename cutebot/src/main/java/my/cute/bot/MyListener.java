@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.EnumSet;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -76,6 +77,7 @@ public class MyListener extends ListenerAdapter {
 	private final ConcurrentFinalEntryMap<String, WordFilter> allFilters;
 	private final ConcurrentFinalEntryMap<String, GuildCommandSet> guildCommands;
 	private final ConcurrentFinalEntryMap<String, GuildMessageReceivedHandler> guildMessageHandlers;
+	private final ConcurrentFinalEntryMap<String, Object> guildLocks;
 	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
@@ -104,6 +106,7 @@ public class MyListener extends ListenerAdapter {
 		this.guildCommands = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.permissions = new PermissionManagerImpl(this.jda.getGuilds().size() * 4 / 3, this.jda);
 		this.guildMessageHandlers = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
+		this.guildLocks = new ConcurrentFinalEntryMap<>(numActiveGuilds * 4 / 3, 0.75f);
 		this.taskScheduler = Executors.newScheduledThreadPool(2);
 		
 		for(Guild guild : this.jda.getGuilds()) {
@@ -145,22 +148,45 @@ public class MyListener extends ListenerAdapter {
 	 * quick cmd to load db from backup
 	 */
 	
+	@SuppressWarnings("resource")
 	@Override
 	public void onGuildMessageReceived(GuildMessageReceivedEvent event) {
 		if(event.getAuthor().isBot()) return;
-		
 		try {
-			this.guildMessageHandlers.get(event.getGuild().getId()).handle(event);
-		} catch (WordfilterTimeoutException e) {
-			this.handleWordfilterTimeout(event.getGuild(), e);
-		} catch (IOException e) {
+			GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(event.getGuild().getId());
+			/*
+			 * as i'm introducing more concurrency, i think i need to consider possibility of nulls
+			 * being returned in places they "should" never be, since it might end up being possible
+			 * that eg in between this method being called and the handler being retrieved from the map,
+			 * another event in another thread causes the guild to be degregistered so the get() call
+			 * returns null. extremely edge case that will probably never happen but probably can in theory?
+			 */
+			if (handler == null) {
+				logger.warn("null GuildMessageReceivedHandler found for guild " + this.getGuildString(event.getGuild().getId()));
+				return;
+			}
+			ForkJoinPool.commonPool().execute(() -> {
+				Object lock = this.guildLocks.get(event.getGuild().getId());
+				if(lock == null) {
+					logger.warn("null guild lock found for guild " + this.getGuildString(event.getGuild().getId()));
+					return;
+				}
+				synchronized(lock) {
+					try {
+						handler.handle(event);
+					} catch (IOException e) {
+						throw new UncheckedIOException(e);
+					} catch (WordfilterTimeoutException e) {
+						this.handleWordfilterTimeout(event.getGuild(), e);
+					}
+				}
+			});	
+		} catch (UncheckedIOException e) {
 			/*
 			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
-			 * also assume the details have been logged from wherever the problem started
-			 * i know its bad to log rethrow but this lets us get some specifics from wherever the
-			 * problem started
 			 */
-			logger.error("unrecoverable IOException encountered. shutting down", e);
+			logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
+			e.getCause().printStackTrace();
 			this.shutdown();
 		}
 	}
@@ -234,6 +260,12 @@ public class MyListener extends ListenerAdapter {
 		handler.maintenance();
 	}
 	
+	/**
+	 * runs maintenance on set of permissions for all guilds to remove dead entries, 
+	 * preventing permissions from growing unbounded. specifically checks to see if a 
+	 * user with defined admin permissions still exists in the server, and if not, 
+	 * removes them
+	 */
 	private void permissionMaintenance() {
 		this.jda.getGuildCache().forEach(guild -> {
 			this.permissions.getAdmins(guild.getId()).forEach(id -> {
@@ -252,6 +284,7 @@ public class MyListener extends ListenerAdapter {
 		});
 	}
 	
+	@SuppressWarnings("resource")
 	public void shutdown() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
 		this.taskScheduler.shutdownNow();
@@ -292,6 +325,7 @@ public class MyListener extends ListenerAdapter {
 		this.allPrefs.put(guild.getId(), prefs);
 		this.allFilters.put(guild.getId(), filter);
 		this.guildCommands.put(guild.getId(), commands);
+		this.guildLocks.put(guild.getId(), new Object());
 		this.permissions.addGuild(guild);
 		PermissionDatabase perms = this.permissions.getPermissionDatabase(guild.getId());
 		return this.guildMessageHandlers.put(guild.getId(), new GuildMessageReceivedHandler(guild, 
@@ -302,6 +336,7 @@ public class MyListener extends ListenerAdapter {
 		this.allPrefs.remove(guild.getId());
 		this.allFilters.remove(guild.getId());
 		this.guildCommands.remove(guild.getId());
+		this.guildLocks.remove(guild.getId());
 		this.permissions.removeGuild(guild);
 		this.guildMessageHandlers.get(guild.getId()).prepareForShutdown();
 		return this.guildMessageHandlers.remove(guild.getId()) != null;

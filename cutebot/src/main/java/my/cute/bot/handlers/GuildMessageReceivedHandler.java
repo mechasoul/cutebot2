@@ -99,6 +99,10 @@ public class GuildMessageReceivedHandler {
 	
 	/*
 	 * TODO this is a really big method can maybe separate it into pieces or whatever
+	 * 
+	 * currently calling handle() as a Runnable in ForkJoinPool.commonPool() (from MyListener)
+	 * each guild has its own lock to synchronize on so can handle at most one message at a time per guild
+	 * but multiple guilds should be able to handle messages concurrently
 	 */
 	public void handle(GuildMessageReceivedEvent event) throws IOException, WordfilterTimeoutException {
 		
@@ -119,15 +123,6 @@ public class GuildMessageReceivedHandler {
 		}
 		
 		try {
-			/*
-			 * TODO note: wordfilter handling is all currently single-threaded
-			 * could consider making it multithreaded?
-			 * message processing depends on wordfilter result so we can't make
-			 * only the wordfilter part parallel, would need to be all message handling
-			 * dispatching a new task to forkjoinpool or w/e for every received message seems troublesome
-			 * but might be worth doing at some point
-			 * potentially other solutions like each guild having a dedicated thread? idk
-			 */
 			if(this.handleWordFilter(event.getMessage())) {
 				//wordfilter found a match
 				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
@@ -152,42 +147,15 @@ public class GuildMessageReceivedHandler {
 			 * TODO is it possible for this to be something other than IOException?
 			 * ie, a problem with loading a shard results in some other exception somehow?
 			 */
-			logger.info(this + ": encountered ReadObjectException during line processing. beginning automatic database restore", e);
-			
-			if(this.database.restoreFromAutomaticBackups()) {
-				
-				try {
-					this.database.clearAutomaticBackups();
-					this.database.maintenance();
-				} catch (IOException e1) {
-					/*
-					 * TODO should do something like rebuild here?
-					 * database was successfully rebuilt but io error when deleting backups/performing maintenance could still
-					 * result in db being in a compromised state
-					 * maybe nuke and start over? or do SOMETHING instead of logging and swallowing
-					 */
-					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
-				}
-			} else {
-				try {
-					this.database.clearAutomaticBackups();
-				} catch (IOException e1) {
-					//see above. maybe do something here
-					logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
-				}
-				this.database.markForMaintenance();
-				this.executor.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.prefs, this.database));
-			}
+			this.recoverFromDatabaseError(event, e);
 			//don't continue with line generation and whatever if the database is broken
 			return;
 		} catch (IOException e) {
 			/*
 			 * could indicate a problem with writing to workingset file, or something else unanticipated 
 			 * further operation will make workingset inconsistent, so require user intervention
-			 * this method is called from MyListener, which will shutdown on IOException encountered 
-			 * here
+			 * this method is called from MyListener, which will shutdown on IOException encountered here
 			 */
-			
 			logger.warn(this + ": unknown IOException thrown during line processing - possible workingset inconsistency!");
 			this.database.setShouldRestoreFromBackup(true);
 			throw e;
@@ -221,6 +189,33 @@ public class GuildMessageReceivedHandler {
 			 * thrown from somewhere where we're writing to db
 			 */
 			logger.warn(this + ": encountered IOException during line generation", e);
+		}
+	}
+
+	private void recoverFromDatabaseError(GuildMessageReceivedEvent event, ReadObjectException e) {
+		logger.info(this + ": encountered ReadObjectException during line processing. beginning automatic database restore", e);
+		if(this.database.restoreFromAutomaticBackups()) {
+			try {
+				this.database.clearAutomaticBackups();
+				this.database.maintenance();
+			} catch (IOException e1) {
+				/*
+				 * TODO should do something like rebuild here?
+				 * database was successfully rebuilt but io error when deleting backups/performing maintenance could still
+				 * result in db being in a compromised state
+				 * maybe nuke and start over? or do SOMETHING instead of logging and swallowing
+				 */
+				logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
+			}
+		} else {
+			try {
+				this.database.clearAutomaticBackups();
+			} catch (IOException e1) {
+				//see above. maybe do something here
+				logger.warn(this + ": exception when trying to clear automatic backups after restoring from backup", e);
+			}
+			this.database.markForMaintenance();
+			this.executor.submit(new GuildDatabaseSetupTask(this.jda, event.getGuild(), this.prefs, this.database));
 		}
 	}
 	
@@ -280,7 +275,7 @@ public class GuildMessageReceivedHandler {
 			}
 		} catch (IllegalArgumentException e) {
 			/*
-			 * thrown from MessageaddReaction(Emote) if the emote can't be used in the given channel
+			 * thrown from Message.addReaction(Emote) if the emote can't be used in the given channel
 			 * do nothing
 			 */
 		}
@@ -404,7 +399,9 @@ public class GuildMessageReceivedHandler {
 		sb.append(MiscUtils.getGuildString(this.jda.getGuildById(this.id)));
 		sb.append("': ");
 		sb.append(System.lineSeparator());
+		sb.append(System.lineSeparator());
 		sb.append(context);
+		sb.append(System.lineSeparator());
 		sb.append("you are receiving this message because you have cutebot admin permissions in this server. "
 				+ "if you don't know what any of this means just ignore this or something");
 		sb.append(MiscUtils.getSignature());
