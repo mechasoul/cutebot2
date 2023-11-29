@@ -24,6 +24,8 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 
 	@Override
 	public void execute(Message message, String[] params) {
+		//TODO command-specific help (ie, !help <command name>). need support here + define help in command classes
+		
 		/*
 		 * need to check if user has dev permissions,
 		 * check if user has admin permissions on any server,
