@@ -147,11 +147,19 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 											message.getChannel().sendMessage(StandardMessages.wordfilterModified()).queue();
 										} else {
 											//validation fail. restore previous filter
-											//TODO increment server wordfilter strikes here? or maybe a more forgiving strike system
-											//this is a definite point for malicious abuse of the bot so should probably consider that
-											message.getChannel().sendMessage("error: your supplied regex was too slow. your previous wordfilter has been restored").queue();
+											//TODO maybe should be a bit more lenient somehow with timeouts here? idk
+											//or could re-enable wordfilter during next maintenance or something so it's not permanent
+											String responseMessage;
 											try {
 												filter.set(previousFilter);
+												filter.addStrike();
+												if(filter.getStrikes() >= WordFilter.getStrikesToDisable()) {
+													filter.setEnabled(false);
+													responseMessage = StandardMessages.wordfilterDisabled(targetGuild);
+												} else {
+													responseMessage = StandardMessages.wordfilterStrike(targetGuild, filter.getType());
+												}
+												message.getChannel().sendMessage(responseMessage).queue();
 											} catch (IOException e) {
 												throw new UncheckedIOException(e);
 											}
@@ -159,7 +167,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 									}
 								});
 						} catch (PatternSyntaxException e) {
-							message.getChannel().sendMessage("invalid regex. wordfilter was not modified").queue();
+							message.getChannel().sendMessage("error: invalid regex. wordfilter was not modified").queue();
 						}
 					} else {
 						message.getChannel().sendMessage(StandardMessages.failedToFindWordfilterWords()).queue();
@@ -184,9 +192,9 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			} else if (params[1].equalsIgnoreCase("action")) {
 				if(params.length >= 3) {
 					if(ACTION_FLAGS.matcher(params[2]).matches()) {
-						//TODO in return message, show new action descriptions
 						filter.setActions(FilterResponseAction.numbersToActions(params[2]));
-						message.getChannel().sendMessage("wordfilter actions successfully modified").queue();
+						message.getChannel().sendMessage("wordfilter actions have been set to: " + filter.getActions().stream().map(action 
+								-> FilterResponseAction.toDescription(action)).collect(Collectors.joining(", "))).queue();
 					} else {
 						message.getChannel().sendMessage("invalid actions '" + params[2] + "' (use only numbers 1-7)").queue();
 					}
@@ -207,7 +215,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 						}
 					} else {
 						message.getChannel().sendMessage("no matching role found in your message. try "
-								+ " putting the role's name or id in quotation marks").queue();
+								+ "putting the role's name or id in quotation marks").queue();
 					}
 				} else {
 					message.getChannel().sendMessage(StandardMessages.invalidSyntax(NAME)).queue();

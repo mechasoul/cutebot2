@@ -70,7 +70,7 @@ public class PrivateMessageReceivedHandler {
 		
 		if(command == null) {
 			System.out.println("null cmd");
-			event.getChannel().sendMessage(StandardMessages.unknownCommand(params[0].substring(1))).queue();
+			event.getChannel().sendMessage("?? try !help").queue();
 			return;
 		}
 		

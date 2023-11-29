@@ -194,8 +194,16 @@ public class MyListener extends ListenerAdapter {
 	@Override
 	public void onPrivateMessageReceived(PrivateMessageReceivedEvent event) {
 		if(event.getAuthor().isBot()) return;
-		
-		this.privateMessageHandler.handle(event);
+		try {
+			this.privateMessageHandler.handle(event);
+		} catch (UncheckedIOException e) {
+			/*
+			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+			 */
+			logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
+			e.getCause().printStackTrace();
+			this.shutdown();
+		}
 	}
 	
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that

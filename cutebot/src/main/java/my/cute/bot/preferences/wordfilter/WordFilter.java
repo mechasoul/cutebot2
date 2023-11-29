@@ -148,7 +148,7 @@ public interface WordFilter {
 	public void resetStrikes();
 	
 	public static int getStrikesToDisable() {
-		return 2;
+		return 3;
 	}
 	
 	/**
