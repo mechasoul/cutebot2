@@ -119,6 +119,9 @@ public class GuildMessageReceivedHandler {
 					//don't process commands into database
 					return;
 				}
+			} else if(firstWord.startsWith("/")) {
+				//discord command. don't process
+				return;
 			}
 		}
 		
