@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -15,8 +16,8 @@ public abstract class PrivateChannelCommandTargeted extends PrivateChannelComman
 	 * note target guild is counted as a part of parameter count
 	 */
 	
-	PrivateChannelCommandTargeted(String name, String description, PermissionLevel permission, int min, int max) {
-		super(name, description, permission, min, max);
+	PrivateChannelCommandTargeted(String name, String description, EmbedBuilder helpEmbed, PermissionLevel permission, int min, int max) {
+		super(name, description, helpEmbed, permission, min, max);
 	}
 
 	

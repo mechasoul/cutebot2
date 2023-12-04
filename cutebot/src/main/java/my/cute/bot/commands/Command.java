@@ -1,8 +1,11 @@
 package my.cute.bot.commands;
 
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 
 public interface Command {
+	
+	
 
 	/*
 	 * TODO
@@ -35,7 +38,7 @@ public interface Command {
 
 	String getDescription();
 
-	String getHelp();
+	MessageEmbed getHelp();
 
 	PermissionLevel getRequiredPermissionLevel();
 	

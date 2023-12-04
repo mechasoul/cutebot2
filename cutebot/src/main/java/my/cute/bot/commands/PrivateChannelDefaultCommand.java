@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -27,7 +28,11 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelDefaultCommand.class);
 	final static String NAME = "default";
 	private final static String DESCRIPTION = "set a default server for your commands, so you don't "
-			+ "have to provide the server id every time";
+			+ "have to provide the server every time";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("sets a default server for your commands. some commands will require a target server, "
+					+ "
 	
 	private final DefaultGuildDatabase defaultGuilds;
 

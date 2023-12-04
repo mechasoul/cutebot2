@@ -1,12 +1,14 @@
 package my.cute.bot.commands;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 
 public abstract class CommandImpl implements Command {
 	
 	private final String name;
 	private final String description;
-	private final String help;
+	private final EmbedBuilder help;
 	private final PermissionLevel requiredPermissionLevel;
 	/*
 	 * number of parameters required for the command
@@ -17,9 +19,9 @@ public abstract class CommandImpl implements Command {
 	private final int minParams;
 	private final int maxParams;
 	
-	protected CommandImpl(String name, String description, PermissionLevel permission, int min, int max) {
+	protected CommandImpl(String name, String description, EmbedBuilder helpEmbed, PermissionLevel permission, int min, int max) {
 		this.name = name;
-		this.help = "";
+		this.help = helpEmbed;
 		this.description = description;
 		this.requiredPermissionLevel = permission;
 		this.minParams = min;
@@ -49,8 +51,8 @@ public abstract class CommandImpl implements Command {
 	}
 	
 	@Override
-	public String getHelp() {
-		return this.help;
+	public MessageEmbed getHelp() {
+		return this.help.build();
 	}
 	
 	@Override

@@ -1,5 +1,6 @@
 package my.cute.bot.util;
 
+import java.awt.Color;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -22,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
@@ -41,6 +43,8 @@ public class MiscUtils {
 	private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 	//used to test for existence of two quotation marks anywhere in given text
 	private final static Pattern QUOTATION_MARKS = Pattern.compile(".*\".*\"");
+	private final static String MOTHYES_LINK = "https://cdn.discordapp.com/attachments/668188089474088980/837729441785970688/mothyes.png";
+	private static final Color EMBED_COLOR = Color.getHSBColor(0.58f, 0.36f, 0.54f);
 
 	public static String replaceNewLinesWithTokens(String line) {
 		/*
@@ -102,11 +106,11 @@ public class MiscUtils {
 	}
 	
 	public static String getGuildString(Guild guild) {
-		return guild.getName() + " (id=" + guild.getId() + ")";
+		return "`" + guild.getName() + " (id=" + guild.getId() + ")`";
 	}
 	
 	public static String getUserString(User user) {
-		return user.getName() + "#" + user.getDiscriminator() + " (id=" + user.getId() + ")";
+		return "`" + user.getName() + " (id=" + user.getId() + ")`";
 	}
 	
 	public static String getSignature() {
@@ -293,21 +297,39 @@ public class MiscUtils {
 	
 	/**
 	 * given an input string, returns the (trimmed) substring of everything inside the 
-	 * outermost two quotation marks in the input string. ie, returns the part of that 
+	 * first two quotation marks in the input string. ie, returns the part of that 
 	 * string that starts immediately after the first quotation mark & any following 
-	 * whitespace, and ends immediately before the last quotation mark (& before any 
+	 * whitespace, and ends immediately before the second quotation mark (& before any 
 	 * preceding whitespace). quotation marks not included in the returned string. if 
 	 * the text does not contain at least two quotation marks, null is returned
 	 * @param string the string to extract text from
 	 * @return the trimmed substring of the given string that starts immediately after 
-	 * the first quotation mark and ends immediately before the last quotation mark, or 
+	 * the first quotation mark and ends immediately before the second quotation mark, or 
 	 * null if the string does not contain at least two quotation marks
 	 */
 	public static String extractQuotationMarks(String string) {
 		if(!hasQuotationMarks(string)) return null;
 		
-		string = string.split("\"", 2)[1];
-		return string.substring(0, string.lastIndexOf('"')).trim();
+		return string.split("\"")[1].trim();
+		//old code for returning contents of outermost quotation marks
+//		return string.substring(0, string.indexOf('"')).trim();
+	}
+	
+	/**
+	 * see {@link #extractQuotationMarks(String)}, except instead of using the first
+	 * two quotation marks, used the last two quotation marks. ie, returns the part
+	 * of the input String that starts immediately after the second-last quotation mark 
+	 * and ends immediately before the last quotation mark. 
+	 * @param string the string to extract text from
+	 * @return the trimmed substring of the given string that is contained by the last
+	 * two quotation marks in the text, or null if the string does not contain at least
+	 * two quotation marks
+	 */
+	public static String extractLastQuotationMarks(String string) {
+		if(!hasQuotationMarks(string)) return null;
+		
+		string = string.substring(0, string.lastIndexOf("\""));
+		return string.substring(string.lastIndexOf("\"") + 1).trim();
 	}
 	
 	/**
@@ -394,7 +416,8 @@ public class MiscUtils {
 	 * {@link my.cute.bot.commands.PrivateChannelFilterCommand#execute(Message, String[], Guild)})
 	 * hence the name of the method
 	 * <p>
-	 * note if the text does not contain two quotation marks, an empty array is returned
+	 * note if the text does not contain two quotation marks, an empty array is returned. if the text contains
+	 * more than two quotation marks, the text inside the first two quotation marks is used
 	 * @param text the text to parse as specified above
 	 * @return an array containing the trimmed, comma-separated strings inside the quotation marks in the given 
 	 * text
@@ -405,6 +428,14 @@ public class MiscUtils {
 		}
 		
 		return text.split("\\s*,\\s*");
+	}
+	
+	public static EmbedBuilder applySignature(EmbedBuilder builder) {
+		return builder.setFooter(System.lineSeparator() + getSignature(), MOTHYES_LINK);
+	}
+	
+	public static EmbedBuilder applyFlair(EmbedBuilder builder) {
+		return applySignature(builder).setColor(EMBED_COLOR);
 	}
 	
 }

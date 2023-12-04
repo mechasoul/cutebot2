@@ -11,7 +11,6 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 	
 	final static String NAME = "help";
 	private final static String DESCRIPTION = "view the list of available commands, or get detailed information about a command";
-	private static final Color EMBED_COLOR = Color.getHSBColor(0.58f, 0.36f, 0.54f);
 	
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
@@ -25,6 +24,7 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 	@Override
 	public void execute(Message message, String[] params) {
 		//TODO command-specific help (ie, !help <command name>). need support here + define help in command classes
+		//TODO go through commands and place `` around formatted guild strings. looks nicer
 		
 		/*
 		 * need to check if user has dev permissions,
@@ -40,10 +40,7 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 		this.commands.stream().filter(command -> highestLevel.greaterThanOrEquals(command.getRequiredPermissionLevel()))
 				.sorted(Comparator.comparing(command -> command.getName()))
 				.forEachOrdered(command -> embed.addField(command.getName(), command.getDescription(), false));
-		embed.addBlankField(false);
-		embed.setFooter(System.lineSeparator() + MiscUtils.getSignature(), 
-				"https://cdn.discordapp.com/attachments/668188089474088980/837729441785970688/mothyes.png");
-		embed.setColor(EMBED_COLOR);
+		MiscUtils.applyFlair(embed);
 		message.getChannel().sendMessageEmbeds(embed.build()).queue();
 	}
 

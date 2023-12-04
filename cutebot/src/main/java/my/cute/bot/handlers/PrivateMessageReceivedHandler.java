@@ -75,22 +75,25 @@ public class PrivateMessageReceivedHandler {
 		}
 		
 		if(command instanceof PrivateChannelCommandTargeted) {
-			//check for explicitly provided guild
-			String targetGuildId = params[params.length - 1];
-			Guild targetGuild;
-			try {
-				targetGuild = this.jda.getGuildById(targetGuildId);
-			} catch (NumberFormatException e) {
-				targetGuild = null;
+			/*
+			 * attempt to determine target guild
+			 * 1. check for provided guild id
+			 * 2. check for provided guild name
+			 * 3. check for default guild
+			 */
+			Guild targetGuild = this.tryGetTargetGuildById(params);
+			if(targetGuild == null) {
+				targetGuild = this.tryGetTargetGuildByName(event.getMessage().getContentRaw());
 			}
-			System.out.println("target guild: " + targetGuildId);
+			
+			String targetGuildId;
 			if(targetGuild == null) {
 				try {
 					//check for default guild
 					targetGuildId = this.defaultGuilds.getDefaultGuildId(event.getAuthor());
 					if(targetGuildId == null) {
 						//no found default guild. check if they're in only one guild
-						targetGuildId = this.registerSingleServerDefaultGuild(event.getAuthor());
+						targetGuildId = this.tryRegisterSingleServerDefaultGuild(event.getAuthor());
 						if(targetGuildId == null) {
 							//no target guild found, can't continue
 							event.getChannel().sendMessage(StandardMessages.noTargetGuild()).queue();
@@ -110,6 +113,8 @@ public class PrivateMessageReceivedHandler {
 					event.getChannel().sendMessage(StandardMessages.unknownError()).queue();
 					return;
 				}
+			} else {
+				targetGuildId = targetGuild.getId();
 			}
 			
 			//final validity check, ensure they're in the given guild
@@ -147,6 +152,53 @@ public class PrivateMessageReceivedHandler {
 			}
 		}
 	}
+
+	/**
+	 * given an input String array (assumed to be a user command, already processed
+	 * into parameters), attempts to extract a valid target guild by id. specifying
+	 * target guild by id can be done by placing the guild id at the end of the 
+	 * message; consequently, this method takes the last parameter and attempts to
+	 * find a guild with that id. if no guild is found or if that parameter can't
+	 * be properly formatted as a long, returns null
+	 * @param params the input String array to attempt to find the target guild id in
+	 * @return the guild with the id specified by the input String array, or null if
+	 * no such guild exists
+	 */
+	private Guild tryGetTargetGuildById(String[] params) {
+		String targetGuildId = params[params.length - 1];
+		Guild targetGuild;
+		try {
+			targetGuild = this.jda.getGuildById(targetGuildId);
+		} catch (NumberFormatException e) {
+			targetGuild = null;
+		}
+		return targetGuild;
+	}
+	
+	/**
+	 * given an input String (assumed to be a user command), attempts to extract
+	 * a valid target guild by name. specifying target guild by name can be done
+	 * by placing the guild name in quotation marks at the end of the message; 
+	 * consequently, this method extracts the text within the last two quotation
+	 * marks in the input String and attempts to find a guild with that name. if
+	 * no guild is found, returns null.
+	 * <p>
+	 * <b>note</b> this method ignores case when looking for guilds by name
+	 * @param message the input String to attempt to find a target guild name in
+	 * @return a guild whose name matches the provided guild name in the input String,
+	 * or null if no such guild exists. if multiple such guilds exist, no guarantee
+	 * is made about which guild is returned
+	 */
+	private Guild tryGetTargetGuildByName(String message) {
+		String potentialName = MiscUtils.extractLastQuotationMarks(message);
+		if(potentialName == null) return null;
+		List<Guild> guilds = this.jda.getGuildsByName(potentialName, true);
+		if(guilds.isEmpty()) {
+			return null;
+		} else {
+			return guilds.get(0);
+		}
+	}
 	
 	public ExecutorService getExecutor() {
 		return this.executor;
@@ -155,7 +207,7 @@ public class PrivateMessageReceivedHandler {
 	/*
 	 * requires GUILD_MEMBERS gateway intent
 	 */
-	private String registerSingleServerDefaultGuild(User user) throws IOException {
+	private String tryRegisterSingleServerDefaultGuild(User user) throws IOException {
 		String guildId = null;
 		List<Guild> mutualGuilds = this.jda.getMutualGuilds(user);
 		if(mutualGuilds.size() == 1) {

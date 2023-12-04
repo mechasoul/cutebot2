@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -49,16 +50,43 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAdminCommand.class);
 	final static String NAME = "admin";
 	private final static String DESCRIPTION = "modify and view which users have permission to use admin-restricted commands";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("used to modify or view which users have permission to use admin-restricted commands. "
+					+ "note that because permissions are handled on a per-server basis, this command requires"
+					+ "a target server. see `!help default` for more on ways to provide a target server")
+			.addField("use:", "`!admin <mode> [<options>] [<server id>]`", false)
+			.addField("modes", "`add`: <options> should be a comma-separated list of user IDs (optionally in quotation marks). "
+					+ "the provided users will all be added as admins for the given server"
+					+ System.lineSeparator()
+					+ "`remove`: <options> should be a comma-separated list of user IDs (optionally in quotation marks). "
+					+ "the provided users will all be removed as admins for the given server"
+					+ System.lineSeparator()
+					+ "`view`: no <options>. displays a list of all users with admin permissions for the given server", false)
+			.addField("examples", "`!admin add \"3333333333,123456789,987654321\"`"
+					+ System.lineSeparator()
+					+ "adds user IDs 3333333333, 123456789, and 987654321 as admins for your default server (see `!help default`)"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!admin remove 123456789,3333333333 11111111111`"
+					+ System.lineSeparator()
+					+ "removes user IDs 123456789 and 3333333333 as admins from server ID 11111111111"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!admin view`"
+					+ System.lineSeparator()
+					+ "displays a list of all users with admin permissions for your default server (see `!help default`)", false));
 	
 	private final PermissionManager allPermissions;
 	
 	PrivateChannelAdminCommand(PermissionManager perms) {
-		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, 3);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.ADMIN, 1, 3);
 		this.allPermissions = perms;
 	}
 
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
+		//TODO allow exact usernames instead of ids
 		try {
 			if(params[1].equalsIgnoreCase("add")) {
 				if(params.length >= 3) {

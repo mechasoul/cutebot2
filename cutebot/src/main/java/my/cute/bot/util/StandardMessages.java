@@ -17,15 +17,15 @@ public class StandardMessages {
 	
 	public static String noTargetGuild() {
 		return "error: invalid server. either provide a target server or set a default "
-				+ "server for your commands (see `!default`)";
+				+ "server for your commands (see `!help default`)";
 	}
 	
 	public static String invalidGuild(String guildId) {
-		return "error: invalid server: '" + guildId + "'";
+		return "error: invalid server: `" + guildId + "`";
 	}
 	
 	public static String invalidMember(String userId, Guild guild) {
-		return "error: no member found with id `" + userId + "` in server `" + MiscUtils.getGuildString(guild) + "`";
+		return "error: no member found with id `" + userId + "` in server " + MiscUtils.getGuildString(guild);
 	}
 	
 	public static String unknownError() {
@@ -33,11 +33,11 @@ public class StandardMessages {
 	}
 	
 	public static String invalidSyntax(String commandName) {
-		return "error: invalid syntax. try !help " + commandName;
+		return "error: invalid syntax. try `!help " + commandName + "`";
 	}
 
 	public static String invalidAutoResponseTime(String givenMinutes) {
-		return "error: invalid automatic response time: '" + givenMinutes + "'. please use a number from 1 to 525600";
+		return "error: invalid automatic response time: `" + givenMinutes + "`. please use a number from 1 to 525600";
 	}
 	
 	public static String wordfilterModified() {
@@ -54,9 +54,9 @@ public class StandardMessages {
 		sb.append("dear valued user,");
 		sb.append(System.lineSeparator());
 		sb.append(System.lineSeparator());
-		sb.append("the wordfilter for server '");
+		sb.append("the wordfilter for server ");
 		sb.append(guildString);
-		sb.append("' was found to be prohibitively slow, and so ");
+		sb.append(" was found to be prohibitively slow, and so ");
 		if(type == WordFilter.Type.BASIC) 
 			sb.append("it has been cleared. ");
 		else /* type == WordFilter.Type.REGEX */ 
@@ -77,9 +77,9 @@ public class StandardMessages {
 		sb.append("dear valued user,");
 		sb.append(System.lineSeparator());
 		sb.append(System.lineSeparator());
-		sb.append("the wordfilter for server '");
+		sb.append("the wordfilter for server ");
 		sb.append(guildString);
-		sb.append("' has repeatedly been found to be prohibitively slow, and so ");
+		sb.append(" has repeatedly been found to be prohibitively slow, and so ");
 		sb.append("it has been permanently disabled. ");
 		sb.append(System.lineSeparator());
 		sb.append(System.lineSeparator());
@@ -89,7 +89,7 @@ public class StandardMessages {
 	}
 	
 	public static String invalidRole(User user, String givenRole) {
-		return user.getAsMention() + " error: '" + givenRole + "' is not a valid role for that command";
+		return user.getAsMention() + " error: `" + givenRole + "` is not a valid role for that command";
 	}
 	
 	public static String missingPermissionsToModifyRole(User user) {
@@ -97,8 +97,8 @@ public class StandardMessages {
 	}
 	
 	public static String missingPermissionsToApplyFilterRole(Role role) {
-		return "missing permissions to apply role '" + role.getName() + "' (id=" + role.getId()
-			+ ") to user who triggered the wordfilter";
+		return "missing permissions to apply role `" + role.getName() + " (id=" + role.getId()
+			+ ")` to user who triggered the wordfilter";
 	}
 	
 	public static String missingPermissionsToKick() {
@@ -114,19 +114,19 @@ public class StandardMessages {
 	}
 	
 	public static String commandNameAlreadyExists(String name) {
-		return "error: a command already exists with the name '" + name + "'";
+		return "error: a command already exists with the name `" + name + "`";
 	}
 	
 	public static String invalidCommandName(String name, int maxNameLength) {
 		if(name.length() > maxNameLength) {
 			return "error: command names cannot be longer than " + maxNameLength + " characters";
 		} else {
-			return "error: '" + name + "' is not a valid command name (command names must be alphanumeric)";
+			return "error: `" + name + "` is not a valid command name (command names must be alphanumeric)";
 		}
 	}
 	
 	public static String invalidRoleCommand(String name) {
-		return "error: no role command exists with the name '" + name + "'";
+		return "error: no role command exists with the name `" + name + "`";
 	}
 	
 	/**
@@ -138,53 +138,53 @@ public class StandardMessages {
 	 * matching the user's text
 	 */
 	public static String failedToFindRoles(Message message, int paramsToIgnore) {
-		return "error: unable to find any role matching '" + MiscUtils.getWords(message, paramsToIgnore+1) + "'";
+		return "error: unable to find any role matching `" + MiscUtils.getWords(message, paramsToIgnore+1) + "`";
 	}
 	
 	public static String createdRoleCommand(String commandName, Role role) {
-		return "successfully created command '" + commandName + "' with role '"
-				+ role.getName() + "'";
+		return "successfully created command `" + commandName + "` with role `"
+				+ role.getName() + "`";
 	}
 	
 	public static String createdRoleCommand(String commandName, List<Role> roles) {
-		return "successfully created command '" + commandName + "' with "
+		return "successfully created command `" + commandName + "` with "
 				+ (roles.size() > 1 ? "roles" : "role")
-				+ " '" + roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
-				+ "'";
+				+ " `" + roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
+				+ "`";
 	}
 	
 	public static String addedRoleToCommand(String commandName, Role role) {
-		return "successfully added role '" + role.getName() + "' to command '"
-				+ commandName + "'";
+		return "successfully added role `" + role.getName() + "` to command `"
+				+ commandName + "`";
 	}
 	
 	public static String addedRolesToCommand(String commandName, List<Role> roles) {
 		if(roles.size() == 1) {
 			return StandardMessages.addedRoleToCommand(commandName, roles.get(0));
 		} else {
-			return "successfully added roles '" 
+			return "successfully added roles `" 
 					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
-					+ "' to command '" + commandName + "'";
+					+ "` to command `" + commandName + "`";
 		}
 	}
 	
 	public static String removedRoleFromCommand(String commandName, Role role) {
-		return "successfully removed role '" + role.getName() + "' from command '"
-				+ commandName + "'";
+		return "successfully removed role `" + role.getName() + "` from command `"
+				+ commandName + "`";
 	}
 	
 	public static String removedRoleFromCommand(String commandName, String roleName) {
-		return "successfully removed role '" + roleName + "' from command '"
-				+ commandName + "'";
+		return "successfully removed role `" + roleName + "` from command `"
+				+ commandName + "`";
 	}
 	
 	public static String removedRolesFromCommand(String commandName, List<Role> roles) {
 		if(roles.size() == 1) {
 			return StandardMessages.removedRoleFromCommand(commandName, roles.get(0));
 		} else {
-			return "successfully removed roles '" 
+			return "successfully removed roles `" 
 					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
-					+ "' from command '" + commandName + "'";
+					+ "` from command `" + commandName + "`";
 		}
 	}
 	
@@ -192,9 +192,9 @@ public class StandardMessages {
 		if(roleNames.size() == 1) {
 			return StandardMessages.removedRoleFromCommand(commandName, roleNames.get(0));
 		} else {
-			return "successfully removed roles '" 
+			return "successfully removed roles `" 
 					+ String.join(", ", roleNames)
-					+ "' from command '" + commandName + "'";
+					+ "` from command `" + commandName + "`";
 		}
 	}
 	
@@ -208,14 +208,14 @@ public class StandardMessages {
 	 */
 	public static String failedToAddRolesToCommand(String commandName, List<Role> roles) {
 		if(roles.size() > 1) {
-			return "found roles '"
+			return "found roles `"
 					+ roles.stream().map(role -> role.getName()).collect(Collectors.joining(", "))
-					+ "' but failed to add any to command '" + commandName + "' (already exist?)";
+					+ "` but failed to add any to command `" + commandName + "` (already exist?)";
 		} else {
 			//1 element in roles (should be nonempty)
-			return "found role '" 
+			return "found role `" 
 					+ roles.get(0).getName()
-					+ "' but failed to add it to command '" + commandName + "' (already exists?)";
+					+ "` but failed to add it to command `" + commandName + "` (already exists?)";
 		}
 	}
 

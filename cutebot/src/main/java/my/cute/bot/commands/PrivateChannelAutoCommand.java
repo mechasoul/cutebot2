@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -25,13 +26,31 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAutoCommand.class);
 	final static String NAME = "auto";
-	private final static String DESCRIPTION = "enable or disable automatic cutebot messages, or change the approximate "
+	private final static String DESCRIPTION = "enable or disable automatic cutebot responses, or change the approximate "
 			+ "time in between them";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("enable or disable automatic cutebot responses, or change the approximate time in between them. "
+					+ "note that because this setting can be changed on a per-server basis, this command requires "
+					+ "a target server. see `!help default` for more on ways to provide a target server")
+			.addField("use:", "`!auto <options> [<server id>]`", false)
+			.addField("options", "options should be either `off`, which disables automatic cutebot responses, "
+					+ "or a number from 1 to 525600 (inclusive), which enables automatic cutebot responses and sets them "
+					+ "to occur approximately that many minutes apart", false)
+			.addField("examples", "`!auto off`"
+					+ System.lineSeparator()
+					+ "disables automatic cutebot responses for your default server (see `!help default`)"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!auto 60 11111111111`"
+					+ System.lineSeparator()
+					+ "enables automatic cutebot responses for server ID 11111111111, and sets them to occur approximately "
+					+ "every 60 minutes", false));
 
 	private final Map<String, GuildPreferences> allPrefs;
 	
 	public PrivateChannelAutoCommand(Map<String, GuildPreferences> prefs) {
-		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, 2);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.ADMIN, 1, 2);
 		this.allPrefs = prefs;
 	}
 	
