@@ -17,10 +17,11 @@ import net.dv8tion.jda.api.entities.Message;
  * changes the target guild's automatic response time, to control how frequently
  * cutebot responds to user messages without being prompted
  * 
- * <p>use: !auto minutes|'off' [guild id]
+ * <p>use: !auto minutes|'off'|view [guild id]
  * 
  * <p>parameter 1 is either the word "off", which turns off automatic response, or 
- * a number of minutes in [1, 525600] (shoutouts 2 rent)
+ * a number of minutes in [1, 525600] (shoutouts 2 rent), or the word "view", which
+ * displays automatic response time
  */
 public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	
@@ -33,18 +34,24 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 			.setDescription("enable or disable automatic cutebot responses, or change the approximate time in between them. "
 					+ "note that because this setting can be changed on a per-server basis, this command requires "
 					+ "a target server. see `!help default` for more on ways to provide a target server")
-			.addField("use:", "`!auto <options> [<server id>]`", false)
-			.addField("options", "options should be either `off`, which disables automatic cutebot responses, "
+			.addField("use:", "`!auto <options> [<target server>]`", false)
+			.addField("options", "options should be `off`, which disables automatic cutebot responses, "
 					+ "or a number from 1 to 525600 (inclusive), which enables automatic cutebot responses and sets them "
-					+ "to occur approximately that many minutes apart", false)
-			.addField("examples", "`!auto off`"
+					+ "to occur approximately that many minutes apart, or `view`, which displays the current setting "
+					+ "for automatic cutebot responses", false)
+			.addField("examples", "`!auto off \"cute server\"`"
 					+ System.lineSeparator()
-					+ "disables automatic cutebot responses for your default server (see `!help default`)"
+					+ "disables automatic cutebot responses for server name `cute server`"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!auto view`"
+					+ System.lineSeparator()
+					+ "displays the current setting for automatic cutebot responses for your default server (see `!help default`)"
 					+ System.lineSeparator()
 					+ System.lineSeparator()
 					+ "`!auto 60 11111111111`"
 					+ System.lineSeparator()
-					+ "enables automatic cutebot responses for server ID 11111111111, and sets them to occur approximately "
+					+ "enables automatic cutebot responses for server ID `11111111111`, and sets them to occur approximately "
 					+ "every 60 minutes", false));
 
 	private final Map<String, GuildPreferences> allPrefs;
@@ -58,7 +65,6 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	@Override
 	public void execute(Message message, String[] params, Guild targetGuild) {
 		GuildPreferences prefs = this.allPrefs.get(targetGuild.getId());
-		
 		/*
 		 * should be impossible since any existing valid guild id should
 		 * have a prefs file? but i guess i'll keep this for now maybe it's
@@ -71,12 +77,19 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 		}
 
 		try {
-			if (params[1].equalsIgnoreCase("off")) {
-				synchronized(prefs) {
-					prefs.setAutomaticResponseTime(0);
+			if(params[1].equalsIgnoreCase("off")) {
+				prefs.setAutomaticResponseTime(0);
+				message.getChannel().sendMessage("disabled automatic responses for server `" 
+						+ MiscUtils.getGuildString(targetGuild) + "`").queue();
+			} else if(params[1].equalsIgnoreCase("view")) {
+				int autoResponseTime = prefs.getAutomaticResponseTime();
+				if(autoResponseTime == 0) {
+					message.getChannel().sendMessage("automatic responses for server `" + MiscUtils.getGuildString(targetGuild)
+						+ "` are currently disabled").queue();
+				} else {
+					message.getChannel().sendMessage("automatic responses for server `" + MiscUtils.getGuildString(targetGuild)
+						+ "` are currently set to occur approximately every " + autoResponseTime + " minutes").queue();
 				}
-				message.getChannel().sendMessage("disabled automatic messages for server " 
-						+ MiscUtils.getGuildString(targetGuild)).queue();
 			} else {
 				try {
 					int minutes = Integer.parseInt(params[1]);
@@ -84,11 +97,9 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 						message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
 						return;
 					}
-					synchronized(prefs) {
-						prefs.setAutomaticResponseTime(minutes);
-					}
-					message.getChannel().sendMessage("set automatic message time for server " + MiscUtils.getGuildString(targetGuild)
-					+ " to " + params[1] + " min").queue();
+					prefs.setAutomaticResponseTime(minutes);
+					message.getChannel().sendMessage("set automatic response time for server `" + MiscUtils.getGuildString(targetGuild)
+					+ "` to approximately " + params[1] + " minutes").queue();
 				} catch (NumberFormatException e) {
 					message.getChannel().sendMessage(StandardMessages.invalidAutoResponseTime(params[1])).queue();
 				}

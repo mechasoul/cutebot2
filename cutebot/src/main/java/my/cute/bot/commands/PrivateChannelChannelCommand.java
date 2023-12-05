@@ -27,10 +27,10 @@ public class PrivateChannelChannelCommand extends PrivateChannelCommand {
 	public void execute(Message message, String[] params) {
 		try {
 			TextChannel channel = message.getJDA().getTextChannelById(params[1]);
-			message.getChannel().sendMessage(channel != null ? channel.toString() : "no channel found with id '" 
-					+ params[1] + "'").queue();
+			message.getChannel().sendMessage(channel != null ? channel.toString() : "no channel found with id `" 
+					+ params[1] + "`").queue();
 		} catch (NumberFormatException e) {
-			message.getChannel().sendMessage("error parsing channel id '" + params[1] + "'").queue();
+			message.getChannel().sendMessage("error parsing channel id `" + params[1] + "`").queue();
 		}
 	}
 

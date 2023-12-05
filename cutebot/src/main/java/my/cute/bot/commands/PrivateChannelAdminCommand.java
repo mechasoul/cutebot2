@@ -55,7 +55,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 			.setDescription("used to modify or view which users have permission to use admin-restricted commands. "
 					+ "note that because permissions are handled on a per-server basis, this command requires"
 					+ "a target server. see `!help default` for more on ways to provide a target server")
-			.addField("use:", "`!admin <mode> [<options>] [<server id>]`", false)
+			.addField("use:", "`!admin <mode> [<options>] [<target server>]`", false)
 			.addField("modes", "`add`: <options> should be a comma-separated list of user IDs (optionally in quotation marks). "
 					+ "the provided users will all be added as admins for the given server"
 					+ System.lineSeparator()
@@ -65,12 +65,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 					+ "`view`: no <options>. displays a list of all users with admin permissions for the given server", false)
 			.addField("examples", "`!admin add \"3333333333,123456789,987654321\"`"
 					+ System.lineSeparator()
-					+ "adds user IDs 3333333333, 123456789, and 987654321 as admins for your default server (see `!help default`)"
+					+ "adds user IDs `3333333333`, `123456789`, and `987654321` as admins for your default server (see `!help default`)"
 					+ System.lineSeparator()
 					+ System.lineSeparator()
 					+ "`!admin remove 123456789,3333333333 11111111111`"
 					+ System.lineSeparator()
-					+ "removes user IDs 123456789 and 3333333333 as admins from server ID 11111111111"
+					+ "removes user IDs `123456789` and `3333333333` as admins from server ID `11111111111`"
 					+ System.lineSeparator()
 					+ System.lineSeparator()
 					+ "`!admin view`"
@@ -110,11 +110,11 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 								.collect(Collectors.toList());
 								
 								if(addedMembers.isEmpty())
-									message.getChannel().sendMessage("no user added as a cutebot admin in server " 
-											+ MiscUtils.getGuildString(targetGuild) + " (already admin? invalid user?)").queue();
+									message.getChannel().sendMessage("no user added as a cutebot admin in server `" 
+											+ MiscUtils.getGuildString(targetGuild) + "` (already admin? invalid user?)").queue();
 								else 
-									message.getChannel().sendMessage("the following users now have cutebot admin privileges in server "
-											+ MiscUtils.getGuildString(targetGuild) + ": " + String.join(", ", addedMembers)).queue();
+									message.getChannel().sendMessage("the following users now have cutebot admin privileges in server `"
+											+ MiscUtils.getGuildString(targetGuild) + "`: " + String.join(", ", addedMembers)).queue();
 								
 							}, 
 							error -> message.getChannel().sendMessage(StandardMessages.unknownError()).queue());
@@ -148,11 +148,11 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 								.collect(Collectors.toList());
 								
 								if(removedMembers.isEmpty())
-									message.getChannel().sendMessage("no users have had cutebot admin privileges removed in server " 
-											+ MiscUtils.getGuildString(targetGuild) + " (not an admin? invalid user?)").queue();
+									message.getChannel().sendMessage("no users have had cutebot admin privileges removed in server `" 
+											+ MiscUtils.getGuildString(targetGuild) + "` (not an admin? invalid user?)").queue();
 								else 
-									message.getChannel().sendMessage("the following users no longer have cutebot admin privileges in server "
-											+ MiscUtils.getGuildString(targetGuild) + ": " + String.join(", ", removedMembers)).queue();
+									message.getChannel().sendMessage("the following users no longer have cutebot admin privileges in server `"
+											+ MiscUtils.getGuildString(targetGuild) + "`: " + String.join(", ", removedMembers)).queue();
 								
 							}, 
 							error -> message.getChannel().sendMessage(StandardMessages.unknownError()).queue());
@@ -177,7 +177,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	
 	private void sendFormattedAdminListMessages(Guild targetGuild, MessageChannel targetChannel) throws IOException {
 		MessageBuilder builder = new MessageBuilder();
-		builder.append("admin list for server " + MiscUtils.getGuildString(targetGuild));
+		builder.append("admin list for server `" + MiscUtils.getGuildString(targetGuild) + "`");
 		builder.append(System.lineSeparator());
 		try {
 			RestAction.allOf(this.allPermissions.getAdmins(targetGuild.getId()).stream()

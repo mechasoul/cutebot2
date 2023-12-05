@@ -113,6 +113,10 @@ public class StandardMessages {
 		return "missing permissions to delete messages";
 	}
 	
+	public static String noDefaultGuildSet() {
+		return "you currently have no default server set";
+	}
+	
 	public static String commandNameAlreadyExists(String name) {
 		return "error: a command already exists with the name `" + name + "`";
 	}
