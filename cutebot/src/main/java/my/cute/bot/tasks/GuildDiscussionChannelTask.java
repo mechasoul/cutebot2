@@ -89,8 +89,7 @@ public final class GuildDiscussionChannelTask implements Runnable {
 		
 		Set<String> discussionChannels = new HashSet<>(10);
 		
-		lineCounts.entrySet().forEach(entry ->
-		{
+		lineCounts.entrySet().forEach(entry -> {
 			Long duration = durations.get(entry.getKey());
 			if(duration != null && ((double)entry.getValue() / (duration / 1000)) >= totalMessagesPerSecond) {
 				discussionChannels.add(entry.getKey());

@@ -15,7 +15,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 
 import org.slf4j.Logger;
@@ -28,7 +27,7 @@ import net.dv8tion.jda.api.entities.TextChannel;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.utils.TimeUtil;
 
-public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>> {
+public class GuildMessageScrapeTask implements Runnable {
 	
 	private static final Logger logger = LoggerFactory.getLogger(GuildMessageScrapeTask.class);
 
@@ -70,7 +69,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 	 * (eg ioexception), the returned CompletableFuture will also complete exceptionally
 	 */
 	@Override
-	public CompletableFuture<Void> call() throws Exception {
+	public void run() {
 		
 		/*
 		 * TODO
@@ -84,8 +83,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 		 * start from current message but check that period is at least some extended time for
 		 * channels that have been alive at least that long
 		 * 
-		 * tidy this
-		 * some duplicated code in if/else condition on whether theres preexisting scrape file
+		 * tidy? huge method
 		 */
 		logger.info(this + ": starting message scrape task");
 		
@@ -94,10 +92,8 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 		
 		final ZonedDateTime oldestAcceptableDateTimeZoned = ZonedDateTime.now(MiscUtils.TIMEZONE).minusDays(this.maxMessageAge);
 		
-		this.guild.getTextChannelCache().forEach(channel ->
-		{
+		this.guild.getTextChannelCache().forEach(channel -> {
 			try {
-				
 				logger.info(this + ": starting on " + channel);
 				Message latestMessage=null;
 				for(Message msg : channel.getHistory().retrievePast(3).complete()) {
@@ -182,10 +178,10 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 					} else {
 						//scrape from servers, file, servers
 						pendingTasks.add(scrapeMessagesUntil(channel, writer, previousLatestMessageTime)
-								.thenAccept(result -> 
-								{
+								.thenAcceptAsync(result -> {
 									try {
 										String line = reader.readLine();
+										//note scrape file is organized from newest message to oldest message
 										while (line != null) {
 											if(LocalDate.parse(line.substring(0, 8), DateTimeFormatter.BASIC_ISO_DATE)
 													.isBefore(oldestAcceptableDateTime.toLocalDate())) {
@@ -201,7 +197,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 												+ "' for channel '" + channel + "'! ex: " + e.getMessage(), e);
 										throw new UncheckedIOException(e);
 									}
-								}).thenCompose(result -> scrapeMessagesBetween(channel, writer, previousOldestAcceptableTime, 
+								}).thenComposeAsync(result -> scrapeMessagesBetween(channel, writer, previousOldestAcceptableTime, 
 										oldestAcceptableDateTime))
 								.whenComplete((result, throwable) -> {
 									try {
@@ -216,7 +212,6 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 									}
 								}));
 					}
-
 				} else {
 					//no previously scraped messages. scrape all from discord servers
 					@SuppressWarnings("resource")
@@ -233,8 +228,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 					
 
 					pendingTasks.add(scrapeMessagesUntil(channel, writer, oldestAcceptableDateTime)
-							.whenComplete((result, throwable) ->
-							{
+							.whenComplete((result, throwable) -> {
 								try {
 									writer.close();
 								} catch (IOException e) {
@@ -254,7 +248,8 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 			}
 		});
 		
-		return CompletableFuture.allOf(pendingTasks.toArray(new CompletableFuture[0]));
+		//call join so this task doesn't complete until all scraping and processing is done
+		CompletableFuture.allOf(pendingTasks.toArray(new CompletableFuture[0])).join();
 	}
 	
 	private CompletableFuture<?> scrapeMessagesUntil(TextChannel channel, BufferedWriter writer, OffsetDateTime endPoint) {
@@ -270,8 +265,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 	private CompletableFuture<?> scrapeMessagesBetween(TextChannel channel, BufferedWriter writer, OffsetDateTime startPoint, OffsetDateTime endPoint) {
 		return channel.getIterableHistory().cache(false)
 				.skipTo(startPoint != null ? TimeUtil.getDiscordTimestamp(startPoint.toInstant().toEpochMilli()) : 0)
-				.forEachAsync(msg ->
-				{
+				.forEachAsync(msg -> {
 					OffsetDateTime msgCreationTime = msg.getTimeCreated();
 					if(!msgCreationTime.isAfter(endPoint)) {
 						return false;
@@ -293,7 +287,7 @@ public class GuildMessageScrapeTask implements Callable<CompletableFuture<Void>>
 				});
 	}
 	
-	private void writeStartAndEndTimestamps(BufferedWriter writer, ZonedDateTime latestMessageTime, ZonedDateTime oldestAcceptableTime) throws IOException {
+	private static void writeStartAndEndTimestamps(BufferedWriter writer, ZonedDateTime latestMessageTime, ZonedDateTime oldestAcceptableTime) throws IOException {
 		if(latestMessageTime.isBefore(oldestAcceptableTime)) latestMessageTime = oldestAcceptableTime;
 		writer.append(latestMessageTime.format(DateTimeFormatter.ISO_ZONED_DATE_TIME));
 		writer.newLine();

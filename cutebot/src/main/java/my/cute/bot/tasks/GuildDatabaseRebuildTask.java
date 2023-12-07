@@ -48,8 +48,7 @@ public final class GuildDatabaseRebuildTask implements Runnable {
 				logger.info(this + ": finished clearing database. constructing new database for speed");
 				this.db.prioritizeSpeed();
 				try (Stream<Path> scrapeFiles = Files.list(PathUtils.getDatabaseScrapeDirectory(this.id))) {
-					scrapeFiles.forEach(file ->
-					{
+					scrapeFiles.forEach(file -> {
 						String channelId = file.getFileName().toString().split("\\.")[0].intern();
 						if(this.prefs.isDiscussionChannel(channelId)) {
 							logger.info(this + ": processing channel " + channelId);
