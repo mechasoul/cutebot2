@@ -1,5 +1,6 @@
 package my.cute.bot.commands;
 
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 
 public abstract class TextChannelCommand extends CommandImpl {
@@ -16,10 +17,14 @@ public abstract class TextChannelCommand extends CommandImpl {
 	protected final JDA jda;
 	protected final String guildId;
 	
-	TextChannelCommand(String name, String description, PermissionLevel permission, int min, int max, JDA jda, String id) {
-		super(name, description, permission, min, max);
+	TextChannelCommand(String name, String description, EmbedBuilder helpEmbed, PermissionLevel permission, int min, int max, JDA jda, String id) {
+		super(name, description, helpEmbed, permission, min, max);
 		this.jda = jda;
 		this.guildId = id;
+	}
+	
+	TextChannelCommand(String name, String description, PermissionLevel permission, int min, int max, JDA jda, String id) {
+		this(name, description, null, permission, min, max, jda, id);
 	}
 
 }

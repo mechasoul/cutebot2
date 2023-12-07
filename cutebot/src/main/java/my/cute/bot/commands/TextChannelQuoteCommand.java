@@ -20,10 +20,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.preferences.GuildPreferences;
+import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 
 class TextChannelQuoteCommand extends TextChannelCommand {
 	
@@ -39,7 +41,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 	private static final Logger logger = LoggerFactory.getLogger(TextChannelQuoteCommand.class);
 
 	static final String NAME = "quote";
-	private static final String DESCRIPTION = "view today's Twitch Chat:tm: Quote Of The Day";
+	private static final String DESCRIPTION = "view today's Twitch Chat:tm: Quote Of The Day. a good conversation starter";
 	
 	/*
 	 * the file that holds quotes
@@ -90,17 +92,6 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 				+ this.prefs.getPrefix() + "quote)")
 				.setEmbeds(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}
-
-	@Override
-	public String getDescription() {
-		return "displays today's Twitch Chat:tm: Quote Of The Day. a good conversation starter";
-	}
-
-	@Override
-	public String getHelp() {
-		// TODO Auto-generated method stub
-		return null;
-	}
 	
 	/*
 	 * takes a String representing a date (as defined by 
@@ -147,6 +138,14 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 				return "the quotes broke so im taking the day off";
 			}
 		}
+	}
+	
+	@Override
+	public MessageEmbed getHelp() {
+		return MiscUtils.applyFlair(new EmbedBuilder()
+				.setTitle(NAME)
+				.setDescription("display today's Twitch Chat:tm: Quote Of The Day. a good conversation starter")
+				.addField("use:", "`" + this.prefs.getPrefix() + "quote`", false)).build();
 	}
 	
 	@Override

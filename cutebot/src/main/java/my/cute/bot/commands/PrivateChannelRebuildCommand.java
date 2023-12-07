@@ -30,14 +30,25 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 			.setDescription("rebuilds the database for a specific server or all servers. this is a very expensive operation; "
 					+ "use with care")
 			.addField("use:", "`!rebuild <options>`", false)
-			.addField("options", "`<options>` should be ")
+			.addField("options", "`<options>` should be either the word `all` to rebuild database for all servers, "
+					+ "or a single server ID to rebuild database for a single server. if rebuilding for a single "
+					+ "server, the desired database age can also be specified as a second parameter after the "
+					+ "server ID (provide database age in days)", false)
+			.addField("examples", "`!rebuild all`"
+					+ System.lineSeparator()
+					+ "rebuilds database for all servers"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!rebuild 111111111111 3650`"
+					+ System.lineSeparator()
+					+ "rebuilds database for server ID 111111111111, with its database age being set to 3650 days", false));
 
 	private final MyListener bot;
 	private final ExecutorService executor;
 	private final Map<String, GuildPreferences> allPrefs;
 	
 	public PrivateChannelRebuildCommand(MyListener bot, ExecutorService executor, Map<String, GuildPreferences> allPrefs) {
-		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 1, 2);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.DEVELOPER, 1, 2);
 		this.bot = bot;
 		this.executor = executor;
 		this.allPrefs = allPrefs;

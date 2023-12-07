@@ -18,6 +18,8 @@ import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 import net.dv8tion.jda.api.requests.ErrorResponse;
 
+//TODO deprecate? see PrivateChannelRoleCommand
+
 class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	
 	private static final Logger logger = LoggerFactory.getLogger(GeneratedTextChannelRoleCommand.class);
@@ -28,7 +30,7 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	private GuildCommandSet parent;
 	
 	GeneratedTextChannelRoleCommand(String name, RoleCommandDatabase db, JDA jda, String id, GuildCommandSet parent) {
-		super(name, DESCRIPTION, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
+		super(name, DESCRIPTION, null, PermissionLevel.USER, 0, Integer.MAX_VALUE, jda, id);
 		this.database = db;
 		this.parent = parent;
 	}

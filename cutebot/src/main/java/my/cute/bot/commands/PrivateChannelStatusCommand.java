@@ -1,5 +1,7 @@
 package my.cute.bot.commands;
 
+import my.cute.bot.util.MiscUtils;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Message;
 
@@ -7,9 +9,23 @@ public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 
 	final static String NAME = "status";
 	private static final String DESCRIPTION = "change cutebot's status";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("change cutebot's discord status (ie, activity)")
+			.addField("use:", "`!status <options>`", false)
+			.addField("options", "`<options>` should either be any text, which will set that text as cutebot's "
+					+ "current status, or should be omitted, which will reset cutebot's current status", false)
+			.addField("examples", "`!status feeling very cute right now`"
+					+ System.lineSeparator()
+					+ "sets cutebot's current status to `feeling very cute right now`"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!status`"
+					+ System.lineSeparator()
+					+ "resets cutebot's current status", false));
 	
 	public PrivateChannelStatusCommand() {
-		super(NAME, DESCRIPTION, PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.DEVELOPER, 0, Integer.MAX_VALUE);
 	}
 	
 	/*

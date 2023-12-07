@@ -15,11 +15,14 @@ import com.google.common.collect.ImmutableList;
 
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.MessageBuilder.SplitPolicy;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
+
+//maybe deprecate this. lot of maintenance and not sure if it'd ever be used anymore
 
 /**
  * command for defining commands to allow users to add/remove roles to themselves. there are
@@ -72,6 +75,9 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	final static String NAME = "role";
 	private final static String DESCRIPTION = "modify or view admin-defined role commands, "
 			+ "to allow server users to toggle some roles via cutebot";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("todo"));
 	
 	/*
 	 * pattern for matching role/alias syntax
@@ -88,7 +94,7 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 	private final Map<String, GuildCommandSet> allCommands;
 	
 	PrivateChannelRoleCommand(Map<String, GuildCommandSet> commands) {
-		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allCommands = commands;
 	}
 

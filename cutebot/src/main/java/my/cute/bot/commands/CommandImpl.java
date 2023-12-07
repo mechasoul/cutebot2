@@ -28,6 +28,10 @@ public abstract class CommandImpl implements Command {
 		this.maxParams = max;
 	}
 	
+	protected CommandImpl(String name, String description, PermissionLevel permission, int min, int max) {
+		this(name, description, null, permission, min, max);
+	}
+	
 	/*
 	 * executes the Command, using the given Message as a parameter.
 	 * all required arguments for the command are to be given in the Message's content.
@@ -52,6 +56,7 @@ public abstract class CommandImpl implements Command {
 	
 	@Override
 	public MessageEmbed getHelp() {
+		if(this.help == null) throw new UnsupportedOperationException("ho help provided for " + this);
 		return this.help.build();
 	}
 	
