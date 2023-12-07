@@ -53,16 +53,16 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
 			.setTitle(NAME)
 			.setDescription("used to modify or view which users have permission to use admin-restricted commands. "
-					+ "note that because permissions are handled on a per-server basis, this command requires"
-					+ "a target server. see `!help default` for more on ways to provide a target server")
+					+ "note that because permissions are handled on a per-server basis, this command **requires"
+					+ "a target server**. see `!help default` for more on ways to provide a target server")
 			.addField("use:", "`!admin <mode> [<options>] [<target server>]`", false)
-			.addField("modes", "`add`: <options> should be a comma-separated list of user IDs (optionally in quotation marks). "
+			.addField("modes", "`add`: `<options>` should be a comma-separated list of user IDs (optionally in quotation marks). "
 					+ "the provided users will all be added as admins for the given server"
 					+ System.lineSeparator()
-					+ "`remove`: <options> should be a comma-separated list of user IDs (optionally in quotation marks). "
+					+ "`remove`: `<options>` should be a comma-separated list of user IDs (optionally in quotation marks). "
 					+ "the provided users will all be removed as admins for the given server"
 					+ System.lineSeparator()
-					+ "`view`: no <options>. displays a list of all users with admin permissions for the given server", false)
+					+ "`view`: no `<options>`. displays a list of all users with admin permissions for the given server", false)
 			.addField("examples", "`!admin add \"3333333333,123456789,987654321\"`"
 					+ System.lineSeparator()
 					+ "adds user IDs `3333333333`, `123456789`, and `987654321` as admins for your default server (see `!help default`)"

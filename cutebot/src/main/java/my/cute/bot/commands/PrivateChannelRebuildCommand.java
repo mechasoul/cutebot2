@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.MyListener;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.tasks.GuildDatabaseSetupTask;
+import my.cute.bot.util.MiscUtils;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Activity;
 import net.dv8tion.jda.api.entities.Guild;
@@ -23,6 +25,12 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelRebuildCommand.class);
 	final static String NAME = "rebuild";
 	private final static String DESCRIPTION = "force rebuild of a specific server's database, or all servers' databases (!)";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("rebuilds the database for a specific server or all servers. this is a very expensive operation; "
+					+ "use with care")
+			.addField("use:", "`!rebuild <options>`", false)
+			.addField("options", "`<options>` should be ")
 
 	private final MyListener bot;
 	private final ExecutorService executor;
@@ -90,7 +98,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					try {
 						guildPrefs.setDatabaseAge(Integer.parseInt(params[2]));
 					} catch (NumberFormatException e) {
-						message.getChannel().sendMessage("error parsing new database age '" + params[2] + "'").queue();
+						message.getChannel().sendMessage("error parsing new database age `" + params[2] + "`").queue();
 						return;
 					} catch (IOException e) {
 						logger.warn(this + ": unknown IOException during execution", e);

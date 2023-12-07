@@ -16,6 +16,7 @@ import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.RegexValidator;
 import my.cute.bot.util.StandardMessages;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
@@ -60,7 +61,81 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelFilterCommand.class);
 	final static String NAME = "filter";
-	private final static String DESCRIPTION = "modify or view a server's wordfilter";
+	private final static String DESCRIPTION = "view or modify a server's wordfilter";
+	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
+			.setTitle(NAME)
+			.setDescription("view or modify a server's wordfilter. this is basically a list of "
+					+ "blacklisted words or phrases along with a set of actions to take when a user sends a "
+					+ "message containing one of those words. actions include general moderation "
+					+ "tools (for example, deleting the message) along with cutebot-specific tools "
+					+ "(for example, ignoring the message so cutebot won't potentially repeat it). a "
+					+ "server's wordfilter may contain up to " + WordFilter.MAX_FILTERED_WORDS + " words, "
+					+ "and each word may be at most " + WordFilter.MAX_WORD_LENGTH + " characters long. "
+					+ "note that because wordfilters are saved on a per-server basis, this command "
+					+ "**requires a target server** (see `!help default` for more on ways to provide "
+					+ "a target server)")
+			.addField("use:", "`!filter <mode> [<options>] [<target server>]", false)
+			.addField("modes", "`add`: `<options>` should be a comma-separated list of words or phrases "
+					+ "to add to the wordfilter, all surrounded by quotation marks"
+					+ System.lineSeparator()
+					+ "`remove`: `<options>` should be a comma-separated list of words or phrases to "
+					+ "remove from the wordfilter, all surrounded by quotation marks"
+					+ System.lineSeparator()
+					+ "`clear`: no `<options>`. clears the filter, removing all words and disabling regex "
+					+ "mode if it was enabled (see `regex` below). note this will have no effect on the currently "
+					+ "set filter response actions (see `action` below)"
+					+ System.lineSeparator()
+					+ "`set`: `<options>` should be a comma-separated list of words or phrases to use for "
+					+ "the filter, or a regex string to use as the filter if regex mode is enabled (see `regex` "
+					+ "below); in either case, `<options>` should be surrounded by quotation marks. note this "
+					+ "discards any currently filtered words and replaces them with whatever words are provided "
+					+ "by this command"
+					+ System.lineSeparator()
+					+ "`regex`: `<options>` should be either the word `on` to enable regex mode, or the word `off` "
+					+ "to disable regex mode (no quotation marks in either case). when regex mode is enabled, `add` "
+					+ "and `remove` will have no effect, and the current list of filtered words will be ignored. "
+					+ "instead, an explicit regex string can be set as the filter by using `set`. this is for advanced "
+					+ "filter use; if you don't know what any of this means then ignore it"
+					+ System.lineSeparator()
+					+ "`action`: `<options>` should be a single word consisting only of numbers from 1-7. each number "
+					+ "corresponds to a different action that will be taken when the wordfilter is triggered, and all "
+					+ "actions included will be taken. the possible actions and their numbers are 1: don't process the "
+					+ "message (this will prevent cutebot from repeating it), 2: send a message in the server indicating "
+					+ "that the offending user triggered the wordfilter, 3: send a private message to the offending user "
+					+ "to inform them that they triggered it, 4: delete the message, 5: apply a given role to "
+					+ "the offending user, 6: kick the offending user, 7: ban the offending user"
+					+ System.lineSeparator()
+					+ "`role`: `<options>` should be the ID of a role to apply to a user who triggers the wordfilter, "
+					+ "for use with action 5 as stated above (see `action`)"
+					+ System.lineSeparator()
+					+ "`view`: no `<options>`. displays the current wordfilter settings", false)
+			.addField("examples", "`!filter add \"cute, manly butts\" 1111111111`"
+					+ System.lineSeparator()
+					+ "adds the phrases `cute` and `manly butts` to the list of filtered words for server ID `1111111111`"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!filter remove \"very,nice,friendly,kind people\" \"cute server\"`"
+					+ System.lineSeparator()
+					+ "removes the phrases `very`, `nice`, `friendly`, and `kind people` from the list of filtered words "
+					+ "for server name `cute server`"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!filter clear`"
+					+ System.lineSeparator()
+					+ "clears the wordfilter for your default server (see `!help default`)"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!filter set \"flying,goose\"`"
+					+ System.lineSeparator()
+					+ "sets the phrases `flying` and `goose` as the only two filtered words for your default server "
+					+ "(see `!help default`)"
+					+ System.lineSeparator()
+					+ System.lineSeparator()
+					+ "`!filter action 124 3333333333`"
+					+ System.lineSeparator()
+					+ "sets the actions to be taken when the wordfilter is triggered in server ID `3333333333` to: "
+					+ "skip processing the message, send a notifying message in the server, delete the message", false));
+			
 	private final static Pattern ACTION_FLAGS = Pattern.compile("[1234567]+");
 	
 	private final Map<String, WordFilter> allFilters;
@@ -72,7 +147,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		 * want, so we do this. targetguild can still be obtained if its provided as the 
 		 * last parameter or if a default guild is set
 		 */
-		super(NAME, DESCRIPTION, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
+		super(NAME, DESCRIPTION, HELP, PermissionLevel.ADMIN, 1, Integer.MAX_VALUE);
 		this.allFilters = filters;
 	}
 

@@ -14,6 +14,9 @@ public interface WordFilter {
 		BASIC, REGEX
 	}
 	
+	public static final int MAX_FILTERED_WORDS = 60;
+	public static final int MAX_WORD_LENGTH = 32;
+	
 	/**
 	 * checks a given string against the wordfilter
 	 * 
@@ -169,6 +172,10 @@ public interface WordFilter {
 	 * @return the id of the role to apply
 	 */
 	public String getRoleId();
+	
+	public int getMaxWords();
+	
+	public int getMaxWordLength();
 	
 	/*
 	 * i dont like that i have save() in the implementation class and load() in a 

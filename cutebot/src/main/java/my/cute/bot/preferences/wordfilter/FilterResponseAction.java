@@ -30,8 +30,7 @@ public enum FilterResponseAction {
 	/* 6 */ KICK, 
 	/* 7 */ BAN;
 
-	public static final EnumSet<FilterResponseAction> DEFAULT = EnumSet.of(FilterResponseAction.SKIP_PROCESS,
-			FilterResponseAction.SEND_RESPONSE_GUILD, FilterResponseAction.DELETE_MESSAGE);
+	public static final EnumSet<FilterResponseAction> DEFAULT = EnumSet.of(FilterResponseAction.SKIP_PROCESS);
 	
 	public static String toDescription(FilterResponseAction action) {
 		switch(action) {

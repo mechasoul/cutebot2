@@ -20,8 +20,6 @@ import my.cute.bot.util.MiscUtils;
 
 public class WordFilterImpl implements WordFilter {
 
-	private static final int MAX_FILTERED_WORDS = 60;
-	private static final int MAX_WORD_LENGTH = 32;
 	private static final String EMPTY_COMPILED_FILTER_TOKEN = "[null]";
 	
 	private final String id;
@@ -77,10 +75,10 @@ public class WordFilterImpl implements WordFilter {
 	public synchronized boolean add(final String[] words) throws IOException {
 		if(this.mode == WordFilter.Type.REGEX) return false;
 		int initialNumFilteredWords = this.filteredWords.size();
-		if(initialNumFilteredWords >= MAX_FILTERED_WORDS) return false;
+		if(initialNumFilteredWords >= WordFilter.MAX_FILTERED_WORDS) return false;
 		for(String word : words) {
-			if(this.filteredWords.size() >= MAX_FILTERED_WORDS) break;
-			if(word.length() <= MAX_WORD_LENGTH && !word.isBlank()) this.filteredWords.add(word);
+			if(this.filteredWords.size() >= WordFilter.MAX_FILTERED_WORDS) break;
+			if(word.length() <= WordFilter.MAX_WORD_LENGTH && !word.isBlank()) this.filteredWords.add(word);
 		}
 		boolean filterChanged = this.filteredWords.size() > initialNumFilteredWords;
 		if (filterChanged) {
@@ -236,6 +234,16 @@ public class WordFilterImpl implements WordFilter {
 	@Override
 	public synchronized String getRoleId() {
 		return this.roleId;
+	}
+	
+	@Override
+	public int getMaxWords() {
+		return WordFilter.MAX_FILTERED_WORDS;
+	}
+	
+	@Override
+	public int getMaxWordLength() {
+		return WordFilter.MAX_WORD_LENGTH;
 	}
 	
 	/**

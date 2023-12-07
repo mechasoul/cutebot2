@@ -165,6 +165,7 @@ public class GuildMessageReceivedHandler {
 		}
 			
 		try {
+			//TODO check generated messages to make sure they dont trigger wordfilter
 			if(this.autonomyHandler.shouldSendAutomaticMessage()) {
 				String line = this.database.generateLine();
 				event.getChannel().sendMessage(line).queue();

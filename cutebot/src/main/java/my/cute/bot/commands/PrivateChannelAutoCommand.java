@@ -32,8 +32,8 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
 			.setTitle(NAME)
 			.setDescription("enable or disable automatic cutebot responses, or change the approximate time in between them. "
-					+ "note that because this setting can be changed on a per-server basis, this command requires "
-					+ "a target server. see `!help default` for more on ways to provide a target server")
+					+ "note that because this setting can be changed on a per-server basis, this command **requires "
+					+ "a target server**. see `!help default` for more on ways to provide a target server")
 			.addField("use:", "`!auto <options> [<target server>]`", false)
 			.addField("options", "options should be `off`, which disables automatic cutebot responses, "
 					+ "or a number from 1 to 525600 (inclusive), which enables automatic cutebot responses and sets them "
