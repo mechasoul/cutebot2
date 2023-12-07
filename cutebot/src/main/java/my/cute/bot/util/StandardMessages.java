@@ -12,7 +12,7 @@ import net.dv8tion.jda.api.entities.User;
 public class StandardMessages {
 	
 	public static String unknownCommand(String givenCommand) {
-		return "error: invalid command: '" + givenCommand + "'. try `!help` for a list of commands";
+		return "error: invalid command: `" + givenCommand + "`. try `!help` for a list of commands";
 	}
 	
 	public static String noTargetGuild() {

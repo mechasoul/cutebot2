@@ -77,7 +77,7 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 			+ "to allow server users to toggle some roles via cutebot";
 	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
 			.setTitle(NAME)
-			.setDescription("todo"));
+			.setDescription("deprecated"));
 	
 	/*
 	 * pattern for matching role/alias syntax
