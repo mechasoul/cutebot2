@@ -31,7 +31,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					+ "use with care")
 			.addField("use:", "`!rebuild <options>`", false)
 			.addField("options", "`<options>` should be either the word `all` to rebuild database for all servers, "
-					+ "or a single server ID to rebuild database for a single server. if rebuilding for a single "
+					+ "or a single server ID to rebuild only that server's database. if rebuilding a single "
 					+ "server, the desired database age can also be specified as a second parameter after the "
 					+ "server ID (provide database age in days)", false)
 			.addField("examples", "`!rebuild all`"
@@ -41,7 +41,7 @@ public class PrivateChannelRebuildCommand extends PrivateChannelCommand {
 					+ System.lineSeparator()
 					+ "`!rebuild 111111111111 3650`"
 					+ System.lineSeparator()
-					+ "rebuilds database for server ID 111111111111, with its database age being set to 3650 days", false));
+					+ "rebuilds database for server ID `111111111111`, with its database age being set to `3650` days", false));
 
 	private final MyListener bot;
 	private final ExecutorService executor;

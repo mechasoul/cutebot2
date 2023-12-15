@@ -9,9 +9,11 @@ import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
@@ -21,6 +23,8 @@ import my.cute.bot.util.MiscUtils;
 public class WordFilterImpl implements WordFilter {
 
 	private static final String EMPTY_COMPILED_FILTER_TOKEN = "[null]";
+	private static final long TIMEOUT = 1;
+	private static final TimeUnit UNIT = TimeUnit.SECONDS;
 	
 	private final String id;
 	private final Path path;
@@ -64,7 +68,21 @@ public class WordFilterImpl implements WordFilter {
 	public synchronized String check(String input) throws TimeoutException {
 		if(this.compiledFilter == null || !this.isEnabled()) return null;
 		try {
-			return MiscUtils.findMatchWithTimeout(this.compiledFilter, input, 1, TimeUnit.SECONDS);
+			return MiscUtils.findMatchWithTimeout(this.compiledFilter, input, TIMEOUT, UNIT);
+		} catch (InterruptedException | ExecutionException e) {
+			//TODO ?
+			throw new RuntimeException(e);
+		}
+	}
+	
+	@Override
+	public synchronized String strip(String input, String replacement) throws TimeoutException {
+		if(this.compiledFilter == null || !this.isEnabled()) return input;
+		
+		try {
+			Matcher matcher = this.compiledFilter.matcher(input);
+			CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> matcher.replaceAll(replacement));
+			return future.get(TIMEOUT, UNIT);
 		} catch (InterruptedException | ExecutionException e) {
 			//TODO ?
 			throw new RuntimeException(e);
@@ -251,15 +269,17 @@ public class WordFilterImpl implements WordFilter {
 	 * for performance i guess?
 	 * generated regex will match all words in the filter, as whole words, optionally ending with an 's'
 	 * for example, filter list "apple,orange,banana" is built into string 
-	 * "\\b((?:apple)|(?:orange)|(?:banana))s?\\b"
+	 * "\\W*((?:apple)|(?:orange)|(?:banana))s?\\W*"
 	 * which should match any whole word: apple, apples, orange, oranges, banana, bananas
 	 * the word "crabapple" would not trigger a match
+	 * filter will also match any number of non-word characters at start or end
+	 * eg "`apples?`" would be matched by having "apple" as a filtered word (optional 's', non-word characters '`' and '?')
 	 */
 	private synchronized void updateCompiledFilter() {
 		if(this.filteredWords.isEmpty()) {
 			this.compiledFilter = null;
 		} else {
-			String newFilter = "\\b((?:" + String.join(")|(?:", this.filteredWords) + "))s?\\b";
+			String newFilter = "\\W*((?:" + String.join(")|(?:", this.filteredWords) + "))s?\\W*";
 			this.compiledFilter = Pattern.compile(newFilter, Pattern.CASE_INSENSITIVE);
 		}
 	}

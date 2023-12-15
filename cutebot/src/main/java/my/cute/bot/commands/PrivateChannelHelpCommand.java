@@ -13,7 +13,7 @@ class PrivateChannelHelpCommand extends PrivateChannelCommand {
 	private final static String DESCRIPTION = "view the list of available commands, or get detailed information about a command";
 	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
 			.setTitle(NAME)
-			.setDescription("view the list of available commands, or get detailed information about a command, plus examples")
+			.setDescription("view the list of available commands, or get detailed information about a command along with examples")
 			.addField("use:", "`!help [<options>]`", false)
 			.addField("options", "`<options>` should either be omitted, which will display a list of all commands along with a "
 					+ "short description, or be the name of a command, which will display detailed information about the command "

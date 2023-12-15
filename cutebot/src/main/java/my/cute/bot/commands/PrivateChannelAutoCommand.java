@@ -35,9 +35,9 @@ public class PrivateChannelAutoCommand extends PrivateChannelCommandTargeted {
 					+ "note that because this setting can be changed on a per-server basis, this command **requires "
 					+ "a target server**. see `!help default` for more on ways to provide a target server")
 			.addField("use:", "`!auto <options> [<target server>]`", false)
-			.addField("options", "options should be `off`, which disables automatic cutebot responses, "
-					+ "or a number from 1 to 525600 (inclusive), which enables automatic cutebot responses and sets them "
-					+ "to occur approximately that many minutes apart, or `view`, which displays the current setting "
+			.addField("options", "options should be one of: `off`, which disables automatic cutebot responses; or "
+					+ "a number from 1 to 525600 (inclusive), which enables automatic cutebot responses and sets them "
+					+ "to occur approximately that many minutes apart; or `view`, which displays the current setting "
 					+ "for automatic cutebot responses", false)
 			.addField("examples", "`!auto off \"cute server\"`"
 					+ System.lineSeparator()

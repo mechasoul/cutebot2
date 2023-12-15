@@ -66,7 +66,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			.setTitle(NAME)
 			.setDescription("view or modify a server's wordfilter. this is basically a list of "
 					+ "blacklisted words or phrases along with a set of actions to take when a user sends a "
-					+ "message containing one of those words. actions include general moderation "
+					+ "message containing one of those words or phrases. actions include general moderation "
 					+ "tools (for example, deleting the message) along with cutebot-specific tools "
 					+ "(for example, ignoring the message so cutebot won't potentially repeat it). a "
 					+ "server's wordfilter may contain up to " + WordFilter.MAX_FILTERED_WORDS + " words, "
@@ -74,18 +74,18 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 					+ "note that because wordfilters are saved on a per-server basis, this command "
 					+ "**requires a target server** (see `!help default` for more on ways to provide "
 					+ "a target server)")
-			.addField("use:", "`!filter <mode> [<options>] [<target server>]", false)
+			.addField("use:", "`!filter <mode> [<options>] [<target server>]`", false)
 			.addField("modes", "`add`: `<options>` should be a comma-separated list of words or phrases "
-					+ "to add to the wordfilter, all surrounded by quotation marks"
+					+ "to add to the wordfilter, with the entire list surrounded by quotation marks"
 					+ System.lineSeparator()
 					+ "`remove`: `<options>` should be a comma-separated list of words or phrases to "
-					+ "remove from the wordfilter, all surrounded by quotation marks"
+					+ "remove from the wordfilter, with the entire list surrounded by quotation marks"
 					+ System.lineSeparator()
 					+ "`clear`: no `<options>`. clears the filter, removing all words and disabling regex "
 					+ "mode if it was enabled (see `regex` below). note this will have no effect on the currently "
-					+ "set filter response actions (see `action` below)"
-					+ System.lineSeparator()
-					+ "`set`: `<options>` should be a comma-separated list of words or phrases to use for "
+					+ "set filter response actions (see `action` below)", false)
+			.addField("", 
+					"`set`: `<options>` should be a comma-separated list of words or phrases to use for "
 					+ "the filter, or a regex string to use as the filter if regex mode is enabled (see `regex` "
 					+ "below); in either case, `<options>` should be surrounded by quotation marks. note this "
 					+ "discards any currently filtered words and replaces them with whatever words are provided "
@@ -95,14 +95,14 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 					+ "to disable regex mode (no quotation marks in either case). when regex mode is enabled, `add` "
 					+ "and `remove` will have no effect, and the current list of filtered words will be ignored. "
 					+ "instead, an explicit regex string can be set as the filter by using `set`. this is for advanced "
-					+ "filter use; if you don't know what any of this means then ignore it"
-					+ System.lineSeparator()
-					+ "`action`: `<options>` should be a single word consisting only of numbers from 1-7. each number "
-					+ "corresponds to a different action that will be taken when the wordfilter is triggered, and all "
-					+ "actions included will be taken. the possible actions and their numbers are 1: don't process the "
+					+ "filter use; if you don't know what any of this means then ignore it", false)
+			.addField("", 
+					"`action`: `<options>` should be a single word consisting only of numbers from 1-7. each number "
+					+ "corresponds to a different action that will be taken when the wordfilter is triggered. the "
+					+ "possible actions and their numbers are 1: don't process the "
 					+ "message (this will prevent cutebot from repeating it), 2: send a message in the server indicating "
 					+ "that the offending user triggered the wordfilter, 3: send a private message to the offending user "
-					+ "to inform them that they triggered it, 4: delete the message, 5: apply a given role to "
+					+ "to inform them that they triggered the wordfilter, 4: delete the message, 5: apply a given role to "
 					+ "the offending user, 6: kick the offending user, 7: ban the offending user"
 					+ System.lineSeparator()
 					+ "`role`: `<options>` should be the ID of a role to apply to a user who triggers the wordfilter, "
@@ -134,7 +134,7 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 					+ "`!filter action 124 3333333333`"
 					+ System.lineSeparator()
 					+ "sets the actions to be taken when the wordfilter is triggered in server ID `3333333333` to: "
-					+ "skip processing the message, send a notifying message in the server, delete the message", false));
+					+ "skip processing the message (1), send a notifying message in the server (2), delete the message (4)", false));
 			
 	private final static Pattern ACTION_FLAGS = Pattern.compile("[1234567]+");
 	

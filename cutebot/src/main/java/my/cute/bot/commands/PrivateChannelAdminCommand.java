@@ -49,11 +49,11 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	
 	private final static Logger logger = LoggerFactory.getLogger(PrivateChannelAdminCommand.class);
 	final static String NAME = "admin";
-	private final static String DESCRIPTION = "modify and view which users have permission to use admin-restricted commands";
+	private final static String DESCRIPTION = "view or modify which users have permission to use admin-restricted commands";
 	private final static EmbedBuilder HELP = MiscUtils.applyFlair(new EmbedBuilder()
 			.setTitle(NAME)
-			.setDescription("used to modify or view which users have permission to use admin-restricted commands. "
-					+ "note that because permissions are handled on a per-server basis, this command **requires"
+			.setDescription("used to view or modify which users have permission to use admin-restricted commands. "
+					+ "note that because permissions are handled on a per-server basis, this command **requires "
 					+ "a target server**. see `!help default` for more on ways to provide a target server")
 			.addField("use:", "`!admin <mode> [<options>] [<target server>]`", false)
 			.addField("modes", "`add`: `<options>` should be a comma-separated list of user IDs (optionally in quotation marks). "

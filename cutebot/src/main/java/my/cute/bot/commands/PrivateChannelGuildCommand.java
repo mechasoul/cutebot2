@@ -14,10 +14,10 @@ public class PrivateChannelGuildCommand extends PrivateChannelCommand {
 			.setDescription("view the name of a given server ID. in order for this command to work, "
 					+ "cutebot must be a member of the server")
 			.addField("use:", "`!guild <options>`", false)
-			.addField("options", "<options> should be a single guild ID", false)
+			.addField("options", "`<options>` should be a single server ID", false)
 			.addField("examples", "`!guild 1111111111`"
 					+ System.lineSeparator()
-					+ "view the name of the discord server with ID 1111111111", false));
+					+ "view the name of the discord server with ID `1111111111`", false));
 	
 	public PrivateChannelGuildCommand() {
 		super(NAME, DESCRIPTION, HELP, PermissionLevel.DEVELOPER, 1, 1);

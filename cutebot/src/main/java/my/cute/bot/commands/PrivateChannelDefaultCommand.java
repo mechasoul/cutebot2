@@ -37,11 +37,11 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 					+ System.lineSeparator()
 					+ System.lineSeparator()
 					+ "**1) provide the target server's ID.** this can be done by placing the server ID at "
-					+ "the end of the command, eg `!commandname parameters 1111111111` to specify server ID "
+					+ "the end of the command, eg `!<command name> <options> 1111111111` to specify server ID "
 					+ "`1111111111` as the target server"
 					+ System.lineSeparator()
 					+ "**2) provide the target server's name.** this can be done by placing the server's name "
-					+ "in quotation marks at the end of the command, eg `!commandname parameters \"cute server\"` "
+					+ "in quotation marks at the end of the command, eg `!<command name> <options> \"cute server\"` "
 					+ "to specify the server named `cute server` as the target server"
 					+ System.lineSeparator()
 					+ "**3) set a default server.** this allows you to omit the target server from any commands "
@@ -50,7 +50,7 @@ public class PrivateChannelDefaultCommand extends PrivateChannelCommand {
 			.addField("use:", "`!default <options> [<target server>]`", false)
 			.addField("options:", "options should be one of `view`, which will display your current default server, "
 					+ "`clear`, which will clear your current default server, or a target server as specified above "
-					+ "(either as a server ID or a server name in quotation marks), which will set that server as"
+					+ "(either as a server ID or a server name in quotation marks), which will set that server as "
 					+ "your default server", false)
 			.addField("examples", "`!default view`"
 					+ System.lineSeparator()

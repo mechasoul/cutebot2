@@ -130,69 +130,71 @@ public class GuildMessageReceivedHandler {
 				//wordfilter found a match
 				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
 			}
+		
+		
+			//don't process messages / send automatic messages in non-discussion channels
+			if(!this.prefs.isDiscussionChannel(event.getChannel().getId())) return;
+			
+			try {
+				
+				this.database.processLine(content);
+				
+			} catch (ReadObjectException e) {
+				/*
+				 * TODO is it possible for this to be something other than IOException?
+				 * ie, a problem with loading a shard results in some other exception somehow?
+				 */
+				this.recoverFromDatabaseError(event, e);
+				//don't continue with line generation and whatever if the database is broken
+				return;
+			} catch (IOException e) {
+				/*
+				 * could indicate a problem with writing to workingset file, or something else unanticipated 
+				 * further operation will make workingset inconsistent, so require user intervention
+				 * this method is called from MyListener, which will shutdown on IOException encountered here
+				 */
+				logger.warn(this + ": unknown IOException thrown during line processing - possible workingset inconsistency!");
+				this.database.setShouldRestoreFromBackup(true);
+				throw e;
+			}
+				
+			try {
+				//TODO check generated messages to make sure they dont trigger wordfilter
+				if(this.autonomyHandler.shouldSendAutomaticMessage()) {
+					String line = this.generateWordFilterSafeLine();
+					event.getChannel().sendMessage(line).queue();
+					this.autonomyHandler.update();
+					logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
+							+ this.prefs.getAutomaticResponseTime() + " mins");
+				} else if(BOT_NAME.matcher(content).matches()) {
+					if(isQuestion(content)) {
+						String line = this.generateWordFilterSafeLine();
+						event.getChannel().sendMessage(line).queue();
+					} else {
+						this.addReactionToMessage(event.getMessage());
+					}
+				} else if (content.contains("mothyes")) {
+					this.addReactionToMessage(event.getMessage());
+				}
+			} catch (InsufficientPermissionException e) {
+				/*
+				 * missing permission for sendMessage() or similar
+				 * do nothing
+				 */
+			} catch (IOException e) {
+				/*
+				 * line generation isn't a terribly important place for an IOException to be thrown so don't
+				 * do anything. if something is wrong with the database then we can just wait for it to be 
+				 * thrown from somewhere where we're writing to db
+				 */
+				logger.warn(this + ": encountered IOException during line generation", e);
+			}
 		} catch (TimeoutException e) {
 			//problem with wordfilter
 			//call low-level maintenance so wordfilter can do any necessary changes
 			//then throw exception so something higher-up can handle the general issues that come from this
 			WordFilter.Type type = this.wordFilter.handleTimeout(event.getMessage().getContentRaw());
 			throw new WordfilterTimeoutException(e, type);
-		}
-		
-		//don't process messages / send automatic messages in non-discussion channels
-		if(!this.prefs.isDiscussionChannel(event.getChannel().getId())) return;
-		
-		try {
-			
-			this.database.processLine(content);
-			
-		} catch (ReadObjectException e) {
-			/*
-			 * TODO is it possible for this to be something other than IOException?
-			 * ie, a problem with loading a shard results in some other exception somehow?
-			 */
-			this.recoverFromDatabaseError(event, e);
-			//don't continue with line generation and whatever if the database is broken
-			return;
-		} catch (IOException e) {
-			/*
-			 * could indicate a problem with writing to workingset file, or something else unanticipated 
-			 * further operation will make workingset inconsistent, so require user intervention
-			 * this method is called from MyListener, which will shutdown on IOException encountered here
-			 */
-			logger.warn(this + ": unknown IOException thrown during line processing - possible workingset inconsistency!");
-			this.database.setShouldRestoreFromBackup(true);
-			throw e;
-		}
-			
-		try {
-			//TODO check generated messages to make sure they dont trigger wordfilter
-			if(this.autonomyHandler.shouldSendAutomaticMessage()) {
-				String line = this.database.generateLine();
-				event.getChannel().sendMessage(line).queue();
-				this.autonomyHandler.update();
-				logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
-						+ this.prefs.getAutomaticResponseTime() + " mins");
-			} else if(BOT_NAME.matcher(content).matches()) {
-				if(isQuestion(content)) {
-					event.getChannel().sendMessage(this.database.generateLine()).queue();
-				} else {
-					addReactionToMessage(event.getMessage());
-				}
-			} else if (content.contains("mothyes")) {
-				addReactionToMessage(event.getMessage());
-			}
-		} catch (InsufficientPermissionException e) {
-			/*
-			 * missing permission for sendMessage() or similar
-			 * do nothing
-			 */
-		} catch (IOException e) {
-			/*
-			 * line generation isn't a terribly important place for an IOException to be thrown so don't
-			 * do anything. if something is wrong with the database then we can just wait for it to be 
-			 * thrown from somewhere where we're writing to db
-			 */
-			logger.warn(this + ": encountered IOException during line generation", e);
 		}
 	}
 
@@ -309,6 +311,25 @@ public class GuildMessageReceivedHandler {
 		} else {
 			return false;
 		}
+	}
+	
+	private String generateWordFilterSafeLine() throws IOException, TimeoutException {
+		String line = null;
+		boolean badLine = true;
+		int attempts = 0;
+		while(attempts < 5 && badLine) {
+			line = this.database.generateLine();
+			badLine = this.wordFilter.check(line) != null;
+			attempts++;
+		}
+		if(attempts > 1) {
+			logger.info(this + ": took " + attempts + " attempts to generate safe line");
+		}
+		if(badLine) {
+			logger.warn(this + ": maxed line generation attempts due to wordfilter");
+			line = this.wordFilter.strip(line, " cute ");
+		}
+		return line;
 	}
 	
 	private void applyWordFilterActions(final Message message, final String filteredWord) throws IOException {

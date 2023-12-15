@@ -378,7 +378,7 @@ public class MiscUtils {
 	public static String findMatchWithTimeout(Pattern pattern, String input, long timeout, TimeUnit unit) throws TimeoutException, InterruptedException, ExecutionException {
 		Matcher m = pattern.matcher(input);
 		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-			if(m.matches()) {
+			if(m.find()) {
 				return m.group();
 			} else {
 				return null;
@@ -390,7 +390,7 @@ public class MiscUtils {
 	public static CompletableFuture<String> findMatchWithTimeoutAsync(Pattern pattern, String input, long timeout, TimeUnit unit) {
 		Matcher m = pattern.matcher(input);
 		CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-			if(m.matches()) {
+			if(m.find()) {
 				return m.group();
 			} else {
 				return null;
@@ -431,7 +431,7 @@ public class MiscUtils {
 	}
 	
 	public static EmbedBuilder applySignature(EmbedBuilder builder) {
-		return builder.setFooter(System.lineSeparator() + getSignature(), MOTHYES_LINK);
+		return builder.addBlankField(false).setFooter(System.lineSeparator() + getSignature(), MOTHYES_LINK);
 	}
 	
 	public static EmbedBuilder applyFlair(EmbedBuilder builder) {

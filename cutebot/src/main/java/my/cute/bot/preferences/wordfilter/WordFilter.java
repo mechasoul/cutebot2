@@ -28,6 +28,17 @@ public interface WordFilter {
 	public String check(String input) throws TimeoutException;
 	
 	/**
+	 * checks a given string against the wordfilter and replaces all matches with the given
+	 * replacement string
+	 * @param input the string to check against the wordfilter
+	 * @param replacement the replacement string to replace wordfilter matches with
+	 * @return the input string with all substrings that match the wordfilter replaced by the 
+	 * provided replacement string
+	 * @throws TimeoutException if a timeout occurs while matching
+	 */
+	public String strip(String input, String replacement) throws TimeoutException;
+	
+	/**
 	 * adds words to the wordfilter. every word added will trigger the
 	 * wordfilter after this call returns
 	 * @param words the array of words to add to the wordfilter

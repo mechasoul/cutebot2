@@ -14,7 +14,7 @@ public class PrivateChannelStatusCommand extends PrivateChannelCommand {
 			.setDescription("change cutebot's discord status (ie, activity)")
 			.addField("use:", "`!status [<options>]`", false)
 			.addField("options", "`<options>` should either be any text, which will set that text as cutebot's "
-					+ "current status, or should be omitted, which will reset cutebot's current status", false)
+					+ "current status, or be omitted, which will reset cutebot's current status", false)
 			.addField("examples", "`!status feeling very cute right now`"
 					+ System.lineSeparator()
 					+ "sets cutebot's current status to `feeling very cute right now`"
