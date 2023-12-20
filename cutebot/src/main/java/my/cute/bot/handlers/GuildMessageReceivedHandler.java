@@ -351,13 +351,17 @@ public class GuildMessageReceivedHandler {
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToBan());
 				errorBuilder.append(System.lineSeparator());
+			} catch (HierarchyException e) {
+				//permission exists, but user triggering the wordfilter outranks the bot. do nothing
 			}
-		} else if (actions.contains(FilterResponseAction.KICK)) {
+		} if (actions.contains(FilterResponseAction.KICK)) {
 			try {
 				message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToKick());
 				errorBuilder.append(System.lineSeparator());
+			} catch (HierarchyException e) {
+				//permission exists, but user triggering the wordfilter outranks the bot. do nothing
 			}
 		}
 		if(actions.contains(FilterResponseAction.DELETE_MESSAGE)) {
@@ -366,30 +370,39 @@ public class GuildMessageReceivedHandler {
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToDeleteMessages());
 				errorBuilder.append(System.lineSeparator());
+			} catch (HierarchyException e) {
+				//permission exists, but user triggering the wordfilter outranks the bot. do nothing
 			}
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
-			MessageBuilder builder = new MessageBuilder();
-			builder.mention(message.getAuthor());
-			builder.append(message.getAuthor());
-			builder.append(" your message contained a flagged phrase please don't do that");
-			message.getChannel().sendMessage(builder.build()).queue();
+			try {
+				MessageBuilder builder = new MessageBuilder();
+				builder.mention(message.getAuthor());
+				builder.append(message.getAuthor());
+				builder.append(" your message contained a flagged phrase please don't do that");
+				message.getChannel().sendMessage(builder.build()).queue();
+			} catch (InsufficientPermissionException e) {
+				errorBuilder.append(StandardMessages.missingPermissionsToSendMessage());
+				errorBuilder.append(System.lineSeparator());
+			} 
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_PRIVATE)) {
-			MessageBuilder builder = new MessageBuilder();
-			builder.append("dear user,");
-			builder.append(System.lineSeparator());
-			builder.append(System.lineSeparator());
-			builder.append("your message (");
-			builder.append(message.getJumpUrl());
-			builder.append(") in server ");
-			builder.append(MiscUtils.getGuildString(message.getGuild()));
-			builder.append(" contained the flagged phrase '");
-			builder.append(filteredWord);
-			builder.append("'. please don't do that");
-			builder.append(MiscUtils.getSignature());
-			message.getAuthor().openPrivateChannel()
-					.flatMap(channel -> channel.sendMessage(builder.build())).queue();
+			if(!message.getAuthor().isBot()) {
+				MessageBuilder builder = new MessageBuilder();
+				builder.append("dear user,");
+				builder.append(System.lineSeparator());
+				builder.append(System.lineSeparator());
+				builder.append("your message (");
+				builder.append(message.getJumpUrl());
+				builder.append(") in server ");
+				builder.append(MiscUtils.getGuildString(message.getGuild()));
+				builder.append(" contained the flagged phrase '");
+				builder.append(filteredWord);
+				builder.append("'. please don't do that");
+				builder.append(MiscUtils.getSignature());
+				message.getAuthor().openPrivateChannel()
+						.flatMap(channel -> channel.sendMessage(builder.build())).queue();
+			}
 		}
 		if(actions.contains(FilterResponseAction.ROLE)) {
 			/*
@@ -403,21 +416,19 @@ public class GuildMessageReceivedHandler {
 			else 
 				role = message.getGuild().getRoleById(this.wordFilter.getRoleId());
 			if(role == null) {
-				//stored role is invalid. remove this action and notify admins
-				actions.remove(FilterResponseAction.ROLE);
-				this.wordFilter.setActions(actions);
+				//stored role is invalid
 				this.wordFilter.clearRoleId();
-				this.notifyCutebotAdmins("the wordfilter was set to apply a role to users who trigger it, "
-						+ "but no valid role was provided. please check your wordfilter settings");
-				return;
-			}
-			try {
-				message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
-			} catch (InsufficientPermissionException | HierarchyException e) {
-				//missing permission to modify roles or to interact with the specified role
-				errorBuilder.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
+				errorBuilder.append(StandardMessages.missingWordFilterRole());
 				errorBuilder.append(System.lineSeparator());
-			} 
+			} else {
+				try {
+					message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
+				} catch (InsufficientPermissionException | HierarchyException e) {
+					//missing permission to modify roles or to interact with the specified role
+					errorBuilder.append(StandardMessages.missingPermissionsToApplyFilterRole(role));
+					errorBuilder.append(System.lineSeparator());
+				} 
+			}
 		}
 		
 		String errorMessage = errorBuilder.toString();

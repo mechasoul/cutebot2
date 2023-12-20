@@ -269,7 +269,7 @@ public class WordFilterImpl implements WordFilter {
 	 * for performance i guess?
 	 * generated regex will match all words in the filter, as whole words, optionally ending with an 's'
 	 * for example, filter list "apple,orange,banana" is built into string 
-	 * "\\W*((?:apple)|(?:orange)|(?:banana))s?\\W*"
+	 * "\\b\\W*((?:apple)|(?:orange)|(?:banana))s?\\W*\\b"
 	 * which should match any whole word: apple, apples, orange, oranges, banana, bananas
 	 * the word "crabapple" would not trigger a match
 	 * filter will also match any number of non-word characters at start or end
@@ -279,7 +279,7 @@ public class WordFilterImpl implements WordFilter {
 		if(this.filteredWords.isEmpty()) {
 			this.compiledFilter = null;
 		} else {
-			String newFilter = "\\W*((?:" + String.join(")|(?:", this.filteredWords) + "))s?\\W*";
+			String newFilter = "\\b\\W*((?:" + String.join(")|(?:", this.filteredWords) + "))s?\\W*\\b";
 			this.compiledFilter = Pattern.compile(newFilter, Pattern.CASE_INSENSITIVE);
 		}
 	}

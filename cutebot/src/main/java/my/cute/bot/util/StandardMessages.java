@@ -101,6 +101,10 @@ public class StandardMessages {
 			+ ")` to user who triggered the wordfilter";
 	}
 	
+	public static String missingWordFilterRole() {
+		return "wordfilter is set to apply a role when triggered, but no role has been provided";
+	}
+	
 	public static String missingPermissionsToKick() {
 		return "missing permissions to kick users";
 	}
@@ -111,6 +115,10 @@ public class StandardMessages {
 	
 	public static String missingPermissionsToDeleteMessages() {
 		return "missing permissions to delete messages";
+	}
+	
+	public static Object missingPermissionsToSendMessage() {
+		return "missing permissions to send messages in the server or channel";
 	}
 	
 	public static String noDefaultGuildSet() {
