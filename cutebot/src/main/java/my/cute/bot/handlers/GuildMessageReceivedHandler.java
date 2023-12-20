@@ -98,8 +98,6 @@ public class GuildMessageReceivedHandler {
 	}
 	
 	/*
-	 * TODO this is a really big method can maybe separate it into pieces or whatever
-	 * 
 	 * currently calling handle() as a Runnable in ForkJoinPool.commonPool() (from MyListener)
 	 * each guild has its own lock to synchronize on so can handle at most one message at a time per guild
 	 * but multiple guilds should be able to handle messages concurrently
@@ -108,37 +106,23 @@ public class GuildMessageReceivedHandler {
 		
 		String content = event.getMessage().getContentRaw();
 		
-		if(!StringUtils.isWhitespace(content)) {
-			//message nonempty. check for command
-			String[] params = MiscUtils.getWords(event.getMessage());
-			String firstWord = params[0];
-			if(firstWord.startsWith(this.prefs.getPrefix())) {
-				//first word starts with designated command prefix. check if it's a command
-				String commandName = firstWord.substring(this.prefs.getPrefix().length()).toLowerCase();
-				if(this.commands.execute(commandName, event.getMessage(), params)) {
-					//don't process commands into database
-					return;
-				}
-			} else if(firstWord.startsWith("/")) {
-				//discord command. don't process
-				return;
-			}
-		}
+		boolean isCommand = this.handleCommand(event, content);
+		if(isCommand) return;
 		
 		try {
+			boolean shouldProcess = true;
 			if(this.handleWordFilter(event.getMessage())) {
 				//wordfilter found a match
-				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) return;
+				if(this.wordFilter.getActions().contains(FilterResponseAction.SKIP_PROCESS)) shouldProcess = false;
 			}
 		
-		
-			//don't process messages / send automatic messages in non-discussion channels
-			if(!this.prefs.isDiscussionChannel(event.getChannel().getId())) return;
+			//don't process messages in non-discussion channels
+			if(shouldProcess && !this.prefs.isDiscussionChannel(event.getChannel().getId())) shouldProcess = false;
 			
 			try {
-				
-				this.database.processLine(content);
-				
+				if(shouldProcess) {
+					this.database.processLine(content);
+				}
 			} catch (ReadObjectException e) {
 				/*
 				 * TODO is it possible for this to be something other than IOException?
@@ -159,23 +143,8 @@ public class GuildMessageReceivedHandler {
 			}
 				
 			try {
-				//TODO check generated messages to make sure they dont trigger wordfilter
-				if(this.autonomyHandler.shouldSendAutomaticMessage()) {
-					String line = this.generateWordFilterSafeLine();
-					event.getChannel().sendMessage(line).queue();
-					this.autonomyHandler.update();
-					logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
-							+ this.prefs.getAutomaticResponseTime() + " mins");
-				} else if(BOT_NAME.matcher(content).matches()) {
-					if(isQuestion(content)) {
-						String line = this.generateWordFilterSafeLine();
-						event.getChannel().sendMessage(line).queue();
-					} else {
-						this.addReactionToMessage(event.getMessage());
-					}
-				} else if (content.contains("mothyes")) {
-					this.addReactionToMessage(event.getMessage());
-				}
+				//messages that aren't processed shouldn't trigger automatic responses
+				this.handleResponse(event, content, shouldProcess);
 			} catch (InsufficientPermissionException e) {
 				/*
 				 * missing permission for sendMessage() or similar
@@ -196,6 +165,47 @@ public class GuildMessageReceivedHandler {
 			WordFilter.Type type = this.wordFilter.handleTimeout(event.getMessage().getContentRaw());
 			throw new WordfilterTimeoutException(e, type);
 		}
+	}
+
+	private void handleResponse(GuildMessageReceivedEvent event, String content, boolean canAutoRespond) 
+			throws IOException, TimeoutException {
+		if(this.autonomyHandler.shouldSendAutomaticMessage() && canAutoRespond) {
+			String line = this.generateWordFilterSafeLine();
+			event.getChannel().sendMessage(line).queue();
+			this.autonomyHandler.update();
+			logger.info(this + ": sent automatic message '" + line + "', next automatic message scheduled in around " 
+					+ this.prefs.getAutomaticResponseTime() + " mins");
+		} else if(BOT_NAME.matcher(content).matches()) {
+			if(isQuestion(content)) {
+				String line = this.generateWordFilterSafeLine();
+				event.getChannel().sendMessage(line).queue();
+			} else {
+				this.addReactionToMessage(event.getMessage());
+			}
+		} else if (content.contains("mothyes")) {
+			this.addReactionToMessage(event.getMessage());
+		}
+	}
+	
+	private boolean handleCommand(GuildMessageReceivedEvent event, String content) {
+		if(!StringUtils.isWhitespace(content)) {
+			//message nonempty. check for command
+			String[] params = MiscUtils.getWords(event.getMessage());
+			String firstWord = params[0];
+			if(firstWord.startsWith(this.prefs.getPrefix())) {
+				//first word starts with designated command prefix. check if it's a command
+				String commandName = firstWord.substring(this.prefs.getPrefix().length()).toLowerCase();
+				if(this.commands.execute(commandName, event.getMessage(), params)) {
+					//don't process commands into database
+					return true;
+				}
+			} else if(firstWord.startsWith("/")) {
+				//discord command. don't process
+				return true;
+			}
+		}
+		
+		return false;
 	}
 
 	private void recoverFromDatabaseError(GuildMessageReceivedEvent event, ReadObjectException e) {
