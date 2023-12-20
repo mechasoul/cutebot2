@@ -372,9 +372,9 @@ public class GuildMessageReceivedHandler {
 			builder.append(System.lineSeparator());
 			builder.append("your message (");
 			builder.append(message.getJumpUrl());
-			builder.append(") in server '");
+			builder.append(") in server ");
 			builder.append(MiscUtils.getGuildString(message.getGuild()));
-			builder.append("' contained the flagged phrase '");
+			builder.append(" contained the flagged phrase '");
 			builder.append(filteredWord);
 			builder.append("'. please don't do that");
 			builder.append(MiscUtils.getSignature());
@@ -420,9 +420,9 @@ public class GuildMessageReceivedHandler {
 		sb.append("dear user,");
 		sb.append(System.lineSeparator());
 		sb.append(System.lineSeparator());
-		sb.append("there was a problem encountered in server '");
+		sb.append("there was a problem encountered in server ");
 		sb.append(MiscUtils.getGuildString(this.jda.getGuildById(this.id)));
-		sb.append("': ");
+		sb.append(": ");
 		sb.append(System.lineSeparator());
 		sb.append(System.lineSeparator());
 		sb.append(context);
