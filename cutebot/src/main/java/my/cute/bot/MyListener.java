@@ -47,6 +47,7 @@ public class MyListener extends ListenerAdapter {
 	 * user message. ended up spamming messages during off-hours, maybe with
 	 * a way to modify timer based on activity it would work...keeping the
 	 * framework here in case i revisit it
+	 * 
 	 */
 	@SuppressWarnings("unused")
 	private class AutomaticMessageTask implements Runnable {
