@@ -12,12 +12,14 @@ import org.slf4j.LoggerFactory;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.requests.RestAction;
 import net.dv8tion.jda.api.utils.Result;
+import net.dv8tion.jda.api.utils.SplitUtil;
+import net.dv8tion.jda.api.utils.SplitUtil.Strategy;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 /**
  * command for managing user permissions. users have the authority to add and remove
@@ -97,7 +99,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 						
 						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
 							.filter(id -> !id.isBlank())
-							.map(id -> targetGuild.retrieveMemberById(id, false).mapToResult())
+							.map(id -> targetGuild.retrieveMemberById(id).mapToResult())
 							.collect(Collectors.toList()))
 							.queue(list -> {
 								List<String> addedMembers = list.stream().filter(Result::isSuccess).map(Result::get).filter(member -> {
@@ -135,7 +137,7 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 						
 						RestAction.allOf(Arrays.stream(userIdList.split("\\s*,\\s*"))
 							.filter(id -> !id.isBlank())
-							.map(id -> targetGuild.retrieveMemberById(id, false).mapToResult())
+							.map(id -> targetGuild.retrieveMemberById(id).mapToResult())
 							.collect(Collectors.toList()))
 							.queue(list -> {
 								List<String> removedMembers = list.stream().filter(Result::isSuccess).map(Result::get).filter(member -> {
@@ -176,9 +178,9 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 	}
 	
 	private void sendFormattedAdminListMessages(Guild targetGuild, MessageChannel targetChannel) throws IOException {
-		MessageBuilder builder = new MessageBuilder();
-		builder.append("admin list for server `" + MiscUtils.getGuildString(targetGuild) + "`");
-		builder.append(System.lineSeparator());
+		MessageCreateBuilder builder = new MessageCreateBuilder();
+		builder.addContent("admin list for server `" + MiscUtils.getGuildString(targetGuild) + "`");
+		builder.addContent(System.lineSeparator());
 		try {
 			RestAction.allOf(this.allPermissions.getAdmins(targetGuild.getId()).stream()
 					.map(userId -> targetGuild.retrieveMemberById(userId).onErrorMap(throwable -> {
@@ -194,11 +196,12 @@ class PrivateChannelAdminCommand extends PrivateChannelCommandTargeted {
 					.queue(admins -> {
 						admins.forEach(admin -> {
 							if(admin != null) {
-								builder.append(System.lineSeparator());
-								builder.append(MiscUtils.getUserString(admin.getUser()));
+								builder.addContent(System.lineSeparator());
+								builder.addContent(MiscUtils.getUserString(admin.getUser()));
 							}
 						});
-						MiscUtils.sendMessages(targetChannel, builder.buildAll());
+						
+						MiscUtils.sendMessages(targetChannel, SplitUtil.split(builder.getContent(), 2000, true, Strategy.NEWLINE, Strategy.ANYWHERE));
 					}, error -> {
 						targetChannel.sendMessage(StandardMessages.unknownError()).queue();
 					});

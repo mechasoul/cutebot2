@@ -3,7 +3,6 @@ package my.cute.bot.commands;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -16,11 +15,10 @@ import com.google.common.collect.ImmutableList;
 import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
-import net.dv8tion.jda.api.MessageBuilder.SplitPolicy;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 //maybe deprecate this. lot of maintenance and not sure if it'd ever be used anymore
 
@@ -266,17 +264,17 @@ final class PrivateChannelRoleCommand extends PrivateChannelCommandTargeted {
 		}
 	}
 	
-	private Queue<Message> getRoleCommandsAsMessages(Guild guild, GuildCommandSet commandSet) {
-		MessageBuilder mb = new MessageBuilder();
-		mb.append("current role commands for server " + MiscUtils.getGuildString(guild));
-		mb.append(System.lineSeparator());
-		mb.append(System.lineSeparator());
-		mb.append("(format: `command name - 'role 1' (alias 1), 'role 2' (alias 2), ...`)");
-		mb.append(System.lineSeparator());
-		mb.append(commandSet.getRoleCommandDatabases().stream()
+	private List<String> getRoleCommandsAsMessages(Guild guild, GuildCommandSet commandSet) {
+		MessageCreateBuilder mb = new MessageCreateBuilder();
+		mb.addContent("current role commands for server " + MiscUtils.getGuildString(guild));
+		mb.addContent(System.lineSeparator());
+		mb.addContent(System.lineSeparator());
+		mb.addContent("(format: `command name - 'role 1' (alias 1), 'role 2' (alias 2), ...`)");
+		mb.addContent(System.lineSeparator());
+		mb.addContent(commandSet.getRoleCommandDatabases().stream()
 				.map(db -> db.getFormattedString())
 				.collect(Collectors.joining(System.lineSeparator())));
-		return mb.buildAll(SplitPolicy.ANYWHERE);
+		return MiscUtils.defaultMessageBuilderSplit(mb);
 	}
 
 	/*

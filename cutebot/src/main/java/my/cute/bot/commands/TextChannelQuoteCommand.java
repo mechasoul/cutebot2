@@ -23,9 +23,9 @@ import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.util.MiscUtils;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 class TextChannelQuoteCommand extends TextChannelCommand {
 	
@@ -88,7 +88,7 @@ class TextChannelQuoteCommand extends TextChannelCommand {
 			//need to update quote info file and get new quote
 			dailyQuote = this.updateDailyQuoteFile();
 		}
-		message.getChannel().sendMessage(new MessageBuilder().append("today's Twitch Chat:tm: Quote Of The Day (" 
+		message.getChannel().sendMessage(new MessageCreateBuilder().addContent("today's Twitch Chat:tm: Quote Of The Day (" 
 				+ this.prefs.getPrefix() + "quote)")
 				.setEmbeds(new EmbedBuilder().setDescription(dailyQuote).build()).build()).queue();
 	}

@@ -25,14 +25,19 @@ import com.google.common.collect.ImmutableList;
 
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.requests.restaction.MessageAction;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.entities.emoji.Emoji;
+import net.dv8tion.jda.api.entities.emoji.RichCustomEmoji;
+import net.dv8tion.jda.api.requests.restaction.MessageCreateAction;
+import net.dv8tion.jda.api.utils.SplitUtil;
+import net.dv8tion.jda.api.utils.SplitUtil.Strategy;
 import net.dv8tion.jda.api.utils.cache.CacheView;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
+import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 
 public class MiscUtils {
 	
@@ -60,8 +65,8 @@ public class MiscUtils {
 		return line.replace(NEW_LINE_TOKEN, System.lineSeparator());
 	}
 	
-	public static Emote getRandomEmoteFromCache(JDA jda) {
-		CacheView<Emote> emoteCache = jda.getEmoteCache();
+	public static Emoji getRandomEmojiFromCache(JDA jda) {
+		CacheView<RichCustomEmoji> emoteCache = jda.getEmojiCache();
 		return emoteCache.applyStream(stream -> 
 		{
 			try {
@@ -70,7 +75,7 @@ public class MiscUtils {
 				logger.warn("MiscUtils: exception when trying to get random emote, size: " + emoteCache.size() + ", ex: "
 						+ e.getMessage(), e);
 				//mothyes
-				return jda.getEmoteById("242763939631333378");
+				return jda.getEmojiById("242763939631333378");
 			}
 		});
 	}
@@ -147,15 +152,15 @@ public class MiscUtils {
 	 */
 	public static void sendMessages(MessageChannel channel, Queue<Message> messages) {
 		if(messages.isEmpty()) return;
-		sendMessages(channel, channel.sendMessage(messages.poll()), messages);
+		sendMessages(channel, channel.sendMessage(MessageCreateData.fromMessage(messages.poll())), messages);
 	}
 	
-	private static void sendMessages(MessageChannel channel, MessageAction previous, Queue<Message> messages) {
+	private static void sendMessages(MessageChannel channel, MessageCreateAction previous, Queue<Message> messages) {
 		Message message = messages.poll();
 		if(message == null) {
 			previous.queue();
 		} else {
-			previous.queue(success -> sendMessages(channel, channel.sendMessage(message), messages),
+			previous.queue(success -> sendMessages(channel, channel.sendMessage(MessageCreateData.fromMessage(message)), messages),
 						failure -> channel.sendMessage((messages.size() + 1) + " message(s) not sent because something went wrong").queue());
 		}
 	}
@@ -437,5 +442,33 @@ public class MiscUtils {
 	public static EmbedBuilder applyFlair(EmbedBuilder builder) {
 		return applySignature(builder).setColor(EMBED_COLOR);
 	}
+
+	/**
+	 * TODO i think this sucks? does it work?
+	 * i wanted to do this because i thought maybe doing 
+	 * messages.forEach(message -> channel.sendMessage(message).queue())
+	 * could have the messages arrive at discord servers out of order or something
+	 * and by chaining callbacks we could avoid it 
+	 * but i feel like it sucks
+	 * @param channel the channel to send the messages to
+	 * @param messages the messages to send
+	 */
+	public static void sendMessages(MessageChannel channel, List<String> messages) {
+		if(messages.isEmpty()) return;
+		sendMessages(channel, channel.sendMessage(MessageCreateData.fromContent(messages.removeFirst())), messages);
+	}
 	
+	private static void sendMessages(MessageChannel channel, MessageCreateAction previous, List<String> messages) {
+		String message = (messages.isEmpty() ? null : messages.removeFirst());
+		if(message == null) {
+			previous.queue();
+		} else {
+			previous.queue(success -> sendMessages(channel, channel.sendMessage(MessageCreateData.fromContent(message)), messages),
+						failure -> channel.sendMessage((messages.size() + 1) + " message(s) not sent because something went wrong").queue());
+		}
+	}
+	
+	public static List<String> defaultMessageBuilderSplit(MessageCreateBuilder builder) {
+		return SplitUtil.split(builder.getContent(), 2000, true, Strategy.NEWLINE, Strategy.ANYWHERE);
+	}
 }

@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import my.cute.bot.MyListener;
+import my.cute.bot.audio.AudioHandler;
 import my.cute.bot.commands.CommandSet;
 import my.cute.bot.commands.CommandFactory;
 import my.cute.bot.commands.DefaultGuildDatabase;
@@ -25,7 +26,7 @@ import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public class PrivateMessageReceivedHandler {
 
@@ -36,6 +37,7 @@ public class PrivateMessageReceivedHandler {
 	private final CommandSet<PrivateChannelCommand> commands;
 	private final PermissionManager permissions;
 	private final DefaultGuildDatabase defaultGuilds;
+	private final AudioHandler audioHandler;
 	//used for multithreaded tasks in some commands
 	private final ExecutorService executor = Executors.newCachedThreadPool();
 	
@@ -45,8 +47,9 @@ public class PrivateMessageReceivedHandler {
 		this.jda = jda;
 		this.defaultGuilds = DefaultGuildDatabase.Loader.createOrLoad();
 		this.permissions = permissions;
+		this.audioHandler = new AudioHandler();
 		this.commands = CommandFactory.newDefaultPrivateChannelSet(this.bot, this.defaultGuilds, allPrefs, allFilters, 
-				allCommands, permissions, this.executor);
+				allCommands, permissions, this.executor, audioHandler);
 	}
 	
 	/*
@@ -59,7 +62,7 @@ public class PrivateMessageReceivedHandler {
 	 * making sure they're in the guild they have registered as default, theyre
 	 * in the guild they provide as target for command, etc)
 	 */
-	public void handle(PrivateMessageReceivedEvent event) {
+	public void handle(MessageReceivedEvent event) {
 		String[] params = MiscUtils.getWords(event.getMessage());
 		PrivateChannelCommand command = null;
 		if(params[0].startsWith("!")) {
@@ -215,6 +218,10 @@ public class PrivateMessageReceivedHandler {
 			guildId = mutualGuilds.get(0).getId();
 		}
 		return guildId;
+	}
+	
+	public void shutdown() {
+		audioHandler.shutdown();
 	}
 
 	@Override

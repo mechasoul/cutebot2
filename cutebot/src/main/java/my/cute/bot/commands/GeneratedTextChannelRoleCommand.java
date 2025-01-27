@@ -11,8 +11,8 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
-import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.exceptions.ErrorHandler;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
@@ -106,7 +106,7 @@ class GeneratedTextChannelRoleCommand extends TextChannelCommand {
 	}
 	
 	private void applyRole(Guild guild, Role role, Message context) {
-		guild.retrieveMember(context.getAuthor(), false).queue(member -> {
+		guild.retrieveMember(context.getAuthor()).queue(member -> {
 			try {
 				if(member.getRoles().contains(role)) {
 					this.removeRoleFromMember(guild, member, role, context.getChannel());

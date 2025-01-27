@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.stream.Stream;
 
 import my.cute.bot.MyListener;
+import my.cute.bot.audio.AudioHandler;
 import my.cute.bot.preferences.GuildPreferences;
 import my.cute.bot.preferences.wordfilter.WordFilter;
 import my.cute.bot.util.PathUtils;
@@ -48,7 +49,7 @@ public class CommandFactory {
 	
 	public static CommandSet<PrivateChannelCommand> newDefaultPrivateChannelSet(MyListener bot, 
 			DefaultGuildDatabase defaultGuilds, Map<String, GuildPreferences> allPrefs, Map<String, WordFilter> allFilters, 
-			Map<String, GuildCommandSet> allCommands, PermissionManager perms, ExecutorService executor) {
+			Map<String, GuildCommandSet> allCommands, PermissionManager perms, ExecutorService executor, AudioHandler audioHandler) {
 		CommandSet<PrivateChannelCommand> set = new CommandSetImpl<PrivateChannelCommand>(17);
 		set.put(PrivateChannelAdminCommand.NAME, new PrivateChannelAdminCommand(perms));
 		set.put(PrivateChannelAutoCommand.NAME, new PrivateChannelAutoCommand(allPrefs));
@@ -60,6 +61,7 @@ public class CommandFactory {
 		set.put(PrivateChannelGuildCommand.NAME, new PrivateChannelGuildCommand());
 		set.put(PrivateChannelHelpCommand.NAME, new PrivateChannelHelpCommand(set, perms));
 		set.put(PrivateChannelMaintCommand.NAME, new PrivateChannelMaintCommand(bot));
+		set.put(PrivateChannelPlayCommand.NAME, new PrivateChannelPlayCommand(audioHandler));
 		set.put(PrivateChannelRebuildCommand.NAME, new PrivateChannelRebuildCommand(bot, executor, allPrefs));
 		set.put(PrivateChannelRoleCommand.NAME, new PrivateChannelRoleCommand(allCommands));
 		set.put(PrivateChannelStatusCommand.NAME, new PrivateChannelStatusCommand());

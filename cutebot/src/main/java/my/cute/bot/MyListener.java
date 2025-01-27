@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +32,10 @@ import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.WordfilterTimeoutException;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
 import net.dv8tion.jda.api.events.guild.GuildLeaveEvent;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
-import net.dv8tion.jda.api.events.message.priv.PrivateMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.ErrorHandler;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.ErrorResponse;
@@ -82,6 +83,7 @@ public class MyListener extends ListenerAdapter {
 	private final PermissionManager permissions;
 	private final PrivateMessageReceivedHandler privateMessageHandler;
 	private final ScheduledExecutorService taskScheduler;
+	private final Consumer<MessageReceivedEvent> guildMessageReceivedProcess;
 	
 	/*
 	 * i think it's supposed to be bad practice to use "this" as an argument to something 
@@ -128,9 +130,73 @@ public class MyListener extends ListenerAdapter {
 		//shelving this for now and going back to old method of automatic messages
 		//(generate message after someone else sends a message after the given time)
 //		this.taskScheduler.execute(new AutomaticMessageTask());
+		if(CutebotTask.isCutebotPrime()) 
+			guildMessageReceivedProcess = handleGuildMessageReceivedTesting();
+		else
+			guildMessageReceivedProcess = handleGuildMessageReceivedNormal();
 	}
+	
+	private Consumer<MessageReceivedEvent> handleGuildMessageReceivedNormal() {
+		return (event -> {
+			if(event.getAuthor().isBot()) return;
+			try {
+				GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(event.getGuild().getId());
+				/*
+				 * as i'm introducing more concurrency, i think i need to consider possibility of nulls
+				 * being returned in places they "should" never be, since it might end up being possible
+				 * that eg in between this method being called and the handler being retrieved from the map,
+				 * another event in another thread causes the guild to be degregistered so the get() call
+				 * returns null. extremely edge case that will probably never happen but probably can in theory?
+				 */
+				if (handler == null) {
+					logger.warn("null GuildMessageReceivedHandler found for guild " + this.getGuildString(event.getGuild().getId()));
+					return;
+				}
+				ForkJoinPool.commonPool().execute(() -> {
+					Object lock = this.guildLocks.get(event.getGuild().getId());
+					if(lock == null) {
+						logger.warn("null guild lock found for guild " + this.getGuildString(event.getGuild().getId()));
+						return;
+					}
+					synchronized(lock) {
+						try {
+							handler.handle(event);
+						} catch (IOException e) {
+							throw new UncheckedIOException(e);
+						} catch (WordfilterTimeoutException e) {
+							this.handleWordfilterTimeout(event.getGuild(), e);
+						}
+					}
+				});	
+			} catch (UncheckedIOException e) {
+				/*
+				 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+				 */
+				logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
+				e.getCause().printStackTrace();
+				this.shutdown();
+			}
+		});
+	}
+	
+	private Consumer<MessageReceivedEvent> handleGuildMessageReceivedTesting() {
+		return (event -> {
+			if(event.getAuthor().isBot()) return;
+			try {
+				//nothing here	
+			} catch (UncheckedIOException e) {
+				/*
+				 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+				 */
+				logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
+				e.getCause().printStackTrace();
+				this.shutdown();
+			}
+		});
+	}
+	
 	/*
-	 * TODO
+	 * TODO for guild messages
 	 * check for message deletion event
 	 * if possible, have message deletion add the deleted content to a deletedmessages.txt file
 	 * during maintenance, scan this file over the entire workingset and remove each line in deleted
@@ -148,63 +214,27 @@ public class MyListener extends ListenerAdapter {
 	 * 
 	 * quick cmd to load db from backup
 	 */
-	
-	@SuppressWarnings("resource")
 	@Override
-	public void onGuildMessageReceived(GuildMessageReceivedEvent event) {
+	public void onMessageReceived(MessageReceivedEvent event) {
 		if(event.getAuthor().isBot()) return;
-		try {
-			GuildMessageReceivedHandler handler = this.guildMessageHandlers.get(event.getGuild().getId());
-			/*
-			 * as i'm introducing more concurrency, i think i need to consider possibility of nulls
-			 * being returned in places they "should" never be, since it might end up being possible
-			 * that eg in between this method being called and the handler being retrieved from the map,
-			 * another event in another thread causes the guild to be degregistered so the get() call
-			 * returns null. extremely edge case that will probably never happen but probably can in theory?
-			 */
-			if (handler == null) {
-				logger.warn("null GuildMessageReceivedHandler found for guild " + this.getGuildString(event.getGuild().getId()));
-				return;
+		
+		if(event.isFromGuild()) {
+			guildMessageReceivedProcess.accept(event);
+		} else if(event.isFromType(ChannelType.PRIVATE)) {
+			try {
+				this.privateMessageHandler.handle(event);
+			} catch (UncheckedIOException e) {
+				/*
+				 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
+				 */
+				logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
+				e.getCause().printStackTrace();
+				this.shutdown();
 			}
-			ForkJoinPool.commonPool().execute(() -> {
-				Object lock = this.guildLocks.get(event.getGuild().getId());
-				if(lock == null) {
-					logger.warn("null guild lock found for guild " + this.getGuildString(event.getGuild().getId()));
-					return;
-				}
-				synchronized(lock) {
-					try {
-						handler.handle(event);
-					} catch (IOException e) {
-						throw new UncheckedIOException(e);
-					} catch (WordfilterTimeoutException e) {
-						this.handleWordfilterTimeout(event.getGuild(), e);
-					}
-				}
-			});	
-		} catch (UncheckedIOException e) {
-			/*
-			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
-			 */
-			logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
-			e.getCause().printStackTrace();
-			this.shutdown();
+		} else {
+			//?
 		}
-	}
-	
-	@Override
-	public void onPrivateMessageReceived(PrivateMessageReceivedEvent event) {
-		if(event.getAuthor().isBot()) return;
-		try {
-			this.privateMessageHandler.handle(event);
-		} catch (UncheckedIOException e) {
-			/*
-			 * an ioexception that's bubbled up this high is fatal. shutdown and require user intervention
-			 */
-			logger.error("unrecoverable IOException encountered. shutting down", e.getCause());
-			e.getCause().printStackTrace();
-			this.shutdown();
-		}
+		
 	}
 	
 	//note that this event may be fired mistakenly on a guild we're already in? so needs to be ok with that
@@ -293,10 +323,10 @@ public class MyListener extends ListenerAdapter {
 		});
 	}
 	
-	@SuppressWarnings("resource")
 	public void shutdown() {
 		this.guildMessageHandlers.forEach((id, handler) -> handler.prepareForShutdown());
 		this.taskScheduler.shutdownNow();
+		this.privateMessageHandler.shutdown();
 		this.privateMessageHandler.getExecutor().shutdownNow();
 		OkHttpClient client = this.jda.getHttpClient();
 		client.connectionPool().evictAll();
@@ -364,7 +394,6 @@ public class MyListener extends ListenerAdapter {
 	 */
 	private void handleWordfilterTimeout(Guild guild, WordfilterTimeoutException e) {
 		WordFilter filter = this.allFilters.get(guild.getId());
-		//shouldnt happen
 		if(filter == null) throw new AssertionError("guild '" + MiscUtils.getGuildString(guild) + "' threw a "
 				+ "WordfilterTimeoutException, but couldn't find wordfilter with that id?", e);
 		

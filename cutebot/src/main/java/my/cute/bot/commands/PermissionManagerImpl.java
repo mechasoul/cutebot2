@@ -180,7 +180,7 @@ public class PermissionManagerImpl implements PermissionManager {
 	private void addServerOwner(PermissionDatabase db) throws IOException {
 		String guildId = db.getId();
 		try {
-			this.jda.getGuildById(guildId).retrieveOwner(false).queue(owner -> {
+			this.jda.getGuildById(guildId).retrieveOwner().queue(owner -> {
 				try {
 					db.add(owner.getId(), PermissionLevel.ADMIN);
 				} catch (IOException e) {

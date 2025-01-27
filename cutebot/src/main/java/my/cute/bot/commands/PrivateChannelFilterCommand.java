@@ -2,8 +2,8 @@ package my.cute.bot.commands;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
@@ -17,10 +17,10 @@ import my.cute.bot.util.MiscUtils;
 import my.cute.bot.util.RegexValidator;
 import my.cute.bot.util.StandardMessages;
 import net.dv8tion.jda.api.EmbedBuilder;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 /**
  * for managing a server's wordfilter, an object that can be configured to perform
@@ -309,29 +309,29 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 		}
 	}
 	
-	private Queue<Message> getFormattedWordfilterMessages(WordFilter filter, Guild guild) {
-		MessageBuilder builder = new MessageBuilder();
-		builder.append("wordfilter for server " + MiscUtils.getGuildString(guild));
-		builder.append(System.lineSeparator());
-		builder.append(System.lineSeparator());
-		builder.append("mode: " + filter.getType().name().toLowerCase());
-		builder.append(System.lineSeparator());
+	private List<String> getFormattedWordfilterMessages(WordFilter filter, Guild guild) {
+		MessageCreateBuilder builder = new MessageCreateBuilder();
+		builder.addContent("wordfilter for server " + MiscUtils.getGuildString(guild));
+		builder.addContent(System.lineSeparator());
+		builder.addContent(System.lineSeparator());
+		builder.addContent("mode: " + filter.getType().name().toLowerCase());
+		builder.addContent(System.lineSeparator());
 		if(filter.getType() == WordFilter.Type.REGEX) 
-			builder.append("filter: ```");
+			builder.addContent("filter: ```");
 		else /*filter.getType() == WordFilter.Type.BASIC */
-			builder.append("flagged words: ```");
+			builder.addContent("flagged words: ```");
 		String filterString = filter.get();
 		if(filterString.isBlank())
-			builder.append("none");
+			builder.addContent("none");
 		else
-			builder.append(filterString);
-		builder.append("```");
-		builder.append("actions taken when filter is triggered: " );
-		builder.append(filter.getActions().stream().map(action 
+			builder.addContent(filterString);
+		builder.addContent("```");
+		builder.addContent("actions taken when filter is triggered: " );
+		builder.addContent(filter.getActions().stream().map(action 
 				-> FilterResponseAction.toDescription(action)).collect(Collectors.joining(", ")));
 		if(filter.getActions().contains(FilterResponseAction.ROLE)) {
-			builder.append(System.lineSeparator());
-			builder.append("role to apply when filter is triggered: " );
+			builder.addContent(System.lineSeparator());
+			builder.addContent("role to apply when filter is triggered: " );
 			/*
 			 * possible that the role is null (eg role deleted since it was set), or no
 			 * role has ever been set (filter.getRoleId() returns empty string)
@@ -342,15 +342,15 @@ public class PrivateChannelFilterCommand extends PrivateChannelCommandTargeted {
 			else
 				role = guild.getRoleById(filter.getRoleId());
 			if(role != null) {
-				builder.append(role.getName());
-				builder.append(" (id=");
-				builder.append(filter.getRoleId());
-				builder.append(")");
+				builder.addContent(role.getName());
+				builder.addContent(" (id=");
+				builder.addContent(filter.getRoleId());
+				builder.addContent(")");
 			} else {
-				builder.append("none set!");
+				builder.addContent("none set!");
 			}
 		}
-		return builder.buildAll();
+		return MiscUtils.defaultMessageBuilderSplit(builder);
 	}
 
 	@Override

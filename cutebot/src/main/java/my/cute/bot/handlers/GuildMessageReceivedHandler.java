@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.EnumSet;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
 
@@ -26,13 +27,13 @@ import my.cute.bot.util.StandardMessages;
 import my.cute.bot.util.WordfilterTimeoutException;
 import my.cute.markov2.exceptions.ReadObjectException;
 import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.MessageBuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Role;
-import net.dv8tion.jda.api.events.message.guild.GuildMessageReceivedEvent;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
+import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 
 /*
  * TODO
@@ -102,7 +103,7 @@ public class GuildMessageReceivedHandler {
 	 * each guild has its own lock to synchronize on so can handle at most one message at a time per guild
 	 * but multiple guilds should be able to handle messages concurrently
 	 */
-	public void handle(GuildMessageReceivedEvent event) throws IOException, WordfilterTimeoutException {
+	public void handle(MessageReceivedEvent event) throws IOException, WordfilterTimeoutException {
 		
 		String content = event.getMessage().getContentRaw();
 		
@@ -167,7 +168,7 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 
-	private void handleResponse(GuildMessageReceivedEvent event, String content, boolean canAutoRespond) 
+	private void handleResponse(MessageReceivedEvent event, String content, boolean canAutoRespond) 
 			throws IOException, TimeoutException {
 		if(this.autonomyHandler.shouldSendAutomaticMessage() && canAutoRespond) {
 			String line = this.generateWordFilterSafeLine();
@@ -187,7 +188,7 @@ public class GuildMessageReceivedHandler {
 		}
 	}
 	
-	private boolean handleCommand(GuildMessageReceivedEvent event, String content) {
+	private boolean handleCommand(MessageReceivedEvent event, String content) {
 		if(!StringUtils.isWhitespace(content)) {
 			//message nonempty. check for command
 			String[] params = MiscUtils.getWords(event.getMessage());
@@ -208,7 +209,7 @@ public class GuildMessageReceivedHandler {
 		return false;
 	}
 
-	private void recoverFromDatabaseError(GuildMessageReceivedEvent event, ReadObjectException e) {
+	private void recoverFromDatabaseError(MessageReceivedEvent event, ReadObjectException e) {
 		logger.info(this + ": encountered ReadObjectException during line processing. beginning automatic database restore", e);
 		if(this.database.restoreFromAutomaticBackups()) {
 			try {
@@ -284,10 +285,10 @@ public class GuildMessageReceivedHandler {
 	private void addReactionToMessage(Message message) {
 		try {
 			if(random.nextInt(10) == 0) {
-				message.addReaction(MiscUtils.getRandomEmoteFromCache(this.jda)).queue();
+				message.addReaction(MiscUtils.getRandomEmojiFromCache(this.jda)).queue();
 			} else {
 				//mothyes
-				message.addReaction(this.jda.getEmoteById("242763939631333378")).queue();
+				message.addReaction(this.jda.getEmojiById("242763939631333378")).queue();
 			}
 		} catch (IllegalArgumentException e) {
 			/*
@@ -347,7 +348,7 @@ public class GuildMessageReceivedHandler {
 		EnumSet<FilterResponseAction> actions = this.wordFilter.getActions();
 		if(actions.contains(FilterResponseAction.BAN)) {
 			try {
-				message.getGuild().ban(message.getAuthor(), 0, "don't say '" + filteredWord + "'").queue();
+				message.getGuild().ban(message.getAuthor(), 0, TimeUnit.SECONDS).reason("don't say '" + filteredWord + "'").queue();
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToBan());
 				errorBuilder.append(System.lineSeparator());
@@ -356,7 +357,7 @@ public class GuildMessageReceivedHandler {
 			}
 		} if (actions.contains(FilterResponseAction.KICK)) {
 			try {
-				message.getGuild().kick(message.getAuthor().getId(), "please don't say '" + filteredWord + "'").queue();
+				message.getGuild().kick(message.getAuthor()).reason("please don't say '" + filteredWord + "'").queue();
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToKick());
 				errorBuilder.append(System.lineSeparator());
@@ -376,10 +377,10 @@ public class GuildMessageReceivedHandler {
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_GUILD)) {
 			try {
-				MessageBuilder builder = new MessageBuilder();
+				MessageCreateBuilder builder = new MessageCreateBuilder();
 				builder.mention(message.getAuthor());
-				builder.append(message.getAuthor());
-				builder.append(" your message contained a flagged phrase please don't do that");
+				builder.addContent(message.getAuthor().toString());
+				builder.addContent(" your message contained a flagged phrase please don't do that");
 				message.getChannel().sendMessage(builder.build()).queue();
 			} catch (InsufficientPermissionException e) {
 				errorBuilder.append(StandardMessages.missingPermissionsToSendMessage());
@@ -388,18 +389,18 @@ public class GuildMessageReceivedHandler {
 		}
 		if(actions.contains(FilterResponseAction.SEND_RESPONSE_PRIVATE)) {
 			if(!message.getAuthor().isBot()) {
-				MessageBuilder builder = new MessageBuilder();
-				builder.append("dear user,");
-				builder.append(System.lineSeparator());
-				builder.append(System.lineSeparator());
-				builder.append("your message (");
-				builder.append(message.getJumpUrl());
-				builder.append(") in server ");
-				builder.append(MiscUtils.getGuildString(message.getGuild()));
-				builder.append(" contained the flagged phrase '");
-				builder.append(filteredWord);
-				builder.append("'. please don't do that");
-				builder.append(MiscUtils.getSignature());
+				MessageCreateBuilder builder = new MessageCreateBuilder();
+				builder.addContent("dear user,");
+				builder.addContent(System.lineSeparator());
+				builder.addContent(System.lineSeparator());
+				builder.addContent("your message (");
+				builder.addContent(message.getJumpUrl());
+				builder.addContent(") in server ");
+				builder.addContent(MiscUtils.getGuildString(message.getGuild()));
+				builder.addContent(" contained the flagged phrase '");
+				builder.addContent(filteredWord);
+				builder.addContent("'. please don't do that");
+				builder.addContent(MiscUtils.getSignature());
 				message.getAuthor().openPrivateChannel()
 						.flatMap(channel -> channel.sendMessage(builder.build())).queue();
 			}
@@ -422,7 +423,7 @@ public class GuildMessageReceivedHandler {
 				errorBuilder.append(System.lineSeparator());
 			} else {
 				try {
-					message.getGuild().addRoleToMember(message.getAuthor().getId(), role).queue();
+					message.getGuild().addRoleToMember(message.getAuthor(), role).queue();
 				} catch (InsufficientPermissionException | HierarchyException e) {
 					//missing permission to modify roles or to interact with the specified role
 					errorBuilder.append(StandardMessages.missingPermissionsToApplyFilterRole(role));

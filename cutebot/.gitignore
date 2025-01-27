@@ -3,8 +3,7 @@
 /logs/
 /cutebot2db/
 /bot.bat
-/bot.jar
+/*.jar
 /gc.log
-/twitchchat.txt
-/quotes_info.txt
-/daily_quote.txt
+/*.txt
+/*.json
