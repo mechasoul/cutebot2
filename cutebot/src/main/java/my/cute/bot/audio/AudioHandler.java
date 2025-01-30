@@ -12,6 +12,8 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 
+import dev.lavalink.youtube.YoutubeSourceOptions;
+import dev.lavalink.youtube.clients.Tv;
 import dev.lavalink.youtube.clients.TvHtml5Embedded;
 import dev.lavalink.youtube.clients.Web;
 import dev.lavalink.youtube.clients.skeleton.Client;
@@ -31,7 +33,7 @@ public class AudioHandler {
 		AudioSourceManagers.registerRemoteSources(playerManager, YoutubeAudioSourceManager.class);
 		AudioSourceManagers.registerLocalSource(playerManager);
 		dev.lavalink.youtube.YoutubeAudioSourceManager ytSourceManager = new dev.lavalink.youtube.YoutubeAudioSourceManager(false, true, false, 
-				new Client[] {new TvHtml5Embedded(), new Web()});
+				new Client[] {new Tv(), new TvHtml5Embedded(), new Web()});
 		ytSourceManager.useOauth2(CutebotTask.YOUTUBE_OAUTH_TOKEN, true);
 		playerManager.registerSourceManager(ytSourceManager);
 		musicManagers = new HashMap<>();
@@ -41,6 +43,7 @@ public class AudioHandler {
 		long id = guild.getIdLong();
 		GuildMusicManager manager = musicManagers.computeIfAbsent(id, guildId -> new GuildMusicManager(guildId, playerManager));
 		guild.getAudioManager().setSendingHandler(manager.getSendHandler());
+		guild.getAudioManager().setReceivingHandler(new AudioPlayerReceiveHandler());
 		return manager;
 	}
 	

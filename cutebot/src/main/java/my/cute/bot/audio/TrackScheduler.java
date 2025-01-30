@@ -32,7 +32,8 @@ public class TrackScheduler extends AudioEventAdapter {
 	@Override
 	public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
 		if(endReason.mayStartNext) {
-			nextTrack();
+//			nextTrack();
+			queue(track.makeClone());
 		}
 	}
 }

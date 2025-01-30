@@ -55,6 +55,7 @@ public class PrivateChannelPlayCommand extends PrivateChannelCommand {
 					+ "you must be in a visible voice channel to use this command").queue();
 			return;
 		}
+		System.out.println(params[1]);
 		audioHandler.loadAndPlay(targetChannel, params[1]);
 	}
 }

@@ -7,3 +7,6 @@
 /gc.log
 /*.txt
 /*.json
+/*.mp3
+/udp-queue-natives/
+/*.dll
